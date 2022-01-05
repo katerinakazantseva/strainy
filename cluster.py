@@ -3,38 +3,34 @@ import pysam
 from Bio import SeqIO
 import pandas as pd
 import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
 
 bam="/Users/ekaterina.kazantseva/MT/test_data/test.bam"
-snp="/Users/ekaterina.kazantseva/MT/test.vcf"
-edge='edge_1'
+snp="/Users/ekaterina.kazantseva/MT/test2.vcf"
+edge='edge_8'
 R=1
 #READS SNP
 print ("### Reading SNPs...")
 SNP_pos=[]
 vcf=open(snp, "rt")
-i=0
-for line in vcf:
 
+for line in vcf:
     if line.split()[0]==edge:
-       i = i + 1
        SNP_pos.append(line.split()[1])
 
-print (str(i)+" SNPs found")
+print (str(len(SNP_pos))+" SNPs found")
+SNP_pos=['492','519','533','1287','1373','2746','3346','4027','4531','4597','5125','5149','5164','5239','5242','5338','5369','7232', '7383','8108', '8217']
 
 
 #READ READS AND POSITIONS
 print ("### Reading Reads...")
 
-#SNP_pos=['9098']
 
-#print(SNP_pos)
 
-RName=[]
-Seq=[]
-Pos=[]
-Start=[]
-Stop=[]
 
+
+RName, Seq, Pos, Start, Stop= [],[],[],[],[]
 bamfile = pysam.AlignmentFile(bam, "rb")
 iter = bamfile.fetch(edge)
 
@@ -47,11 +43,11 @@ for pos in SNP_pos:
             if not pileupread.is_del and not pileupread.is_refskip:
                 RName.append(pileupread.alignment.query_name)
                 Seq.append(pileupread.alignment.query_sequence[pileupread.query_position])
+                #print(pileupread.alignment.query_sequence[pileupread.query_position])
                 Pos.append(pos)
                 Start.append(pileupread.alignment.get_reference_positions()[0])
                 Stop.append(pileupread.alignment.get_reference_positions()[len(pileupread.alignment.get_reference_positions())-1])
-                #print(pileupread.alignment.query_name)
-                #print(pileupread.alignment.get_reference_positions()[len(pileupread.alignment.get_reference_positions())-1])
+
 
 
 
@@ -66,8 +62,8 @@ cl=pd.DataFrame(data={'ReadName': RName})
 cl=cl.drop_duplicates(subset=['ReadName'])
 cl['Cluster'] = 'NA'
 
-print (str(len(RName))+" reads found")
-print(cl)
+print (str(len(cl['ReadName']))+" reads found")
+print(df)
 
 
 
@@ -76,34 +72,26 @@ print ("### Calculatind distances/Building adj matrix...")
 
 
 
-print (df)
-read=df.loc[ 0,'ReadName']
+#print (df)
+
 
 
 def distance(read1,read2,df):
     d=-1
-    i=0
     for snp in SNP_pos:
-        #print (snp)
-        i=i+1
         try:
             b1=df.loc[( df.ReadName == read1) & (df.Pos == '%s' %snp)]['Seq'].values
             b2 =df.loc[(df.ReadName == read2) & (df.Pos == '%s' % snp)]['Seq'].values
-            #print(b1)
-            #print(b2)
-            if len(b1)==0 and len(b2)==0:
-                continue
-
-            #elif len(b1) == 0 or len(b2) == 0:
-             #   d=100
-            elif len(b1)==0 or  len(b2)==0 or b1 == b2:
-                if d==-1:
-                    d=0
-                d=d
-            else:
+            if b1 != b2 and b1.size and  b2.size:
                 if d==-1:
                     d=0
                 d=d+1
+            else b1 == b2:
+                if d==-1:
+                    d=0
+                d=d
+            #else:
+               # d=d+0.0001
         except:
             continue
         if d>=R:
@@ -112,24 +100,11 @@ def distance(read1,read2,df):
 
         else:
             continue
-
-
-
     return (d)
-#read1=df.loc[ 112,'ReadName']
-#read2=df.loc[ 113,'ReadName']
-#pos1=df.loc[ 112,'Pos']+1
-#pos2=df.loc[ 113,'Pos']+2
-
-#print(df.loc[ 112,'ReadName'])
-
-#print(distance(read1, read2,df))
-
 
 
 def build_adj_matrix (cl,df):
     m = pd.DataFrame(-1, index=cl['ReadName'], columns=cl['ReadName'])
-    #m = pd.DataFrame(0, index=[1,2,3,4],columns=[1,2,3,4])
     for i in range(1,m.shape[1]):
         print(str(i)+"/"+str(m.shape[1])+" Reads processed \r" , end="")
         first_read=m.index[i]
@@ -139,23 +114,23 @@ def build_adj_matrix (cl,df):
             second_read = m.index[j]
             read2start = df.loc[(df.ReadName == second_read)]['Start'].values[0]
             read2stop = df.loc[(df.ReadName == second_read)]['Stop'].values[0]
-            #print('first '+first_read+ " "+ str(read1start)+" "+str(read1stop))
-            #print('second '+second_read + " " + str(read2start) + " " + str(read2stop))
-            #if read1start>read2stop or read2start>read1stop:
-                #m[second_read][first_read]=-1
-                #print("no intersect ")
-            #else:
-            m[second_read][first_read] = distance(first_read,second_read, df)
+            #print("read1 "+ str(read1start)+"-"+str(read1stop))
+            #print("read2 " + str(read2start) + "-" + str(read2stop))
 
+            if read1start>read2stop or read2start>read1stop:
+                m[second_read][first_read]=0
+            #elif: добавить проверку что есть снип на пересечении
+            else:
+                m[second_read][first_read] = distance(first_read,second_read, df)
     return (m)
 
 
 m=build_adj_matrix (cl,df)
-#m=m.set_index('ReadName', inplace = True)
+
 m.to_csv("adj_M_%s.csv" % edge)
 
-#m=pd.read_csv("adj_M_edge_8.csv", index_col='ReadName')
-#print(m)
+#m=pd.read_csv("adj_M_edge_8.csv",index_col='ReadName')
+print(m)
 
 
 print("### Removing overweighed egdes...")
@@ -164,60 +139,33 @@ def remove_edges (m, R):
     m[m >= R] = -1
     return (m)
 
-remove_edges (m, R)
+#remove_edges (m, R)
+print("### Removing srange nodes...")
 
-#print(m)
+nodes=[]
 
-
-print("### Removing strange egdes...")
-
-def remove_zeroedges (m):
-    for read_name in cl['ReadName']:
-        print(read_name)
-        if max(m[read_name])<=0 and m.loc[m.index == read_name].values.max()<=0:
-            m=m.drop(index=read_name)
-            #modDfObj = dfObj.drop('b')
-            m = m.drop(columns=read_name)
-            print(str(read_name)+" removed")
-            #cl.loc[cl['ReadName'] == read_name, 'Cluster'] = 'unclustered'
+def change_w (m):
+    m[m == 0] = 0.01
+    m[m == -1] = 0
+    #m[m >=R] = 0
     return (m)
 
-#remove_zeroedges(m)
-
-
-
-#print()
 
 
 
 print("### Searching connected components...")
 
 
-#m=m.set_index('ReadName').transpose()
-
 def find(read_name, clN):
-    #try:
-     #   if max(m[read_name])<=0 and max(m.loc[m['ReadName'] == read_name, m.columns !='ReadName'].values)<=0:
-      #      df.loc[df['ReadName'] == read_name, 'Cluster'] = 'unclustered'
-            #uncl=uncl+1
 
-    #print(df[(df['ReadName'] == read_name)]['Cluster'].values)
-
-
-
-        x = m.loc[m[read_name] != -1].index
-        #print(read_name)
-        #print(x)
+        x = m.loc[m[read_name].isin((0,R-1))].index
         if cl[(cl['ReadName'] == read_name)]['Cluster'].values==['NA']:
+            #print("assing cl "+str(clN))
+            #print(read_name)
+            #print(x)
             cl.loc[cl['ReadName'] == read_name,'Cluster']=clN
-        #print("childs " + x)
-
             for i in x:
                 find(i,clN)
-    #except: pass
-
-
-
 
 
 clN=0
@@ -226,33 +174,88 @@ uncl=0
 
 
 for next_read in cl['ReadName']:
-    #print(next_read)
-    #try:
-     #   print(1)
-    #if max(m[next_read])<=0 and max(m.loc[m['ReadName'] == next_read, m.columns !='ReadName'].values)<=0:
-       # print(2)
-       # df.loc[df['ReadName'] == next_read, 'Cluster'] = 'unclustered'
-    #except:
-      #  continue
-    #if next_read=='SRR13128014.1592186.1':
-       #cl.loc[cl['ReadName'] == next_read, 'Cluster'] = 'unclustered'
     if cl[(cl['ReadName'] == next_read)]['Cluster'].values==['NA']:
-        #print(3)
-        x = m.loc[m[next_read] != -1].index
+        x = m.loc[m[next_read].isin((0,R-1))].index
         if len(x)>0:
             clN = clN + 1
-            #print("new cluster"+str(clN))
             find(next_read,clN)
+
         else:
             uncl = uncl + 1
             print(str(next_read)+" unclustered")
             cl.loc[cl['ReadName'] == next_read, 'Cluster'] = 'unclustered'
 
 
-print(str(clN)+" clusters found in "+edge)
-print(str(uncl)+" Reads unclassified")
 
-#cl.to_csv("clusters_%s.csv" % edge)
+
+cl.to_csv("clusters-v2_%s.csv" % edge)
+#cl=pd.read_csv("clusters-v2_edge_8.csv")
 #print(df)
+
+#Calculate statistics
+print("Summary for: "+edge)
+print("Clusters found: "+str(clN))
+print("Reads unclassified: "+str(uncl))
+print("Number of reads in each cluster: ")
+print(cl['Cluster'].value_counts(dropna=False))
+
+
+#Build and v graph
+
+
+
+
+remove_edges (m, R)
+def change_w (m):
+    m[m == 0] = 0.01
+    m[m == -1] = 0
+    #m[m >=R] = 0
+    return (m)
+
+
+G = nx.from_pandas_adjacency(change_w(m.transpose()))
+to_remove = [(a, b) for a, b, attrs in G.edges(data=True) if attrs["weight"] >= R or attrs["weight"] == 0]
+G.remove_edges_from(to_remove)
+
+sub_graphs =list(nx.clique.find_cliques(G))
+nx.draw(G, with_labels = True, width=0.1,node_color='pink', node_size=10, font_size=5)
+plt.show()
+#subax1 = plt.subplot(121)
+
+
+#for g in nx.clique.find_cliques(G):
+ #   print(len(g))
+  #  if int(len(g))>60:
+   #     print(g)
+
+
+
+
+
+#print(list(nx.articulation_points(G)))
+#print(list(nx.local_bridges(G,with_span=False)))
+#print(list(nx.bridges(G)))
+#print(nx.clustering(G))
+
+
+clN=1
+
+#for i in range(1,clN+1):
+ #   print("cluster "+str(i))
+  #  l=cl.loc[cl['Cluster'] == i, 'ReadName'].values
+   # max_d=m.loc[m.index.isin(l), m.columns.isin(l)].max().max()
+    #G = nx.from_pandas_adjacency(change_w(m.transpose().loc[m.index.isin(l), m.columns.isin(l)]))
+    #print(nx.is_biconnected(G))
+    #if max_d>=R:
+     #   print("cluster "+str(i)+" will be splitted")
+      #  to_remove = [(a,b) for a, b, attrs in G.edges(data=True) if attrs["weight"] >= R]
+       # G.remove_edges_from(to_remove)
+        #print(list(nx.articulation_points(G)))
+        #print(list(nx.articulation_points(G)))
+        #print(list(nx.local_bridges(G)))
+
+
+
+
 
 
