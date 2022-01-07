@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 bam="/Users/ekaterina.kazantseva/MT/test_data/test.bam"
 snp="/Users/ekaterina.kazantseva/MT/test2.vcf"
-edge='edge_8'
+edges=['edge_1','edge_2','edge_598','edge_5']
 R=1
 
 
@@ -19,12 +19,12 @@ def read_snp(snp):
         if line.split()[0] == edge:
             SNP_pos.append(line.split()[1])
 
-    SNP_pos = ['492', '519', '533', '1287', '1373', '2746', '3346', '4027', '4531', '4597', '5125', '5149', '5164','5239', '5242', '5338', '5369', '7232', '7383', '8108', '8217']
+    #SNP_pos = ['492', '519', '533', '1287', '1373', '2746', '3346', '4027', '4531', '4597', '5125', '5149', '5164','5239', '5242', '5338', '5369', '7232', '7383', '8108', '8217']
     print(str(len(SNP_pos)) + " SNPs found")
     return(SNP_pos)
 
 
-def read_bam(file):
+def read_bam(file,SNP_pos):
     bamfile = pysam.AlignmentFile(file, "rb")
     iter = bamfile.fetch(edge)
     data = {}
@@ -45,7 +45,7 @@ def read_bam(file):
     bamfile.close()
     return(data)
 
-def distance(read1,read2,data):
+def distance(read1,read2,data, SNP_pos):
     d=-1
     for snp in SNP_pos:
         try:
@@ -70,7 +70,7 @@ def distance(read1,read2,data):
     return (d)
 
 
-def build_adj_matrix (cl,data):
+def build_adj_matrix (cl,data,SNP_pos):
     m = pd.DataFrame(-1, index=cl['ReadName'], columns=cl['ReadName'])
     for i in range(1,m.shape[1]):
         print(str(i)+"/"+str(m.shape[1])+" Reads processed \r" , end="")
@@ -80,7 +80,7 @@ def build_adj_matrix (cl,data):
             if len(set(data[first_read].keys()) & set(data[second_read].keys()))==0:
                 m[second_read][first_read]=-1
             else:
-                m[second_read][first_read] = distance(first_read,second_read, data)
+                m[second_read][first_read] = distance(first_read,second_read, data,SNP_pos)
     return (m)
 
 
@@ -94,40 +94,46 @@ def change_w (m):
     m[m >=R] = 0
     return (m)
 
-#READ SNPs
-print ("### Reading SNPs...")
-SNP_pos=read_snp(snp)
 
-#READ READS AND POSITIONS
-print ("### Reading Reads...")
-data=read_bam(bam)
-cl=pd.DataFrame(data={'ReadName': data.keys()})
-cl['Cluster'] = 'NA'
-print (str(len(cl['ReadName']))+" reads found")
+def main(edge):
+    #READ SNPs
+    print ("### Reading SNPs...")
+    SNP_pos=read_snp(snp)
 
-
-#CALCULATE DISTANCE and ADJ MATRIX
-print ("### Calculatind distances/Building adj matrix...")
-m=build_adj_matrix (cl,data)
-m.to_csv("adj_M_%s.csv" % edge)
-#m=pd.read_csv("adj_M_edge_8.csv",index_col='ReadName')
-print("### Removing overweighed egdes...")
-m=remove_edges (m, R)
+    #READ READS AND POSITIONS
+    print ("### Reading Reads...")
+    data=read_bam(bam,SNP_pos)
+    cl=pd.DataFrame(data={'ReadName': data.keys()})
+    cl['Cluster'] = 'NA'
+    print (str(len(cl['ReadName']))+" reads found")
 
 
-#BUILD graph
+    #CALCULATE DISTANCE and ADJ MATRIX
+    print ("### Calculatind distances/Building adj matrix...")
+    m=build_adj_matrix (cl,data,SNP_pos)
+    m.to_csv("output/adj_M_%s.csv" % edge)
+    #m=pd.read_csv("adj_M_edge_8.csv",index_col='ReadName')
+    print("### Removing overweighed egdes...")
+    m=remove_edges (m, R)
 
-G = nx.from_pandas_adjacency(change_w(m.transpose()))
-to_remove = [(a, b) for a, b, attrs in G.edges(data=True) if  attrs["weight"] == 0]
-G.remove_edges_from(to_remove)
-#for g in nx.find_cliques(G):
+
+    #BUILD graph
+
+    G = nx.from_pandas_adjacency(change_w(m.transpose()))
+    to_remove = [(a, b) for a, b, attrs in G.edges(data=True) if  attrs["weight"] == 0]
+    G.remove_edges_from(to_remove)
+    #for g in nx.find_cliques(G):
     #print(len(g))
-nx.draw(G, with_labels = False, width=0.05,node_color='pink', node_size=5, font_size=5)
-#plt.show()
-#plt.savefig
-#plt.close()
+    nx.draw(G, with_labels = False, width=0.03,node_color='pink', node_size=3, font_size=5)
+    #plt.show()
+    #plt.savefig
+    #plt.close()
+    plt.savefig("output/graph_%s.png" % edge, format="PNG")
 
 
+for edge in edges:
+    print("------------- "+str(edge)+" ------------- ")
+    main(edge)
 
 #Calculate statistics
 clN=0
@@ -136,7 +142,7 @@ print("Summary for: "+edge)
 print("Clusters found: "+str(clN))
 print("Reads unclassified: "+str(uncl))
 print("Number of reads in each cluster: ")
-print(cl['Cluster'].value_counts(dropna=False))
+#print(cl['Cluster'].value_counts(dropna=False))
 
 
 
