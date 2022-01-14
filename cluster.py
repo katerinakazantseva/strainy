@@ -130,9 +130,9 @@ def main(edge):
 
     #CALCULATE DISTANCE and ADJ MATRIX
     print ("### Calculatind distances/Building adj matrix...")
-    #m=build_adj_matrix (cl,data,SNP_pos)
-    #m.to_csv("output/adj_M_%s.csv" % edge)
-    m=pd.read_csv("output/adj_M_%s.csv" % edge,index_col='ReadName')
+    m=build_adj_matrix (cl,data,SNP_pos)
+    m.to_csv("output/adj_M_%s.csv" % edge)
+    #m=pd.read_csv("output/adj_M_%s.csv" % edge,index_col='ReadName')
     #print("### Removing overweighed egdes...")
     m=remove_edges (m, R)
 
@@ -185,27 +185,6 @@ def main(edge):
     plt.close()
     #add tags to bam
 
-
-    def write_bam(file, cl,edge):
-        bamfile = pysam.AlignmentFile(file, "rb")
-        iter = infile.fetch(until_eof=True)
-        for read in iter:
-            read.set_tag("OQ", read.query_qualities, 'Z', replace=False)
-            outfile.write(read)
-        bamfile.close()
-        outfile.close()
-
-        for pileupcolumn in bamfile.pileup(edge):
-            for pileupread in pileupcolumn.pileups:
-                #clN=cl.loc[cl['ReadName'] == pileupread.alignment.query_name].values
-                clN=1
-                pileupread.alignment.tags+=[('cluster', clN)]
-        infile = pysam.AlignmentFile("-", "rb")
-        fo = pysam.Samfile('/output/test2edge8.bam', "wb",template=infile)
-        fo.write(Read)
-
-
-    write_bam(bam,cl,edge)
 
 
     # Calculate statistics
