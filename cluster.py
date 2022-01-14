@@ -217,7 +217,7 @@ for edge in edges:
 #UNUSED PART
 
 
-print("### Searching connected components...")
+
 
 
 def find(read_name, clN):
