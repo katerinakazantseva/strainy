@@ -7,7 +7,7 @@ import matplotlib as mt
 
 
 
-edge='edge_1'
+edge='edge_9'
 
 
 infile = pysam.AlignmentFile("/Users/ekaterina.kazantseva/MT/test_data/test.bam", "rb")
@@ -15,19 +15,21 @@ infile = pysam.AlignmentFile("/Users/ekaterina.kazantseva/MT/test_data/test.bam"
 
 def write_bam(infile, edge):
     outfile = pysam.AlignmentFile("output/bam/coloredBAM_%s.bam" % edge, "wb", template=infile)
-    cl = pd.read_csv("output/clusters_%s.csv" % edge)
+    cl = pd.read_csv("output/clusters/clusters_%s_100.csv" % edge,keep_default_na=False)
     iter = infile.fetch(edge,until_eof=True)
     cmap = plt.get_cmap('viridis')
-    cl.dropna(inplace=True)
-    cl.Cluster = cl.Cluster.astype(int)
+    cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 0
     clusters=set(cl['Cluster'])
     cmap = cmap(np.linspace(0, 1, len(clusters)))
     colors={}
     i=0
-    for cluster in clusters:
+    colors[0] = "#505050"
+    for cluster in list(clusters)[1:len(clusters)]:
         colors[cluster]=mt.colors.to_hex(cmap[i])
         i=i+1
     cl_dict = dict(zip(cl.ReadName, cl.Cluster))
+
+
 
     for read in iter:
         try:
