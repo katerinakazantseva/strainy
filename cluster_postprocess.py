@@ -13,9 +13,13 @@ from community_detection import find_communities
 
 def build_data(cl,SNP_pos, data):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+    #clusters = sorted(set(cl['Cluster'].values))
     cons = {}
+
     for cluster in clusters:
-       cons=cluster_consensuns(cl,cluster,SNP_pos, data, cons)
+
+        cons=cluster_consensuns(cl,cluster,SNP_pos, data, cons)
+    #print(cons)
     return(cons)
 
 
@@ -24,34 +28,52 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
     val = {}
     clSNP = []
     for pos in SNP_pos:
+        # print(pos)
         npos = []
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
-            #print(read)
+            # print(read)
             try:
                 npos.append(data[read][pos])
             except(KeyError):
                 continue
+        # print(npos)
+
         try:
-            if len(npos)>=2:
-                val[pos] = Counter(npos).most_common(1)[0][0]
-            if int(Counter(npos).most_common(2)[1][1]) >= 2:
+            if len(npos) >= 2:
+                # print(Counter(npos).most_common())[1][1]
+                if int(Counter(npos).most_common()[0][1]) >= 2:
+                    val[pos] = Counter(npos).most_common()[0][0]
+            if int(Counter(npos).most_common()[1][1]) >= 2:
                 strange = 1
                 clSNP.append(pos)
         except(IndexError):
             continue
-    if strange == 1:
-        val["Strange"]=1
-    else:
-        val["Strange"] =0
-    val["clSNP"]=clSNP
-    cons[cluster] = val
 
-    return(cons)
+    if strange == 1:
+        val["Strange"] = 1
+    else:
+        val["Strange"] = 0
+    val["clSNP"] = clSNP
+
+    clStart = 1000000000000  # change fo ln
+    clStop = 0
+
+    for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
+        start = int(data[read]["Start"])
+        stop = int(data[read]["Stop"])
+        if start < clStart:
+            clStart = start
+        if stop > clStop:
+            clStop = stop
+    val["Stop"] = start
+    val["Start"] = stop
+    cons[cluster] = val
+    return (cons)
 
 
 def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
     print("Strange cluster detected")
-    print(cluster)
+
     reads=sorted(set(cl.loc[cl['Cluster'] == cluster]['ReadName'].values))
     m=build_adj_matrix2(cl[cl['Cluster'] == cluster], data, clSNP, I, bam,edge,R)
     m = remove_edges(m, 1)
@@ -63,9 +85,11 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
     clN=0
     uncl=0
     reads = cl[cl['Cluster'] == cluster]['ReadName'].values
+
     for value in set(cluster_membership.values()):
         group = [k for k, v in cluster_membership.items() if v == value]
-        if len(group) > 3:
+
+        if len(group) > 2:
             clN = clN + 1
             child_clusters.append(cluster+10000+clN)
             for i in group:
@@ -74,24 +98,32 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
         else:
             uncl = uncl + 1
             for i in group:
-                cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 'NA'
+                if cluster==1000000:
+                    cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 'NA'
+                else:
+                    cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 1000000
 
     print(str(clN)+" new clusters found")
 
 
 def distance_clusters(first_cl,second_cl, cons,SNP_pos):
     d=-1
-    print("distance "+str(first_cl)+" "+str(second_cl))
+    #print("distance "+str(first_cl)+" "+str(second_cl))
     firstSNPs=list(cons[first_cl].keys())
     firstSNPs.remove('clSNP')
     firstSNPs.remove('Strange')
+    firstSNPs.remove('Stop')
+    firstSNPs.remove('Start')
     secondSNPs=list(cons[second_cl].keys())
     secondSNPs.remove('clSNP')
     secondSNPs.remove('Strange')
+    secondSNPs.remove('Stop')
+    secondSNPs.remove('Start')
     commonSNP=sorted(set(firstSNPs).intersection(secondSNPs))
     #print(commonSNP)
     try:
-        if abs(int(commonSNP[len(commonSNP)-1])-int(commonSNP[0]))>=1000:
+        #if abs(int(commonSNP[len(commonSNP)-1])-int(commonSNP[0]))>=500:
+        if 1000 >= 500:
             for snp in SNP_pos:
                 try:
                     b1=cons[first_cl][snp]
@@ -113,19 +145,19 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos):
                 else:
                     continue
     except(IndexError):pass
-    print(d)
+    #print(d)
     return (d)
 
 
 
 def build_adj_matrix_clusters (cons, SNP_pos,cl):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+    #clusters=sorted(set(cl['Cluster'].values))
     Y=[]
     X=[]
-    #print(cons)
     for k,v in cons.items():
         X.append(k)
-        Y.append(int(list(v.keys())[0]))
+        Y.append(int(v["Start"]))
 
     from more_itertools import sort_together
     sorted_by_pos=sort_together([Y, X])[1]
@@ -207,7 +239,7 @@ def join_clusters(cons, SNP_pos, cl,R, edge):
 
     groups = list(nx.connected_components(G))
 
-    print(groups)
+    #print(groups)
     for group in groups:
         if len(group) > 0:
             for i in range(1, len(group)):
@@ -216,7 +248,6 @@ def join_clusters(cons, SNP_pos, cl,R, edge):
 
 def postprocess (bam,cl,SNP_pos, data, edge, R, I):
     cons=build_data(cl, SNP_pos, data)
-    print(cons)
     for key, val in cons.copy().items():
         if val["Strange"]==1:
             cluster=key
@@ -226,5 +257,20 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
             for child in child_clusters:
                 cluster=child
                 cluster_consensuns(cl,cluster,SNP_pos, data, cons)
+
+    if len(cl.loc[cl['Cluster'] == 1000000]['ReadName'].values) != 0:
+        cluster_consensuns(cl, 1000000, SNP_pos, data, cons)
+        cluster = 1000000
+        val=cons[cluster]
+        clSNP = SNP_pos
+        child_clusters = []
+        #child_clusters = []
+        split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I)
+        for child in child_clusters:
+            cluster = child
+            cluster_consensuns(cl, cluster, SNP_pos, data, cons)
+
+    print(cons)
+    cl.to_csv("output/clusters/clusters_before_joining_%s_%s_%s.csv" % (edge, I, 0.1))
     cl=join_clusters(cons, SNP_pos, cl,R, edge)
     return(cl)

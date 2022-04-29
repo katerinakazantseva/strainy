@@ -1,6 +1,6 @@
 import pandas as pd
 import pysam
-import multiprocessing as mp
+
 
 def build_adj_matrix2 (cl,data,SNP_pos,I, file, edge, R):
 
@@ -16,12 +16,8 @@ def build_adj_matrix2 (cl,data,SNP_pos,I, file, edge, R):
             border2=1
         if border1<=0:
             border1=1
-        #print(border1)
-        #print(border2)
-        for pos in [border1, border2]:
-        #set=[k for k in SNP_pos if int(k) >= border1 and int(k)<=border2]
-        #for pos in set:
 
+        for pos in [border1, border2]:
             for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools',
                                                ignore_overlaps=False,
                                                ignore_orphans=False, truncate=True):
@@ -31,28 +27,9 @@ def build_adj_matrix2 (cl,data,SNP_pos,I, file, edge, R):
                     try:
                         if m[second_read][first_read]==-1:
                             m[second_read][first_read] = distance(first_read, second_read, data, SNP_pos, R)
-                            #add to pairs
-                            #pool = mp.Pool(processes=(2))
-                            #print("start")
-                            #x = pool.map(calc_dist(first_read, second_read, data, SNP_pos, R))
-
-                            #print(x)
-                            #m[second_read][first_read]=x
-                            #pool.close()
-                            #pool.join()
                     except: KeyError
-    #m=parallel(m,pairs)
     return (m)
 
-def parallel(m, pairs):
-    pool = mp.Pool(processes=(2))
-    print("start")
-    x = pool.map(calc_dist, first_read, second_read, data, SNP_pos, R)
-    print(x)
-    m[second_read][first_read]=x
-    pool.close()
-    pool.join()
-    returm(m)
 
 def distance(read1,read2,data, SNP_pos, R):
     d=-1
@@ -85,7 +62,7 @@ def remove_edges (m, R):
 
 def change_w (m, R):
     m_transformed = m
-    m_transformed[m_transformed < R] = 0.001
+    m_transformed[m_transformed ==0] = 0.001
     m_transformed[m_transformed == -1] = 0
     m_transformed[m_transformed >=R] = 0
     return (m_transformed)
