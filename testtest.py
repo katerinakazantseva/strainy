@@ -16,18 +16,48 @@ def parallel(edges):
     pool.map(do_something, range(0, len(edges)))
     pool.close()
 
-edge="edge_4"
-import pandas as pd
-R=1
-I=1000
-clipp=100
-min_mapping_quality=20
-min_base_quality=0
-min_al_len=1000
-de_max=0.05
-AF=0.1
-cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF),keep_default_na=False)
-clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
-#print(clusters)
-clusters = sorted(set(cl['Cluster'].values))
-print(clusters)
+
+import gfapy
+g = gfapy.Gfa.from_file("/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/3/noalt/flye_3ecoli_sim_noalt/assembly_graph.gfa")
+
+for ed in g.segments:
+    if ed.name !="edge_2":
+        g.rm(ed)
+
+    if ed.name=="edge_2":
+        ed.sequence=ed.sequence[1:10]
+
+print(g.segments)
+
+
+
+
+def add_child_edge(g,child):
+    f = g.segments
+    seq=[]
+    dat = {'1':{'0': 'A', '1': 'A', '4': 'A'},'2':{'0': 'B', '1': 'B', '4': 'A'},}
+    for i in f:
+        if i == "edge_2":
+            seq = i.sequence
+            seq = list(seq)
+            for key, val in dat[child].items():
+                try:
+                    seq[int(key)] = val
+
+                except (ValueError):
+                    continue
+    seq = ''.join(seq)
+    g.add_line("S\tNEW\t*")
+    f = g.segments
+    for i in f:
+        if i == "NEW":
+            new_line = i
+            new_line.name = str("TEST"+str(child))
+            new_line.sequence = seq
+            new_line.dp = 35  # coverage
+    gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/3/noalt/flye_3ecoli_sim_noalt/test.gfa")
+
+
+add_child_edge(g,'1')
+add_child_edge(g,'2')
+print(g.segments)

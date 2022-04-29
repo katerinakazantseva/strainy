@@ -1,6 +1,6 @@
 import csv
-import pysam
-from Bio import SeqIO
+#import pysam
+#from Bio import SeqIO
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -10,14 +10,15 @@ from networkx.algorithms import community
 from build_adj_matrix import build_adj_matrix2
 from build_adj_matrix import *
 from cluster_postprocess import cluster_consensuns
-from cluster_postprocess import build_data
+from cluster_postprocess import build_data_cons
 from cluster_postprocess import build_adj_matrix_clusters
-import sys, os, subprocess
+#import sys, os
 import pygraphviz as gv
 import re
 import gfapy
 from collections import Counter
 from collections import deque
+from build_data  import *
 
 # import pylab
 
@@ -41,7 +42,7 @@ edges = ['edge_1', 'edge_10', 'edge_100', 'edge_101', 'edge_102', 'edge_103', 'e
 # edges = ['edge_99', 'edge_96', 'edge_98']
 
 
-edges = ['edge_20']
+edges = ['edge_96']
 
 R = 1
 I = 1000
@@ -57,7 +58,7 @@ stats = open('output/stats_clusters.txt', 'a')
 stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
 stats.close()
 
-
+"""
 def read_snp(snp, edge):
     SNP_pos = []
     if snp == None:
@@ -132,13 +133,13 @@ def read_bam(bam, edge, SNP_pos, clipp=clipp):
 
     bamfile.close()
     return (data)
-
+"""
 
 def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ):
     f = g.segments
     seq=[]
     # dat = {0: "A", 1: "A", 4: "A"}
-    cons = build_data(cl, SNP_pos, data)
+    cons = build_data_cons(cl, SNP_pos, data)
     cl_consensuns = cluster_consensuns(cl, clN, SNP_pos, data, cons)
     print(cl_consensuns[clN])
     for i in f:
@@ -148,16 +149,15 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ):
             for key, val in cl_consensuns[clN].items():
                 try:
                     seq[int(key)] = val
-
                 except (ValueError):
                     continue
 
     # print(len(seq))
 
-
     seq = ''.join(seq)
 
     seq = seq[left:righ]
+
 
     g.add_line("S\tNEW\t*")
     f = g.segments
@@ -184,7 +184,7 @@ def remove_link(edge, neighbor):
 
 
 def build_paths_graph(edge, data, SNP_pos, cl):
-    cons = build_data(cl, SNP_pos, data)
+    cons = build_data_cons(cl, SNP_pos, data)
     M = build_adj_matrix_clusters(cons, SNP_pos, cl)
     M = change_w(M, 1)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
@@ -395,8 +395,8 @@ def transform_graph(i):
     try:
         cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
         snp = None
-        SNP_pos = read_snp(snp, edge)
-        data = read_bam(bam, edge, SNP_pos)
+        SNP_pos = read_snp(snp, edge,bam, AF)
+        data = read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
         ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
@@ -529,12 +529,14 @@ def transform_graph(i):
     stats = open('output/stats_clusters.txt', 'a')
     fcN = 0
     fpN = 0
+
+
     try:
         fcN = len(full_cl[edge])
     except(KeyError):
         pass
     try:
-        fpN = len(full_paths[edge])
+        fpN = len(set(path_cl))
     except(KeyError):
         pass
 
@@ -710,7 +712,7 @@ def transform_graph(i):
                     except:
                         pass
                     print("addd links to " + str("%s_%s" % (t, i)))
-        for ed in g.edges:
+        for ed in g.segments:
            if ed.name in edges_to_remove:
                g.rm(ed)
         #for i in new_links:
@@ -744,7 +746,7 @@ for edge in edges:
                           "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/3/noalt/flye_3ecoli_sim_noalt/assembly_graph_transformed.gfa")
 
 '''
-
+print(g.segments)
 
 import multiprocessing
 
@@ -776,39 +778,3 @@ gfapy.Gfa.to_file(g,
 # g.RECORDS_WITH_NAME
 
 
-# print(g.segment_names)
-# print(g.try_get_segment('edge_100'))
-# print(g.segment('edge_100_1'))
-
-'''
-def change_link(old, new, neighbor, neighbor_cl=None):  # смениить на addlink
-    if old == neighbor:
-        exit()
-    # print("CNANGE I!!! "+old+" "+neighbor)
-    old = str(old) + "\t"
-    new = str(new) + "\t"
-    temp = []
-
-        for i in g.edges:
-        if re.search(old, str(i)):
-
-            if neighbor_cl == None or g.segment("%s_%s\t" % (neighbor, neighbor_cl)) == None:
-
-                if re.search(neighbor, str(i)):
-                    print("1")
-                    print(str(i).replace(old, new))
-                    print(i)
-
-                    g.add_line(str(i).replace(old, new))
-                    # g.rm(i)
-            else:
-                if re.search(neighbor, str(i)):
-                    print("2")
-                    print(neighbor)
-
-                    print(str(i).replace(old, new).replace(str(neighbor) + "\t", "%s_%s\t" % (neighbor, neighbor_cl)))
-                    print(i)
-
-                    g.add_line(
-                        str(i).replace(old, new).replace(str(neighbor) + "\t", "%s_%s\t" % (neighbor, neighbor_cl)))
-                    # g.rm(i)'''

@@ -11,13 +11,11 @@ import pylab
 from community_detection import find_communities
 
 
-def build_data(cl,SNP_pos, data):
+def build_data_cons(cl,SNP_pos, data):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     #clusters = sorted(set(cl['Cluster'].values))
     cons = {}
-
     for cluster in clusters:
-
         cons=cluster_consensuns(cl,cluster,SNP_pos, data, cons)
     #print(cons)
     return(cons)
@@ -247,7 +245,7 @@ def join_clusters(cons, SNP_pos, cl,R, edge):
     return (cl)
 
 def postprocess (bam,cl,SNP_pos, data, edge, R, I):
-    cons=build_data(cl, SNP_pos, data)
+    cons=build_data_cons(cl, SNP_pos, data)
     for key, val in cons.copy().items():
         if val["Strange"]==1:
             cluster=key
