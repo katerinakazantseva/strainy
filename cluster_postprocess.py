@@ -55,16 +55,21 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
 
     clStart = 1000000000000  # change fo ln
     clStop = 0
+    clCov=0
 
     for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
         start = int(data[read]["Start"])
         stop = int(data[read]["Stop"])
+        clCov=clCov+(stop-start)
         if start < clStart:
             clStart = start
         if stop > clStop:
             clStop = stop
-    val["Stop"] = start
-    val["Start"] = stop
+
+    clCov=clCov/(clStop-clStart)
+    val["Stop"] = clStop
+    val["Start"] = clStart
+    val["Cov"]=clCov
     cons[cluster] = val
     return (cons)
 
@@ -104,7 +109,7 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
     print(str(clN)+" new clusters found")
 
 
-def distance_clusters(first_cl,second_cl, cons,SNP_pos):
+def distance_clusters(first_cl,second_cl, cons,SNP_pos, has_common_snip=False):
     d=-1
     #print("distance "+str(first_cl)+" "+str(second_cl))
     firstSNPs=list(cons[first_cl].keys())
@@ -112,17 +117,24 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos):
     firstSNPs.remove('Strange')
     firstSNPs.remove('Stop')
     firstSNPs.remove('Start')
+    firstSNPs.remove('Cov')
     secondSNPs=list(cons[second_cl].keys())
     secondSNPs.remove('clSNP')
     secondSNPs.remove('Strange')
     secondSNPs.remove('Stop')
     secondSNPs.remove('Start')
+    secondSNPs.remove('Cov')
     commonSNP=sorted(set(firstSNPs).intersection(secondSNPs))
     #print(commonSNP)
     try:
         #if abs(int(commonSNP[len(commonSNP)-1])-int(commonSNP[0]))>=500:
-        if 1000 >= 500:
-            for snp in SNP_pos:
+        #if 1000 >= 500:
+        intersect=set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
+        if has_common_snip==True and len(commonSNP)==0 and len(intersect)>0:
+            d=0
+        else:
+            #for snp in SNP_pos:
+            for snp in commonSNP:
                 try:
                     b1=cons[first_cl][snp]
                     b2=cons[second_cl][snp]
@@ -148,7 +160,7 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos):
 
 
 
-def build_adj_matrix_clusters (cons, SNP_pos,cl):
+def build_adj_matrix_clusters (cons, SNP_pos,cl,has_common_snip=False):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     #clusters=sorted(set(cl['Cluster'].values))
     Y=[]
@@ -170,7 +182,10 @@ def build_adj_matrix_clusters (cons, SNP_pos,cl):
             second_cl=m.index[k]
             #try:
             if m[second_cl][first_cl]==-1:
-                m[second_cl][first_cl] = distance_clusters(first_cl,second_cl, cons,SNP_pos)
+                if has_common_snip==False:
+                    m[second_cl][first_cl] = distance_clusters(first_cl,second_cl, cons,SNP_pos)
+                else:
+                    m[second_cl][first_cl] = distance_clusters(first_cl, second_cl, cons, SNP_pos,True)
             #except: (KeyError)
     return (m)
 

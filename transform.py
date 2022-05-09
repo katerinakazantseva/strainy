@@ -27,10 +27,10 @@ edges = ['edge_1', 'edge_10', 'edge_100', 'edge_101', 'edge_102', 'edge_103', 'e
 
 # edges=['edge_96', "edge_43"]
 
-edges = ['edge_99', 'edge_96', 'edge_98']
+#edges = ['edge_99', 'edge_96', 'edge_98']
 
 
-edges = ['edge_96']
+edges = ['edge_100']
 
 R = 1
 I = 1000
@@ -48,11 +48,11 @@ stats.close()
 
 
 
-def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ):
+def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
     f = g.segments
     seq=[]
     # dat = {0: "A", 1: "A", 4: "A"}
-    cons = build_data_cons(cl, SNP_pos, data)
+    #cons = build_data_cons(cl, SNP_pos, data)
     cl_consensuns = cluster_consensuns(cl, clN, SNP_pos, data, cons)
     print(cl_consensuns[clN])
     for i in f:
@@ -80,7 +80,7 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ):
             new_line.name = str(edge) + "_" + str(clN)
             new_line.sid = str(edge) + "_" + str(clN)
             new_line.sequence = seq
-            new_line.dp = 35  # coverage
+            new_line.dp = cons[clN]["Cov"]  # coverage
             print("edge added:" + str(new_line.name))
             print(left, righ)
     # gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/3/noalt/flye_3ecoli_sim_noalt/assembly_graph_transformed.gfa")
@@ -96,9 +96,9 @@ def remove_link(edge, neighbor):
                 g.rm(i)
 
 
-def build_paths_graph(edge, data, SNP_pos, cl):
-    cons = build_data_cons(cl, SNP_pos, data)
-    M = build_adj_matrix_clusters(cons, SNP_pos, cl)
+def build_paths_graph(edge, data, SNP_pos, cl, cons):
+    #cons = build_data_cons(cl, SNP_pos, data)
+    M = build_adj_matrix_clusters(cons, SNP_pos, cl, True)
     M = change_w(M, 1)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
@@ -109,7 +109,7 @@ def build_paths_graph(edge, data, SNP_pos, cl):
             for n_path in list(n_paths):
                 if len(n_path) == 3:
                     print(n_path)
-                    G_vis.remove_edge(n_path[0], n_path[1])
+                    #G_vis.remove_edge(n_path[0], n_path[1])
 
     G_vis = nx.nx_agraph.to_agraph(G_vis)
     G_vis.layout(prog="neato")
@@ -117,21 +117,44 @@ def build_paths_graph(edge, data, SNP_pos, cl):
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     return (G)
 
+def paths_graph_add_vis(edge,G_vis,full_paths_roots,full_paths_leafs):
+    G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
+    for node in G_vis.nodes():
+        neighbors = nx.all_neighbors(G_vis, node)
+        for neighbor in list(neighbors):
+            n_paths = nx.algorithms.all_simple_paths(G_vis, node, neighbor)
+            for n_path in list(n_paths):
+                if len(n_path) == 3:
+                    print(n_path)
+                    G_vis.remove_edge(n_path[0], n_path[1])
+
+    G_vis.add_node("Src",style='filled',fillcolor='gray',shape='square')
+    G_vis.add_node("Sink",style='filled',fillcolor='gray',shape='square')
+    for i in full_paths_roots:
+        G_vis.add_edge("Src", i)
+    for i in full_paths_leafs:
+        G_vis.add_edge(i, "Sink")
+    print(G_vis)
+    G_vis = nx.nx_agraph.to_agraph(G_vis)
+    G_vis.layout(prog="neato")
+    G_vis.draw("output/graphs/full_paths_cluster_GV_graph_%s.png" % (edge))
+
+    return(G_vis)
 
 def find_full_paths(G, paths_roots, paths_leafs):
     for node in G.nodes():
         neighbors = nx.all_neighbors(G, node)
         for neighbor in list(neighbors):
             n_paths = nx.algorithms.all_simple_paths(G, node, neighbor)
-            for n_path in list(n_paths):
-                if len(n_path) == 3:
-                    print(n_path)
-                    G.remove_edge(n_path[0], n_path[1])
+            #for n_path in list(n_paths):
+                #if len(n_path) == 3:
+                    #G.remove_edge(n_path[0], n_path[1])
     paths = []
     for root in paths_roots:
         paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs)
         for path in list(paths_nx):
             paths.append(path)
+    print(paths)
     return (paths)
 
 
@@ -161,7 +184,7 @@ def add_path_links(edge, paths):
                 continue
 
 
-def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs, clusters_borders):
+def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs, cons):
     path_cl = []
     for path in paths[edge]:
         for member in path:
@@ -179,20 +202,27 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
             cut_l[path_cluster] = None
             cut_r[path_cluster] = None
 
+    #print(cut_l)
+    #print(cut_r)
     while None in cut_l.values():
         for member in cut_l.keys():
-            if cut_l[member] != None and cut_r[member] == None:
-                # print("NEW")
-                # print(member)
+            if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
+                #print("NEW")
+                #print(member)
                 Q = deque()
                 L = []
                 R = []
                 for path in paths[edge]:
+
                     try:
                         L.append(path[path.index(member) + 1])
+                        #print ("add L")
+                        #print(path[path.index(member) + 1])
                         Q.append(path[path.index(member) + 1])
                     except (ValueError, IndexError):
                         continue
+                    #print("Q1")
+                    #print(Q)
 
                 visited = []
                 while Q:
@@ -217,24 +247,35 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                             except (ValueError, IndexError):
                                 continue
+                    #print("Q2")
+                    #print(Q)
                 l_borders = []
                 r_borders = []
                 for i in L:
-                    l_borders.append(int(clusters_borders[i][0]))
+                    #l_borders.append(int(clusters_borders[i][0]))
+                    l_borders.append(int(cons[i]["Start"]))
                 for i in R:
-                    r_borders.append(int(clusters_borders[i][1]))
+                    #r_borders.append(int(clusters_borders[i][1]))
+                    r_borders.append(int(cons[i]["Stop"]))
+                if member in paths_leafs:
+                    border=cut_r[member]
+                else: border = max(l_borders) + (min(r_borders) - max(l_borders)) // 2
+                L=list(set(L))
+                R = list(set(R))
 
-                border = max(l_borders) + (min(r_borders) - max(l_borders)) // 2
                 for i in L:
                     cut_l[i] = border
 
                 for i in R:
                     cut_r[i] = border
-
+                #print("cut_l")
+                #print(cut_l)
+                #print("cut_r")
+                #print(cut_r)
 
     for path_cluster in set(path_cl):
-        add_child_edge(edge, path_cluster, g,  cl, SNP_pos, data, cut_l[path_cluster], cut_r[path_cluster])
-        print("edge added ask")
+        add_child_edge(edge, path_cluster, g,  cl, SNP_pos, data, cut_l[path_cluster], cut_r[path_cluster], cons)
+        #print("edge added ask")
         G.remove_node(path_cluster)
     return(path_cl)
 
@@ -312,9 +353,10 @@ def transform_graph(i):
         data = read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
         ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
-
+        cons = build_data_cons(cl, SNP_pos, data)
         clusters_borders = {}
-        G = build_paths_graph(edge, data, SNP_pos, cl)
+        G = build_paths_graph(edge, data, SNP_pos, cl, cons)
+
 
         for cluster in clusters:
             clStart = int(ln)
@@ -330,8 +372,10 @@ def transform_graph(i):
             if clStart == 0 and clStop == ln - 1:
 
                 full_clusters.append(cluster)
-                add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1)
-                G.remove_node(cluster)
+                add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
+                #G.remove_node(cluster)
+                full_paths_roots.append(cluster)
+                full_paths_leafs.append(cluster)
 
             elif clStart == 0:
                 full_paths_roots.append(cluster)
@@ -342,15 +386,20 @@ def transform_graph(i):
             clusters_borders[cluster] = [clStart, clStop]
         full_cl[edge] = full_clusters
         # CHECK if SEMI-FULL
+        paths_graph_add_vis(edge,G, full_paths_roots, full_paths_leafs)
 
         try:
 
             full_paths[edge] = find_full_paths(G,full_paths_roots, full_paths_leafs)
+            print("full paths added")
         except(ValueError):
             pass
         # continue
-        path_cl = add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,clusters_borders)
+
+        path_cl = add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,cons)
+        print("paths clusters added")
         add_path_links(edge, full_paths[edge])
+        print("paths links added")
 
         gfapy.Gfa.to_file(g,
                           "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/3/noalt/flye_3ecoli_sim_noalt/assembly_graph_transformed.gfa")
@@ -359,6 +408,7 @@ def transform_graph(i):
 
     except(FileNotFoundError):
         pass
+        clusters = []
     # continue
 
 
@@ -373,7 +423,7 @@ def transform_graph(i):
         pass
     try:
         fpN = len(set(path_cl))
-    except(KeyError):
+    except(KeyError,UnboundLocalError):
         pass
 
     othercl=len(clusters)-fcN-fpN
