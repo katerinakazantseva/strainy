@@ -84,7 +84,11 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
     m.index=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
     m = change_w(m, R)
     G = nx.from_pandas_adjacency(m)
+    #nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=3, font_size=5)
+    #plt.savefig("output/test.png" , format="PNG", dpi=300)
+    #plt.close()
     cluster_membership = find_communities(G)
+    #print(cluster_membership)
     clN=0
     uncl=0
     reads = cl[cl['Cluster'] == cluster]['ReadName'].values
@@ -155,7 +159,6 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, has_common_snip=False):
                 else:
                     continue
     except(IndexError):pass
-    #print(d)
     return (d)
 
 
@@ -283,7 +286,7 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
             cluster = child
             cluster_consensuns(cl, cluster, SNP_pos, data, cons)
 
-    print(cons)
+
     cl.to_csv("output/clusters/clusters_before_joining_%s_%s_%s.csv" % (edge, I, 0.1))
     cl=join_clusters(cons, SNP_pos, cl,R, edge)
     return(cl)

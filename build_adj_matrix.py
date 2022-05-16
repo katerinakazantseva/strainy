@@ -33,7 +33,15 @@ def build_adj_matrix2 (cl,data,SNP_pos,I, file, edge, R):
 
 def distance(read1,read2,data, SNP_pos, R):
     d=-1
-    for snp in SNP_pos:
+    firstSNPs=list(data[read1].keys())
+    firstSNPs.remove('Start')
+    firstSNPs.remove('Stop')
+    secondSNPs=list(data[read2].keys())
+    secondSNPs.remove('Start')
+    secondSNPs.remove('Stop')
+    commonSNP = sorted(set(firstSNPs).intersection(secondSNPs).intersection(SNP_pos))
+    #for snp in SNP_pos:
+    for snp in commonSNP:
         try:
             b1=data[read1][snp]
             b2=data[read2][snp]

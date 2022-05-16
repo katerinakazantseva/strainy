@@ -35,10 +35,11 @@ def read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max):
     data = {}
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     for pos in SNP_pos:
+    #for pos in range(1,int(ln)+1, 500):
+        #print(pos)
         for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=0,
                                            ignore_overlaps=False,min_mapping_quality=min_mapping_quality,
                                            ignore_orphans=False, truncate=True):
-
             for pileupread in pileupcolumn.pileups:
 
                 clipping=0
@@ -53,8 +54,12 @@ def read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max):
                             clipping=1
 
 
+
                 if (clipping==1 or (stop-start)<min_al_len or de>de_max) and (int(start)!=0 and int(stop)!=int(ln)-1):
                     continue
+                    print("FILTERED")
+
+
 
 
                 else:
