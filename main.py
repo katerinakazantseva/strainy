@@ -20,19 +20,19 @@ def phase(edges):
     pool.close()
 
 def col(edges):
-    pool = multiprocessing.Pool(3)
+    pool = multiprocessing.Pool(1)
     pool.map(color, range(0, len(edges)))
     pool.close()
-    subprocess.check_output('samtools merge output/bam/coloredBAM.bam -f `find output/bam -name "*edge*.bam"`', shell=True, capture_output=False)
-    subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True,capture_output=False)
-    pysam.samtools.index("output/bam/coloredBAM.bam", "output/bam/coloredBAM.bai")
+    #subprocess.check_output('samtools merge output/bam/coloredBAM.bam -f `find output/bam -name "*edge*.bam"`', shell=True, capture_output=False)
+    #subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True,capture_output=False)
+    #pysam.samtools.index("output/bam/coloredBAM.bam", "output/bam/coloredBAM.bai")
 
 
 
 
 if __name__ == "__main__":
-    phase(edges)
-    #col(edges)
+    #phase(edges)
+    col(edges)
     #transform(edges)
 
 

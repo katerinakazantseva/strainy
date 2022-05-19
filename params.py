@@ -28,7 +28,7 @@ import pysam
 
 g = gfapy.Gfa.from_file(gfa)
 edges=g.segment_names
-#edges=['edge_18']
-#edges=['edge_271']
+edges=['edge_245','edge_247']
+
 
 

@@ -56,7 +56,7 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
             #print(left, righ)
 
 
-def remove_link(edge, neighbor):
+def remove_link3(edge, neighbor):
     print("remove line"+str(edge)+" to "+ str(neighbor))
     edge = str(edge) + "\t"
     for i in g.edges:
@@ -64,6 +64,12 @@ def remove_link(edge, neighbor):
             if re.search(neighbor, str(i)):
                 print(i)
                 g.rm(i)
+
+def remove_link(fr,fr_or, to, to_or):
+    print("remove line: "+str(fr)+str(fr_or)+" to "+ str(to)+str(to_or))
+    for i in g.dovetails:
+        if i.from_segment==fr and i.from_orient==fr_or and i.to_segment==to and i.to_orient==to_or:
+            g.rm(i)
 
 
 def build_paths_graph(edge, data, SNP_pos, cl, cons):
@@ -285,23 +291,34 @@ def change_cov(g,edge,cons,ln,othercl):
     return(cov)
 
 
-def to_neighbours(g,edge):
+def to_neighbours(g,edge,orient):
     to_ng=[]
     for i in g.dovetails:
-        if i.from_segment.name==edge and ((i.from_orient=='-' and i.to_orient=='+') or (i.from_orient=='-' and i.to_orient=='-')):
-            to_ng.append(i.to_segment.name)
-        if i.to_segment.name==edge and ((i.from_orient=='-' and i.to_orient=='+') or (i.from_orient=='+' and i.to_orient=='+')):
-            to_ng.append(i.from_segment.name)
+        if orient=='+':
+            if i.from_segment.name==edge and i.from_orient=='+':
+
+                nei=[i.to_segment.name,i.to_orient]
+                to_ng.append(nei)
+        if orient == '-':
+            if i.from_segment.name==edge and i.from_orient=='-':
+                nei=[i.to_segment.name,i.to_orient]
+                to_ng.append(nei)
     return (to_ng)
 
 
-def from_neighbours(g,edge):
+
+def from_neighbours(g,edge, orient):
     from_ng=[]
+
     for i in g.dovetails:
-        if i.to_segment.name==edge and ((i.from_orient=='+' and i.to_orient=='-') or (i.from_orient=='-' and i.to_orient=='-')):
-            from_ng.append(i.from_segment.name)
-        if i.from_segment.name == edge and ((i.from_orient=='+' and i.to_orient=='+') or (i.from_orient=='+' and i.to_orient=='-')):
-            from_ng.append(i.to_segment.name)
+        if orient == '+':
+            if i.to_segment.name==edge and i.to_orient=='+':
+                nei = [i.from_segment.name, i.from_orient]
+                from_ng.append(nei)
+        if orient == '-':
+            if i.to_segment.name == edge and (i.to_orient=='-'):
+                nei = [i.from_segment.name, i.from_orient]
+                from_ng.append(nei)
     return (from_ng)
 
 
@@ -311,11 +328,17 @@ def from_neighbours(g,edge):
 def cut(edge):
     fr=1
     to=1
-    for i in to_neighbours(g,edge):
-        if len(from_neighbours(g,i))==1:
+    for i in to_neighbours(g,edge,'+'):
+        if len(from_neighbours(g,i[0],i[1]))==1:
             fr=0
-    for i in from_neighbours(g, edge):
-        if len(to_neighbours(g, i)) == 1:
+    for i in to_neighbours(g,edge,'-'):
+        if len(from_neighbours(g,i[0],i[1]))==1:
+            fr=0
+    for i in from_neighbours(g, edge,'+'):
+        if len(to_neighbours(g, i[0],i[1])) == 1:
+            to=0
+    for i in from_neighbours(g, edge,'-'):
+        if len(to_neighbours(g, i[0],i[1])) == 1:
             to=0
     if fr ==0 or to==0:
         res=True
@@ -665,13 +688,49 @@ for i in range(0, len(edges)):
 for i in range(0, len(edges)):
    transform_graph1(i)
 
+def clear_links(edge):
+    changed=[]
+    to_n=to_neighbours(g,edge,'+')
+    if len(to_n)==1:
+        for i in from_neighbours(g,to_n[0][0],to_n[0][1]):
+            if len(to_neighbours(g,i[0],i[1]))>1:
+                remove_link(i[0],i[1], to_n[0][0],to_n[0][1])
+                changed.append(to_n[0][0])
+                changed.append(i[0])
+    to_n=to_neighbours(g,edge,'-')
+    if len(to_n)==1:
+        for i in from_neighbours(g,to_n[0][0],to_n[0][1]):
+            if len(to_neighbours(g,i[0],i[1]))>1:
+                remove_link(i[0],i[1], to_n[0][0],to_n[0][1])
+                changed.append(to_n[0][0])
+                changed.append(i[0])
+    from_n = from_neighbours(g, edge, '+')
+    if len(from_n) == 1:
+        for i in to_neighbours(g, from_n[0][0], from_n[0][1]):
+            if len(from_neighbours(g, i[0], i[1])) > 1:
+                remove_link(from_n[0][0], from_n[0][1],i[0], i[1])
+                changed.append(from_n[0][0])
+                changed.append(i[0])
+    from_n = from_neighbours(g, edge, '-')
+    if len(from_n) == 1:
+        for i in to_neighbours(g, from_n[0][0], from_n[0][1]):
+            if len(from_neighbours(g, i[0], i[1])) > 1:
+                remove_link(from_n[0][0], from_n[0][1],i[0], i[1])
+                changed.append(from_n[0][0])
+                changed.append(i[0])
+    #print(changed)
+    return (changed)
+
+
+
+def test(edge):
+    changed=clear_links(edge)
+    for i in changed:
+        test(i)
+
+
 for edge in g.segment_names:
-    to_n = to_neighbours(g, edge)
-    if len(to_n) == 1:
-        for i in from_neighbours(g, to_n[0]):
-            if len(to_neighbours(g, i)) > 1:
-                remove_link(i, to_n[0])
-                #print("line to remove "+str(i)+" "+str(to_n[0]))
+   test(edge)
 
 import multiprocessing
 
