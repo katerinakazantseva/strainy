@@ -43,10 +43,10 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
     for index in cl.index:
         cl.loc[index, 'Color'] = colors[cl.loc[index, 'Cluster']]
     G.remove_edges_from(list(nx.selfloop_edges(G)))
-    nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=3, font_size=5,
-            node_color=cl['Color'])
+    #nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=3, font_size=5,
+            #node_color=cl['Color'])
     # labels = cl['Cluster']
-    #nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=3, font_size=5, node_color='gray')
+    nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=3, font_size=5, node_color='gray')
 
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
@@ -86,10 +86,10 @@ def cluster(i):
 
     #CALCULATE DISTANCE and ADJ MATRIX
     print ("### Calculatind distances/Building adj matrix...")
-    m=build_adj_matrix2(cl, data, SNP_pos, I, bam, edge, R)
+    #m=build_adj_matrix2(cl, data, SNP_pos, I, bam, edge, R)
 
-    m.to_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF))
-    #m=pd.read_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF),index_col='ReadName')
+    #m.to_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF))
+    m=pd.read_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF),index_col='ReadName')
     print("### Removing overweighed egdes...")
     m=remove_edges (m, R)
 
@@ -117,6 +117,7 @@ def cluster(i):
     cl.to_csv("output/clusters/clusters_before_splitting_%s_%s_%s.csv" % (edge, I, AF))
     #print(sorted(set(cl['Cluster'].values)))
     print("### Cluster post-processing...")
+    cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 1000000
     if clN!=0:
         cl=postprocess(bam, cl, SNP_pos, data, edge, R, I)
     clN=len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))

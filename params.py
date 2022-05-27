@@ -4,7 +4,7 @@ clipp=100
 min_mapping_quality=20
 min_base_quality=0
 min_al_len=1000
-de_max=0.01
+de_max=0.05
 AF=0.1
 bam="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/sim.3ecoli_haplo.bam"
 gfa = "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph.gfa"
@@ -28,7 +28,8 @@ import pysam
 
 g = gfapy.Gfa.from_file(gfa)
 edges=g.segment_names
-edges=['edge_245','edge_247']
-
+#edges=['edge_245','edge_247']
+#edges=['edge_39', 'edge_290', 'edge_289', 'edge_38']
+edges=['edge_310']
 
 

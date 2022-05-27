@@ -76,9 +76,12 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
 
 def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
     print("Strange cluster detected")
-
     reads=sorted(set(cl.loc[cl['Cluster'] == cluster]['ReadName'].values))
-    m=build_adj_matrix2(cl[cl['Cluster'] == cluster], data, clSNP, I, bam,edge,R)
+    if cluster==1000000:
+        print("Build na matrix")
+        m = build_adj_matrix2(cl[cl['Cluster'] == cluster], data, clSNP, I, bam, edge, R, only_with_common_snip=False)
+    else:
+        m=build_adj_matrix2(cl[cl['Cluster'] == cluster], data, clSNP, I, bam,edge,R)
     m = remove_edges(m, 1)
     m.columns=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
     m.index=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
@@ -113,7 +116,7 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
     print(str(clN)+" new clusters found")
 
 
-def distance_clusters(first_cl,second_cl, cons,SNP_pos, has_common_snip=False):
+def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=True):
     d=-1
     #print("distance "+str(first_cl)+" "+str(second_cl))
     firstSNPs=list(cons[first_cl].keys())
@@ -134,7 +137,7 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, has_common_snip=False):
         #if abs(int(commonSNP[len(commonSNP)-1])-int(commonSNP[0]))>=500:
         #if 1000 >= 500:
         intersect=set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
-        if has_common_snip==True and len(commonSNP)==0 and len(intersect)>0:
+        if only_with_common_snip==False and len(commonSNP)==0 and len(intersect)>0:
             d=0
         else:
             #for snp in SNP_pos:
@@ -163,19 +166,25 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, has_common_snip=False):
 
 
 
-def build_adj_matrix_clusters (cons, SNP_pos,cl,has_common_snip=False):
+def build_adj_matrix_clusters (cons, SNP_pos,cl,only_with_common_snip=True):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     #clusters=sorted(set(cl['Cluster'].values))
     Y=[]
     X=[]
+    Z=[]
+    sort=[]
     for k,v in cons.items():
         X.append(k)
         Y.append(int(v["Start"]))
+        Z.append(int(v["Stop"]))
+        sort.append([k,int(v["Start"]),int(v["Stop"])])
+
 
     from more_itertools import sort_together
-    sorted_by_pos=sort_together([Y, X])[1]
-    #sorted_by_pos = sorted(sorted_cl, key=sorted_cl.get)
-
+    #sorted_by_pos=sort_together([Y, X])[1]
+    sorted_by_pos=[]
+    for i in sorted(sort, key=lambda sort: [sort[1], sort[2]]):
+        sorted_by_pos.append(i[0])
     clusters=sorted(set(sorted_by_pos) & set(clusters), key=sorted_by_pos.index)
     #print(clusters)
     m = pd.DataFrame(-1, index=clusters, columns=clusters)
@@ -185,42 +194,46 @@ def build_adj_matrix_clusters (cons, SNP_pos,cl,has_common_snip=False):
             second_cl=m.index[k]
             #try:
             if m[second_cl][first_cl]==-1:
-                if has_common_snip==False:
+                if only_with_common_snip==True:
                     m[second_cl][first_cl] = distance_clusters(first_cl,second_cl, cons,SNP_pos)
                 else:
-                    m[second_cl][first_cl] = distance_clusters(first_cl, second_cl, cons, SNP_pos,True)
+                    m[second_cl][first_cl] = distance_clusters(first_cl, second_cl, cons, SNP_pos,False)
             #except: (KeyError)
     return (m)
 
 
-def join_clusters(cons, SNP_pos, cl,R, edge):
-    M = build_adj_matrix_clusters(cons, SNP_pos, cl)
-    #print(M)
+def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
+    if only_with_common_snip==False:
+        M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+    else:
+        M = build_adj_matrix_clusters(cons, SNP_pos, cl)
+
 
     M=change_w(M,R)
-    #M.to_csv("output/adj_M/clusters_adj_M2_%s.csv" % edge)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
-    #to_remove = [(a, b) for a, b, attrs in G_vis.edges(data=True) if attrs["weight"] != 0.001]
-    #G_vis.remove_edges_from(to_remove)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
-    #print(G_vis)
     to_remove = []
-    #for node in G_vis.nodes():
-        #print(node)
+    G_vis_temp = nx.nx_agraph.to_agraph(G_vis)
+    G_vis_temp.layout(prog="neato")
+    G_vis_temp.draw("output/graphs/cluster_GV_graph_%s_beforeremove.png" % (edge))
 
-     #   if len(list(G_vis.successors(node)))>=2:
-      #      for i in list(G_vis.successors(node)):
-       #         #print(i)
-        #        for k in list(G_vis.edges([node, i])):
-         #           to_remove.append(k)
+    path_remove=[]
+    for node in G_vis.nodes():
+        neighbors = nx.all_neighbors(G_vis, node)
+        for neighbor in list(neighbors):
+            for n_path in nx.algorithms.all_simple_paths(G_vis, node, neighbor):
+                if len(n_path) == 3:
+                    path_remove.append(n_path)
 
+    for n_path in path_remove:
+        try:
+            G_vis.remove_edge(n_path[0], n_path[2])
+        except:
+            continue
 
-    #to_remove=list(to_remove)
-    #print(to_remove)
-
-    lis=list(nx.topological_sort(nx.line_graph(G_vis)))
-    first=[]
-    last=[]
+    lis = list(nx.topological_sort(nx.line_graph(G_vis)))
+    first = []
+    last = []
 
     for i in lis:
         first.append(i[0])
@@ -230,30 +243,24 @@ def join_clusters(cons, SNP_pos, cl,R, edge):
         if first.count(i[0]) > 1 or last.count(i[1]) > 1:
             to_remove.append(i)
 
-        #nx.draw(G_vis, nodelist=G_vis.nodes(), with_labels=True, width=0.1, node_size=3, font_size=5)
-    #plt.savefig("output/graphs/cluster_GV_graph_%s_beforeremove.png" % (edge), format="PNG", dpi=300)
-    G_vis_temp = nx.nx_agraph.to_agraph(G_vis)
-    G_vis_temp.layout(prog="neato")
-    G_vis_temp.draw("output/graphs/cluster_GV_graph_%s_beforeremove.png" % (edge))
-    G_vis.remove_edges_from(ebunch=to_remove)
-        #if len(list(G_vis.predecessor(node)))>=2:
-         #   for i in list(G_vis.predecessor(node)):
-          #      print(G.edges([node, i]))
-           #     G_vis.remove_edges_from(G.edges([node,i ]))
-    #print(G_vis)
-    G_vis = nx.nx_agraph.to_agraph(G_vis)
 
-    #print(G_vis)
+    G_vis.remove_edges_from(ebunch=to_remove)
+
+
+    G_vis = nx.nx_agraph.to_agraph(G_vis)
     G_vis.layout(prog="neato")
     G_vis.draw("output/graphs/cluster_GV_graph_%s.png" % (edge))
-    #G_vis.draw("output/graphs/cluster_GV_graph_%s.png" % (edge))
-    #nx.draw(G_vis, nodelist=G_vis.nodes(), with_labels=True, width=0.1, node_size=3, font_size=5)
-    #plt.savefig("output/graphs/cluster_graph_%s.png" % (edge), format="PNG", dpi=300)
-    #plt.close()
-    G = nx.from_pandas_adjacency(M)
-    G.remove_edges_from(ebunch=to_remove)
 
+
+    G = nx.from_pandas_adjacency(M)
+    for n_path in path_remove:
+        try:
+            G.remove_edge(n_path[0], n_path[2])
+        except :
+            continue
+    G.remove_edges_from(ebunch=to_remove)
     groups = list(nx.connected_components(G))
+
 
     #print(groups)
     for group in groups:
@@ -289,4 +296,5 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
 
     cl.to_csv("output/clusters/clusters_before_joining_%s_%s_%s.csv" % (edge, I, 0.1))
     cl=join_clusters(cons, SNP_pos, cl,R, edge)
+    #cl = join_clusters(cons, SNP_pos, cl, R, edge, False)
     return(cl)

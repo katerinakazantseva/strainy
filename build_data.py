@@ -1,6 +1,7 @@
 import subprocess
 import pysam
 from Bio import SeqIO
+import re
 
 
 def read_snp(snp,edge, bam, AF):
@@ -30,7 +31,7 @@ def read_snp(snp,edge, bam, AF):
 
 
 
-def read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max):
+def read_bam_old(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max):
     bamfile = pysam.AlignmentFile(bam, "rb")
     data = {}
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
@@ -57,8 +58,6 @@ def read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max):
 
                 if (clipping==1 or (stop-start)<min_al_len or de>de_max) and (int(start)!=0 and int(stop)!=int(ln)-1):
                     continue
-                    print("FILTERED")
-
 
 
 
@@ -80,3 +79,45 @@ def read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max):
 
     bamfile.close()
     return(data)
+
+
+def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max):
+    bamfile = pysam.AlignmentFile(bam, "rb")
+    data = {}
+    ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
+
+    for read in bamfile.fetch(edge):
+        clipping = 0
+        start = read.get_reference_positions()[0]
+        stop = read.get_reference_positions()[len(read.get_reference_positions()) - 1]
+        #de = float(str(read).split('\t')[11].split('), (')[7].split(',')[1])
+        de=float(re.sub(".*de',\s", "", str(str(read).split('\t')[11]), count=0, flags=0).split(')')[0])
+        #print(de)
+        for i in read.cigartuples:
+            if i[0] == 4 or i[0] == 5:
+                if i[1] > clipp:
+                    clipping = 1
+        if read.mapping_quality>min_mapping_quality and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
+                int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) == 0  or int(stop) == int(ln) - 1):
+            data[read.query_name] = {}
+            data[read.query_name]["Start"]=start
+            data[read.query_name]["Stop"] = stop
+        else:
+            #print(read.query_name)
+            #print(read.mapping_quality)
+            #print(start)
+            continue
+
+    for pos in SNP_pos:
+        for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=0,
+                                           ignore_overlaps=False, min_mapping_quality=min_mapping_quality,
+                                           ignore_orphans=False, truncate=True):
+            for pileupread in pileupcolumn.pileups:
+                if not pileupread.is_del and not pileupread.is_refskip:
+                    try:
+                        data[pileupread.alignment.query_name][pos] = pileupread.alignment.query_sequence[pileupread.query_position]
+
+                    except (KeyError):
+                        continue
+    bamfile.close()
+    return (data)
