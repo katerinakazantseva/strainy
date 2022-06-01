@@ -40,34 +40,12 @@ def write_bam(edge, I, AF):
             continue
     outfile.close()
 
-'''def index(outfile,edge, I, AF):
-    print("index")
-    index = "output/bam/coloredBAM_%s_%s_%s.bai" % (edge, I, AF)
-    pysam.samtools.index(outfile, index)'''
-
-
-
 
 def color(i):
     edge=edges[i]
 
     try:
         write_bam(edge, I, AF)
-        print("done")
     except (FileNotFoundError):
         pass
 
-
-
-'''
-for edge in edges:
-    print(edge)
-    try:
-        write_bam(edge, I, AF)
-        print("done")
-    except (FileNotFoundError):
-        continue
-infile.close()
-outfile.close()
-
-pysam.samtools.index("output/bam/coloredBAM.bam","output/bam/coloredBAM.bai")'''

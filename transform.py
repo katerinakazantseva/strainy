@@ -10,9 +10,6 @@ from build_data  import *
 from params import *
 
 g = gfapy.Gfa.from_file(gfa)
-#gaf = pd.read_csv(gaf)
-
-
 stats = open('output/stats_clusters.txt', 'a')
 stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
 stats.close()
@@ -22,10 +19,7 @@ stats.close()
 def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
     f = g.segments
     seq=[]
-    # dat = {0: "A", 1: "A", 4: "A"}
-    #cons = build_data_cons(cl, SNP_pos, data)
     cl_consensuns = cluster_consensuns(cl, clN, SNP_pos, data, cons)
-    #print(cl_consensuns[clN])
     for i in f:
         if i == edge:
             seq = i.sequence
@@ -35,14 +29,8 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
                     seq[int(key)] = val
                 except (ValueError):
                     continue
-
-    # print(len(seq))
-
     seq = ''.join(seq)
-
     seq = seq[left:righ]
-
-
     g.add_line("S\tNEW\t*")
     f = g.segments
     for i in f:
@@ -53,17 +41,6 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
             new_line.sequence = seq
             new_line.dp = cons[clN]["Cov"]  # coverage
             print("edge added:" + str(new_line.name))
-            #print(left, righ)
-
-
-def remove_link3(edge, neighbor):
-    print("remove line"+str(edge)+" to "+ str(neighbor))
-    edge = str(edge) + "\t"
-    for i in g.edges:
-        if re.search(edge, str(i)):
-            if re.search(neighbor, str(i)):
-                print(i)
-                g.rm(i)
 
 def remove_link(fr,fr_or, to, to_or):
     print("remove line: "+str(fr)+str(fr_or)+" to "+ str(to)+str(to_or))
@@ -72,17 +49,13 @@ def remove_link(fr,fr_or, to, to_or):
             g.rm(i)
 
 
-def build_paths_graph(edge, data, SNP_pos, cl, cons,full_clusters):
-    #cons = build_data_cons(cl, SNP_pos, data)
-
+def build_paths_graph(SNP_pos, cl, cons,full_clusters):
     M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
     M = change_w(M, 1)
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
-
     for full_cluster in full_clusters:
         G.remove_node(full_cluster)
-
     path_remove = []
     for node in G.nodes():
         neighbors = nx.all_neighbors(G, node)
@@ -173,7 +146,6 @@ def add_path_links(edge, paths):
             try:
                 g.add_line(str.replace('first_edge', "%s_%s" % (edge, path[i])).replace('second_edge',
                                                                                         "%s_%s" % (edge, path[i + 1])))
-
             except(gfapy.NotUniqueError):
                 continue
 
@@ -196,13 +168,9 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
             cut_l[path_cluster] = None
             cut_r[path_cluster] = None
 
-    #print(cut_l)
-    #print(cut_r)
     while None in cut_l.values():
         for member in cut_l.keys():
             if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
-                #print("NEW")
-                #print(member)
                 Q = deque()
                 L = []
                 R = []
@@ -210,14 +178,9 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                     try:
                         L.append(path[path.index(member) + 1])
-                        #print ("add L")
-                        #print(path[path.index(member) + 1])
                         Q.append(path[path.index(member) + 1])
                     except (ValueError, IndexError):
                         continue
-                    #print("Q1")
-                    #print(Q)
-
                 visited = []
                 while Q:
                     n = Q.pop()
@@ -228,8 +191,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                                 R.append(path[path.index(n) - 1])
                                 if path[path.index(n) - 1] not in visited:
                                     Q.append(path[path.index(n) - 1])
-
-
                             except (ValueError, IndexError):
                                 continue
                     else:
@@ -241,15 +202,11 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                             except (ValueError, IndexError):
                                 continue
-                    #print("Q2")
-                    #print(Q)
                 l_borders = []
                 r_borders = []
                 for i in L:
-                    #l_borders.append(int(clusters_borders[i][0]))
                     l_borders.append(int(cons[i]["Start"]))
                 for i in R:
-                    #r_borders.append(int(clusters_borders[i][1]))
                     r_borders.append(int(cons[i]["Stop"]))
                 if member in paths_leafs:
                     border=cut_r[member]
@@ -262,52 +219,24 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                 for i in R:
                     cut_r[i] = border
-                #print("cut_l")
-                #print(cut_l)
-                #print("cut_r")
-                #print(cut_r)
+
 
     for path_cluster in set(path_cl):
         add_child_edge(edge, path_cluster, g,  cl, SNP_pos, data, cut_l[path_cluster], cut_r[path_cluster], cons)
-        #print("edge added ask")
         G.remove_node(path_cluster)
     return(path_cl)
 
 
-def add_parent_subedge(edge, g, left, right):
-    f = g.segments
-    for i in f:
-        if i == edge:
-            seq = i.sequence
-            seq = list(seq)
-    seq = ''.join(seq)
-    seq = seq[left:right]
-
-    g.add_line("S\tNEW\t*")
-    f = g.segments
-    for i in f:
-        if i == "NEW":
-            new_line = i
-            new_line.name = "%s[%s,%s]" % (edge, left, right)
-            new_line.sid = "%s[%s,%s]" % (edge, left, right)
-            new_line.sequence = seq
-            new_line.dp = 35  # coverage
-            print("edge added:" + str(new_line.name))
-            #print(left, right)
-
 
 def change_cov(g,edge,cons,ln,othercl):
-    #print("coverage")
     f = g.segments
     cov=0
     for i in othercl:
         cov=cov+cons[i]["Cov"]*(cons[i]["Stop"]-cons[i]["Start"])
-        #print(cov)
     cov=cov/ln
     for i in f:
         if i == edge:
             i.dp =round(cov)
-    #print("coverage="+str(cov))
     return(cov)
 
 def change_sec(g,edge, othercl, cl,SNP_pos, data):
@@ -327,9 +256,6 @@ def change_sec(g,edge, othercl, cl,SNP_pos, data):
                     continue
             seq = ''.join(seq)
             i.sequence=seq
-
-
-
 
 
 
@@ -355,7 +281,6 @@ def from_neighbours(g,edge, orient):
     for i in g.dovetails:
         if orient == '+':
             if i.to_segment.name==edge and i.to_orient=='+':
-                #print(i)
                 nei = [i.from_segment.name, i.from_orient]
                 from_ng.append(nei)
         if orient == '-':
@@ -363,9 +288,6 @@ def from_neighbours(g,edge, orient):
                 nei = [i.from_segment.name, i.from_orient]
                 from_ng.append(nei)
     return (from_ng)
-
-
-
 
 
 def cut(edge):
@@ -387,237 +309,6 @@ def cut(edge):
         res=True
     else: res=False
     return res
-
-
-
-
-full_cl = {}
-full_paths = {}
-full_paths_leafs_roots = {}
-paths = {}
-full_path_clusters = {}
-subunits_borderline={}
-connected_subunits={}
-link_clusters={}
-remove_clusters=[]
-
-
-def transform_graph(i):
-    edge = edges[i]
-    print(edge)
-    full_paths_roots = []
-    full_paths_leafs = []
-    full_clusters = []
-
-    full_paths_leafs_roots = {}
-    # CHECK if FULL
-    # cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
-    try:
-        cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
-        #snp = None
-
-        SNP_pos = read_snp(snp, edge,bam, AF)
-        data = read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
-        ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
-        clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
-        cons = build_data_cons(cl, SNP_pos, data)
-
-
-
-
-        for cluster in clusters:
-
-            clStart=cons[cluster]["Start"]
-            clStop = cons[cluster]["Stop"]
-            if clStart == 0 and clStop == ln - 1:
-                full_clusters.append(cluster)
-                add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
-                #full_paths_roots.append(cluster)
-                #full_paths_leafs.append(cluster)
-
-            elif clStart == 0:
-                full_paths_roots.append(cluster)
-
-            elif clStop == ln - 1:
-                full_paths_leafs.append(cluster)
-
-        G = build_paths_graph(edge, data, SNP_pos, cl, cons, full_clusters)
-        full_cl[edge] = full_clusters
-        cl_removed=paths_graph_add_vis(edge,cons, SNP_pos,cl,full_paths_roots, full_paths_leafs)
-
-
-        try:
-
-            full_paths[edge] = find_full_paths(G,full_paths_roots, full_paths_leafs)
-
-            print("full paths added")
-        except(ValueError):
-            pass
-
-
-        #print(set(path_cl))
-        add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,cons)
-        print("paths clusters added")
-        add_path_links(edge, full_paths[edge])
-        print("paths links added")
-        #edges_to_remove.append(edge)
-        gfapy.Gfa.to_file(g,
-                          "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans.gfa")
-        #full_path_clusters[edge] = set(path_cl)
-
-        #OTHER CLUSTERS
-        print("COV")
-        print(cl_removed)
-        othercl=list(set(clusters)-set(full_clusters)-set([j for i in full_paths[edge] for j in i])-set(cl_removed))
-        #print(othercl)
-
-        new_cov=change_cov(g,edge,cons,ln,othercl)
-        #print(new_cov)
-        if new_cov<3 and len(clusters)-len(othercl)!=0: #PARAMETER
-            remove_clusters.append(edge)
-           # for ed in g.segments:
-                #if ed.name in remove_clusters :
-                    #if cut(ed) == False:
-                        #g.rm(ed)
-        else:
-            change_sec(g, edge, othercl, cl, SNP_pos, data)
-       # else:#change snips in initial edge
-
-        link_clusters[edge] = list(full_clusters) + list(
-            set(full_paths_roots).intersection(set([j for i in full_paths[edge] for j in i]))) + list(
-            set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
-        #link_clusters[edge] = list(full_clusters + list(set([j for i in full_paths[edge] for j in i])))
-
-    except(FileNotFoundError, IndexError):
-        pass
-        clusters = []
-    # continue
-
-
-    stats = open('output/stats_clusters.txt', 'a')
-    fcN = 0
-    fpN = 0
-
-
-    try:
-        fcN = len(full_cl[edge])
-    except(KeyError):
-        pass
-    try:
-
-        fpN = len(set([j for i in full_paths[edge] for j in i]))
-    except(KeyError,UnboundLocalError):
-        pass
-
-    othercl=len(clusters)-fcN-fpN
-    #edges_to_remove.append(edge)
-    #if othercl==0 and k!=1:
-        #edges_to_remove.append(edge)
-    stats.write(edge + "\t" + str(fcN) + "\t" + str(fpN) + "\t" + str(othercl) +"\n")
-    stats.close()
-
-    # print(len(full_cl))
-    # print(full_paths)
-    # print(full_paths_roots,full_paths_leafs)
-def transform_graph1(i):
-    #print(link_clusters)
-    print("CREATING NEW LINKS")
-    # for edge in edges:
-    edge = edges[i]
-    clusters=[]
-    try:
-        clusters = link_clusters[edge]
-    except(KeyError):
-        pass
-
-
-
-    try:
-        cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
-    except(FileNotFoundError):
-        pass
-
-    new_links = []
-    for clN in set(clusters):
-        print("START")
-        print("%s_%s" % (edge, clN))
-        reads = list(cl.loc[cl['Cluster'] == clN, 'ReadName'])
-        als = gaf.loc[gaf['ReadName'].isin(reads)]
-        als = als.to_dict('split')['data']
-        common_reads = {}
-        neighbours={}
-        orient={}
-        for aln in als:
-            al = aln[1]
-            read = aln[0]
-            if re.search(">%s>.*" % edge, al):
-                fr_or="+"
-                to_or='+'
-                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*>%s>" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
-            if re.search("<%s<.*" % edge, al):
-                fr_or="-"
-                to_or='-'
-                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*<%s<" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
-            if re.search(">%s<.*" % edge, al):
-                fr_or="+"
-                to_or='-'
-                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*>%s<" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
-            if re.search("<%s>.*" % edge, al):
-                fr_or="-"
-                to_or='+'
-                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*<%s>" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
-            try:
-                #common_reads[read]=[n,fr_or, to_or]
-                orient[n]=[fr_or, to_or]
-                neighbours[read]=n
-            except(UnboundLocalError): continue
-
-        #print(neighbours.values())
-
-        for n in set({k for k, v in Counter(neighbours.values()).items() if v > 2}):
-            fr_or=orient[n][0]
-            to_or=orient[n][1]
-            try:
-                cl_n = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (n, I, AF), keep_default_na=False)
-            except(FileNotFoundError):
-                add_link("%s_%s" % (edge, clN), fr_or,n, to_or)
-                continue
-            reads = []
-            for k, v in neighbours.items():
-                if v == n:
-                    reads.append(k)
-            n_cl = cl_n.loc[cl_n['ReadName'].isin(reads), 'Cluster']
-            n_cl = list(
-                set([x for x in list(n_cl) if Counter(list(n_cl))[x] / sum(Counter(list(n_cl)).values()) >= 0.2]))
-            #print(n_cl)
-            #if len(full_paths[n])==0 and len(full_cl[n]==0):
-                #add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
-            if len(n_cl)==0:
-                try:
-                    #когда мы не находим соседей, соединяем со всеми
-                    #n_cl=link_clusters[n]
-                    add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
-                except (KeyError):
-                    continue
-            #print(n_cl)
-            link_added=False
-            for i in n_cl:
-                try:
-                    g.try_get_segment("%s_%s" % (n, i))
-                    link_added=True
-                    add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or)
-                except(gfapy.NotFoundError):
-                    continue
-            if link_added==False:
-                add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
-
-
-
-for i in range(0, len(edges)):
-   transform_graph(i)
-
-for i in range(0, len(edges)):
-   transform_graph1(i)
 
 def clear_links(edge):
     print('-------------------')
@@ -666,10 +357,165 @@ def clear_links(edge):
     print("  ")
     return (changed)
 
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_41.gfa")
+
+full_cl = {}
+full_paths = {}
+full_paths_leafs_roots = {}
+paths = {}
+full_path_clusters = {}
+subunits_borderline = {}
+connected_subunits = {}
+link_clusters = {}
+remove_clusters = []
+
+def graph_create_unitigs(i):
+    edge = edges[i]
+    full_paths_roots = []
+    full_paths_leafs = []
+    full_clusters = []
+    try:
+        cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
+        SNP_pos = read_snp(snp, edge,bam, AF)
+        data = read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
+        ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
+        clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+        cons = build_data_cons(cl, SNP_pos, data)
+        for cluster in clusters:
+            clStart=cons[cluster]["Start"]
+            clStop = cons[cluster]["Stop"]
+            if clStart == 0 and clStop == ln - 1:
+                full_clusters.append(cluster)
+                add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
+            elif clStart == 0:
+                full_paths_roots.append(cluster)
+            elif clStop == ln - 1:
+                full_paths_leafs.append(cluster)
+        G = build_paths_graph(SNP_pos, cl, cons, full_clusters)
+        full_cl[edge] = full_clusters
+        cl_removed=paths_graph_add_vis(edge,cons, SNP_pos,cl,full_paths_roots, full_paths_leafs)
+        try:
+            full_paths[edge] = find_full_paths(G,full_paths_roots, full_paths_leafs)
+        except(ValueError):
+            pass
+        add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,cons)
+        print("paths clusters added")
+        add_path_links(edge, full_paths[edge])
+        print("paths links added")
+        gfapy.Gfa.to_file(g,
+                          "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans.gfa")
+
+
+        othercl=list(set(clusters)-set(full_clusters)-set([j for i in full_paths[edge] for j in i])-set(cl_removed))
+        new_cov=change_cov(g,edge,cons,ln,othercl)
+
+        if new_cov<3 and len(clusters)-len(othercl)!=0: #PARAMETER
+            remove_clusters.append(edge)
+        else:
+            change_sec(g, edge, othercl, cl, SNP_pos, data)
+
+        link_clusters[edge] = list(full_clusters) + list(
+            set(full_paths_roots).intersection(set([j for i in full_paths[edge] for j in i]))) + list(
+            set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
+    except(FileNotFoundError, IndexError):
+        pass
+        clusters = []
+    stats = open('output/stats_clusters.txt', 'a')
+    fcN = 0
+    fpN = 0
+
+    try:
+        fcN = len(full_cl[edge])
+    except(KeyError):
+        pass
+    try:
+
+        fpN = len(set([j for i in full_paths[edge] for j in i]))
+    except(KeyError,UnboundLocalError):
+        pass
+
+    othercl=len(clusters)-fcN-fpN
+    stats.write(edge + "\t" + str(fcN) + "\t" + str(fpN) + "\t" + str(othercl) +"\n")
+    stats.close()
 
 
 
+def graph_link_unitigs(i):
+    print("CREATING NEW LINKS")
+    edge = edges[i]
+    clusters=[]
+    try:
+        clusters = link_clusters[edge]
+    except(KeyError):
+        pass
+    try:
+        cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
+    except(FileNotFoundError):
+        pass
+    for clN in set(clusters):
+        print("START")
+        print("%s_%s" % (edge, clN))
+        reads = list(cl.loc[cl['Cluster'] == clN, 'ReadName'])
+        als = gaf.loc[gaf['ReadName'].isin(reads)]
+        als = als.to_dict('split')['data']
+        neighbours={}
+        orient={}
+        for aln in als:
+            al = aln[1]
+            read = aln[0]
+            if re.search(">%s>.*" % edge, al):
+                fr_or="+"
+                to_or='+'
+                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*>%s>" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
+            if re.search("<%s<.*" % edge, al):
+                fr_or="-"
+                to_or='-'
+                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*<%s<" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
+            if re.search(">%s<.*" % edge, al):
+                fr_or="+"
+                to_or='-'
+                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*>%s<" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
+            if re.search("<%s>.*" % edge, al):
+                fr_or="-"
+                to_or='+'
+                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*<%s>" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
+            try:
+                #common_reads[read]=[n,fr_or, to_or]
+                orient[n]=[fr_or, to_or]
+                neighbours[read]=n
+            except(UnboundLocalError): continue
+
+        for n in set({k for k, v in Counter(neighbours.values()).items() if v > 2}):
+            fr_or=orient[n][0]
+            to_or=orient[n][1]
+            try:
+                cl_n = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (n, I, AF), keep_default_na=False)
+            except(FileNotFoundError):
+                add_link("%s_%s" % (edge, clN), fr_or,n, to_or)
+                continue
+            reads = []
+            for k, v in neighbours.items():
+                if v == n:
+                    reads.append(k)
+            n_cl = cl_n.loc[cl_n['ReadName'].isin(reads), 'Cluster']
+            n_cl = list(
+                set([x for x in list(n_cl) if Counter(list(n_cl))[x] / sum(Counter(list(n_cl)).values()) >= 0.2]))
+            if len(n_cl)==0:
+                try:
+                    #когда мы не находим соседей, соединяем со всеми
+                    #n_cl=link_clusters[n]
+                    add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
+                except (KeyError):
+                    continue
+            link_added=False
+            for i in n_cl:
+                try:
+                    g.try_get_segment("%s_%s" % (n, i))
+                    link_added=True
+                    add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or)
+                except(gfapy.NotFoundError):
+                    continue
+            if link_added==False:
+                add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
 
 
 def test(g):
@@ -683,19 +529,16 @@ def test(g):
 
 
 
-
+for i in range(0, len(edges)):
+    graph_create_unitigs(i)
+for i in range(0, len(edges)):
+    graph_link_unitigs(i)
+gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_1.gfa")
 for ed in g.segments:
- if ed.name in remove_clusters :
-    #if cut(ed) == False:
-    g.rm(ed)
-
-
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_42.gfa")
-
-
+    if ed.name in remove_clusters:
+        g.rm(ed)
+gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_2.gfa")
 test(g)
-
-
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_43.gfa")
+gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_3.gfa")
 
 
