@@ -30,6 +30,6 @@ g = gfapy.Gfa.from_file(gfa)
 edges=g.segment_names
 #edges=['edge_245','edge_247']
 #edges=['edge_39', 'edge_290', 'edge_289', 'edge_38']
-edges=['edge_310']
+edges=['edge_354','edge_356']
 
 
