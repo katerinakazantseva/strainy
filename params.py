@@ -43,6 +43,8 @@ gf1=pd.read_csv(gaf_file, sep=" ")
 gaf= pd.concat((gf1[gf1.columns[0]],gf[gf.columns[5]],),axis=1, keys=['ReadName', 'Al'])
 g = gfapy.Gfa.from_file(gfa)
 edges=g.segment_names
-edges=['edge_354','edge_356']
+#edges=['edge_104', 'edge_310']
+#edges=['edge_274', 'edge_387', 'edge_44','edge_293','edge_46']
+#edges=['edge_387']
 
 
