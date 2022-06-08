@@ -34,9 +34,9 @@ def col(edges):
 
 if __name__ == "__main__":
     phase(edges)
-    #col(edges)
+    col(edges)
 
 
-#transform(edges)
+
 
 
