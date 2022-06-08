@@ -53,7 +53,7 @@ python3 ./metaPhase.transform.py
 ```
 ## Credits
 
-metaPhase was developed under the supervision of Mikhail Kolmogorov https://github.com/fenderglass/Flye
+metaPhase was developed under the supervision of Mikhail Kolmogorov https://github.com/fenderglass
 ## License
 
 Shield: [![CC BY 4.0][cc-by-shield]][cc-by]
