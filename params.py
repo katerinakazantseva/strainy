@@ -6,13 +6,16 @@ import pysam
 """Please specify parameters below"""
 
 #bam file path
-bam="/Users/ekaterina.kazantseva/MT/5sim_staggered/flye_5ecoli_staggered_noalt_bubbles_005/5.bam"
+bam=""
 
 #gfa file path
-gfa = "/Users/ekaterina.kazantseva/MT/5sim_staggered/flye_5ecoli_staggered_noalt_bubbles_005/assembly_graph.gfa"
+gfa = ""
 
 #gaf file path
-gaf_file="/Users/ekaterina.kazantseva/Downloads/aln5.gaf"
+gaf_file=""
+
+#transformed gfa file path
+gfa_transformed = ""
 
 #snp file path. If=None, metaPhase call snp using bcftools
 snp=None
