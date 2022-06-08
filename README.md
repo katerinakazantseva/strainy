@@ -9,6 +9,7 @@ Graph-based phasing algorithm, that takes a de novo assembly graph (in gfa forma
 ```
 python3
 pip
+samtools
 ```
 
 ### Installation
