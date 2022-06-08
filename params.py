@@ -6,13 +6,15 @@ import pysam
 """Please specify parameters below"""
 
 #bam file path
-bam="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/sim.3ecoli_haplo.bam"
+#bam="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/sim.3ecoli_haplo.bam"
+bam="/Users/ekaterina.kazantseva/MT/5sim_staggered/flye_5ecoli_staggered_noalt_bubbles_005/5.bam"
 
 #gfa file path
-gfa = "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph.gfa"
+gfa = "/Users/ekaterina.kazantseva/MT/5sim_staggered/flye_5ecoli_staggered_noalt_bubbles_005/assembly_graph.gfa"
 
 #gaf file path
-gaf_file="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/aln_haplo.gaf"
+#gaf_file="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/aln_haplo.gaf"
+gaf_file="/Users/ekaterina.kazantseva/Downloads/aln5.gaf"
 
 #snp file path. If=None, metaPhase call snp using bcftools
 snp=None

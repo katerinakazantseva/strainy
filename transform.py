@@ -571,26 +571,23 @@ for i in range(0, len(edges)):
     graph_create_unitigs(i)
 for i in range(0, len(edges)):
     graph_link_unitigs(i)
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_61.gfa")
+gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5sim_staggered/assembly_graph_tr1.gfa")
 
 
 for ed in g.segments:
-    if ed.name in remove_clusters and ed.name!='edge_310':
+    if ed.name in remove_clusters:
         g.rm(ed)
 
-for ed in g.segments:
-    if ed.name in remove_zeroes:
-        g.rm(ed)
 
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_62.gfa")
+gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5sim_staggered/assembly_graph_tr2.gfa")
 
 test(g)
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_63.gfa")
+gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5sim_staggered/assembly_graph_tr3.gfa")
 
 
 
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_64.gfa")
+#gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_64.gfa")
 
 gfapy.GraphOperations.merge_linear_paths(g)
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_64.gfa")
+gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5sim_staggered/assembly_graph_tr64.gfa")
 

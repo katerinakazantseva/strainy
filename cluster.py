@@ -16,6 +16,7 @@ import numpy as np
 
 
 
+
 def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 0
     cmap = plt.get_cmap('viridis')
@@ -119,6 +120,8 @@ def cluster(i):
 stats = open('output/stats.txt', 'a')
 stats.write("Edge" + "\t" + "Len" + "\t" + "Coverage" + "\t" + "ReadsN" + "\t"+"SNPN"+"\t"+"ClustersN"+"\t"+"UnclusteredRN"+"\n")
 stats.close()
+
+
 
 
 
