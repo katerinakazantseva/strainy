@@ -571,7 +571,7 @@ for i in range(0, len(edges)):
     graph_create_unitigs(i)
 for i in range(0, len(edges)):
     graph_link_unitigs(i)
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5sim_staggered/assembly_graph_tr1.gfa")
+gfapy.Gfa.to_file(g,gfa_transformed)
 
 
 for ed in g.segments:
@@ -579,15 +579,12 @@ for ed in g.segments:
         g.rm(ed)
 
 
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5sim_staggered/assembly_graph_tr2.gfa")
+gfapy.Gfa.to_file(g,gfa_transformed)
 
 test(g)
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5sim_staggered/assembly_graph_tr3.gfa")
+gfapy.Gfa.to_file(g,gfa_transformed)
 
 
-
-#gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/flye_3ecoli_sim_noalt_haplo/assembly_graph_trans_64.gfa")
-
-gfapy.GraphOperations.merge_linear_paths(g)
-gfapy.Gfa.to_file(g,"/Users/ekaterina.kazantseva/MT/5sim_staggered/assembly_graph_tr64.gfa")
+#gfapy.GraphOperations.merge_linear_paths(g)
+#gfapy.Gfa.to_file(g,gfa_transformed)
 
