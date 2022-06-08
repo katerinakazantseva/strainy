@@ -5,3 +5,4 @@ samtools
 README.md
 requirements.txt
 LICENSE
+params.py
