@@ -47,7 +47,8 @@ It is not recommended to change parameters below:
 ## Run
 
 ```
-python3 ./main.py
+python3 ./metaPhase.phase.py
+python3 ./metaPhase.transform.py
 ```
 
 ## License
