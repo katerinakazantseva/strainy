@@ -30,6 +30,7 @@ $ pip install -r requirements.txt
 Please specify parameters in `params.py`:
 - `bam` - full path to alignment file in bam format
 - `gfa` - full path to assembly gfa (produced with [**metaFlye**](https://github.com/fenderglass/Flye))
+- `gfa_transformed` - full path to store transformed assembly gfa
 - `gaf_file` - full path to alignment file in gaf format (produced with [**GraphAligner**](https://github.com/maickrau/GraphAligner))
 - `snp` - full path to alignment file in vcf format (Optional). 
 
