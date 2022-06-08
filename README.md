@@ -4,6 +4,10 @@
 
 Graph-based phasing algorithm, that takes a de novo assembly graph (in gfa format) and simplifies it by combining phasing information and graph structure.
 
+**metaPhase.phase** - perform reads clustering according to SNP positions using community detection approach
+
+**metaPhase.transfom** - transform assembly graph 
+
 ## Installation
 ### Requirements
 ```
