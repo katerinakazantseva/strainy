@@ -1,0 +1,10 @@
+Bio
+gfapy
+karateclub
+matplotlib
+more_itertools
+networkx
+numpy
+pandas
+pygraphviz
+pysam
