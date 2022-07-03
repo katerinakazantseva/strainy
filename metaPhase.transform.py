@@ -724,7 +724,7 @@ for ed in g.segments:
 gfapy.Gfa.to_file(g,gfa_transformed1)
 
 test(g)
-gfapy.Gfa.to_file(g,gfa_transformed2)
+gfapy.Gfa.to_file(g,gfa_transformed1)
 
 
 #gfapy.GraphOperations.merge_linear_paths(g)
