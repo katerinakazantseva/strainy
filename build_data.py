@@ -33,6 +33,7 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
     data = {}
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     for read in bamfile.fetch(edge):
+
         clipping = 0
         start = read.get_reference_positions()[0]
         stop = read.get_reference_positions()[len(read.get_reference_positions()) - 1]
@@ -41,13 +42,33 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
             if i[0] == 4 or i[0] == 5:
                 if i[1] > clipp:
                     clipping = 1
+
         if read.mapping_quality>min_mapping_quality and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
                 int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) == 0  or int(stop) == int(ln) - 1):
             data[read.query_name] = {}
             data[read.query_name]["Start"]=start
             data[read.query_name]["Stop"] = stop
+            tags = read.get_tags()[9]
+
+            left_clip = []
+            right_clip = []
+
+            if re.search("SA", str(tags)):
+                if start == 0:
+                    for i in tags[1].split(';'):
+                        if len(i)>0:
+                         left_clip.append(i.split(',')[0])
+                if stop ==  int(ln) - 1:
+                    for i in tags[1].split(';'):
+                        if len(i) > 0:
+                            right_clip.append(i.split(',')[0])
+            data[read.query_name]["Rclip"]=list(set(right_clip))
+            data[read.query_name]["Lclip"]=list(set(left_clip))
+
+
         else:
             continue
+
 
     for pos in SNP_pos:
         for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=0,

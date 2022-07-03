@@ -7,7 +7,7 @@ import os
 import subprocess
 
 
-dirs = ("output/vcf/","output/adj_M/","output/clusters/","output/graphs/","output/bam/")
+dirs = ("output/","output/vcf/","output/adj_M/","output/clusters/","output/graphs/","output/bam/")
 for dir in dirs:
     try:
         os.stat(dir)
@@ -25,8 +25,6 @@ def col(edges):
     pool.close()
     subprocess.check_output('samtools merge output/bam/coloredBAM.bam -f `find output/bam -name "*edge*.bam"`', shell=True, capture_output=False)
     subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True,capture_output=False)
-    pysam.samtools.index("output/bam/coloredBAM_%s.bam"
-     % (edges[0]), "output/bam/coloredBAM_%s.bai"% (edges[0]))
     pysam.samtools.index("output/bam/coloredBAM.bam", "output/bam/coloredBAM.bai")
 
 
