@@ -668,29 +668,28 @@ def graph_link_unitigs(i):
             n_cl = cl_n.loc[cl_n['ReadName'].isin(reads), 'Cluster']
 
             #print(n_cl)
-            n_cl = list(
+            n_cl_set = list(
                 set([x for x in list(n_cl) if Counter(list(n_cl))[x] / sum(Counter(list(n_cl)).values()) >= 0.2]))
 
 
-
-            if len(n_cl)==0:
+            if len(n_cl_set)==0:
                 try:
 
                     #add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
                     #когда мы не находим соседей, соединяем со всеми
                     if n in remove_clusters:
-                        n_cl = link_clusters_src[n]
+                        n_cl_set = link_clusters_src[n]
                         #for n_cluster in link_clusters_src[n]:
 
                     else:
                         add_link("%s_%s" % (edge, clN), fr_or, n, to_or,w)
-                    #n_cl=link_clusters_src[n]
+                    #n_cl_set=link_clusters_src[n]
                 except (KeyError):
                     continue
 
             link_added=False
 
-            for i in n_cl:
+            for i in n_cl_set:
                 w=Counter(list(n_cl))[i]
                 try:
                     if g.try_get_segment("%s_%s" % (n, i)):
@@ -701,13 +700,13 @@ def graph_link_unitigs(i):
 
             if link_added==False:
                 if n in remove_clusters:
-                    n_cl = link_clusters_src[n]
+                    n_cl_set = link_clusters_src[n]
                     # for n_cluster in link_clusters_src[n]:
 
                 else:
                     add_link("%s_%s" % (edge, clN), fr_or, n, to_or,w)
 
-            for i in n_cl:
+            for i in n_cl_set:
                 try:
                     if g.try_get_segment("%s_%s" % (n, i)):
                         link_added=True
