@@ -61,6 +61,13 @@ def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots
     M = change_w(M, 1)
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
+
+    for e in G.edges():
+        first_cl=e[0]
+        second_cl=e[1]
+        intersect = set(range(cons[first_cl]["Start"], cons[first_cl]["Stop"])).intersection(
+            set(range(cons[second_cl]["Start"], cons[second_cl]["Stop"])))
+        G[e[0]][e[1]]['weight'] = len(intersect)
     for full_cluster in full_clusters:
         if strong_tail(full_cluster, cl, ln, "root", data)==True and strong_tail(full_cluster, cl, ln, "leaf", data)==True:
             G.remove_node(full_cluster)
@@ -126,6 +133,13 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
             #print(n_path)
         #except:
             #continue
+    for e in G_vis.edges():
+        first_cl = e[0]
+        second_cl = e[1]
+        intersect = set(range(cons[first_cl]["Start"], cons[first_cl]["Stop"])).intersection(
+            set(range(cons[second_cl]["Start"], cons[second_cl]["Stop"])))
+        G_vis[e[0]][e[1]]['weight'] = len(intersect)
+
 
     G_vis.add_node("Src",style='filled',fillcolor='gray',shape='square')
     G_vis.add_node("Sink",style='filled',fillcolor='gray',shape='square')
@@ -134,6 +148,10 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
     for i in full_paths_leafs:
         G_vis.add_edge(i, "Sink")
     test = nx.nx_agraph.to_agraph(G_vis)
+
+    test = str(test)
+    test = test.replace('weight', 'label')
+    test = gv.AGraph(test)
     test.layout(prog="neato")
     test.draw("output/graphs/full_paths_cluster_GV_graph_%s.png" % (edge))
     G_vis.remove_node("Src")
@@ -157,8 +175,9 @@ def find_full_paths(G, paths_roots, paths_leafs):
     return (paths)
 
 
-def add_link(fr, fr_or, to, to_or):
-    link = 'L	%s	%s	%s	%s	0M	RC:i:42' % (fr, fr_or, to, to_or)
+def add_link(fr, fr_or, to, to_or,w):
+    link = 'L	%s	%s	%s	%s	0M	xx:Z:ex_%s' % (fr, fr_or, to, to_or, w)
+    #print(link)
     try:
         g.add_line(link)
         print("link added from %s %s to %s %s" % (fr, fr_or, to, to_or))
@@ -166,16 +185,18 @@ def add_link(fr, fr_or, to, to_or):
         #print("dd")
 
 
-def add_path_links(edge, paths):
-    str = 'L	first_edge	+	second_edge	+	0M	RC:i:42'
+def add_path_links(edge, paths, G):
+    #str = 'L	first_edge	+	second_edge	+	0M	RC:s:in'
     for path in paths:
         for i in range(0, len(path) - 1):
                 try:
+                    w=G[path[i]][path[i+1]]['weight']
+                    str='L	first_edge	+	second_edge	+	0M	xx:Z:in_%s' % w
                     #print("path added between clusters" + path[i] + " and " + path[i + 1])
                     g.add_line(str.replace('first_edge', "%s_%s" % (edge, path[i])).replace('second_edge',
                                                                                             "%s_%s" % (
                                                                                edge, path[i + 1])))
-                except(gfapy.error.NotUniqueError):
+                except(gfapy.error.NotUniqueError, KeyError):
                     continue
 
 
@@ -263,15 +284,11 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
             add_child_edge(edge, path_cluster, g,  cl, SNP_pos, data, cut_l[path_cluster], cut_r[path_cluster], cons)
         else:
             for i in range(0,len(paths[edge])):
-                print("PATH")
-                print(paths[edge][i])
                 if path_cluster in paths[edge][i]:
                     upd_path=paths[edge][i]
                     upd_path.remove(path_cluster)
                     paths[edge][i]=upd_path
-                    print(upd_path)
-
-        G.remove_node(path_cluster)
+            G.remove_node(path_cluster)
     return(path_cl)
 
 
@@ -517,7 +534,8 @@ def graph_create_unitigs(i):
             pass
         add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,cons)
         #print("paths clusters added")
-        add_path_links(edge, full_paths[edge])
+        print(G)
+        add_path_links(edge, full_paths[edge], G)
         #print("paths links added")
         othercl=list(set(clusters)-set(full_clusters)-set([j for i in full_paths[edge] for j in i])-set(cl_removed))
         new_cov=change_cov(g,edge,cons,ln,clusters,othercl)
@@ -635,13 +653,13 @@ def graph_link_unitigs(i):
                     orient[n]=['-','-']'''
 
         for n in set({k for k, v in Counter(neighbours.values()).items() if v > 2}):
-            print(n)
             fr_or=orient[n][0]
             to_or=orient[n][1]
+            w=1
             try:
                 cl_n = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (n, I, AF), keep_default_na=False)
             except(FileNotFoundError):
-                add_link("%s_%s" % (edge, clN), fr_or,n, to_or)
+                add_link("%s_%s" % (edge, clN), fr_or,n, to_or,w)
                 continue
             reads = []
             for k, v in neighbours.items():
@@ -649,11 +667,11 @@ def graph_link_unitigs(i):
                     reads.append(k)
             n_cl = cl_n.loc[cl_n['ReadName'].isin(reads), 'Cluster']
 
-
+            #print(n_cl)
             n_cl = list(
                 set([x for x in list(n_cl) if Counter(list(n_cl))[x] / sum(Counter(list(n_cl)).values()) >= 0.2]))
 
-            print(n_cl)
+
 
             if len(n_cl)==0:
                 try:
@@ -665,7 +683,7 @@ def graph_link_unitigs(i):
                         #for n_cluster in link_clusters_src[n]:
 
                     else:
-                        add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
+                        add_link("%s_%s" % (edge, clN), fr_or, n, to_or,w)
                     #n_cl=link_clusters_src[n]
                 except (KeyError):
                     continue
@@ -673,10 +691,11 @@ def graph_link_unitigs(i):
             link_added=False
 
             for i in n_cl:
+                w=Counter(list(n_cl))[i]
                 try:
                     if g.try_get_segment("%s_%s" % (n, i)):
                         link_added=True
-                        add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or)
+                        add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or,w)
                 except(gfapy.NotFoundError):
                     continue
 
@@ -686,13 +705,13 @@ def graph_link_unitigs(i):
                     # for n_cluster in link_clusters_src[n]:
 
                 else:
-                    add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
+                    add_link("%s_%s" % (edge, clN), fr_or, n, to_or,w)
 
             for i in n_cl:
                 try:
                     if g.try_get_segment("%s_%s" % (n, i)):
                         link_added=True
-                        add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or)
+                        add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or,w)
                 except(gfapy.NotFoundError):
                     continue
 
@@ -724,7 +743,7 @@ for ed in g.segments:
 gfapy.Gfa.to_file(g,gfa_transformed1)
 
 test(g)
-gfapy.Gfa.to_file(g,gfa_transformed1)
+gfapy.Gfa.to_file(g,gfa_transformed2)
 
 
 #gfapy.GraphOperations.merge_linear_paths(g)
