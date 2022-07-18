@@ -23,7 +23,7 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
     for i in f:
         if i == edge:
             seq = i.sequence
-            print(len(seq))
+            #print(len(seq))
             seq = list(seq)
 
             for key, val in cl_consensuns[clN].items():
@@ -33,7 +33,7 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
                     continue
     seq = ''.join(seq)
     seq = seq[left:righ+1]
-    print(len(seq))
+    #print(len(seq))
 
     if len(seq)==0:
         remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
@@ -352,7 +352,7 @@ def change_cov(g,edge,cons,ln,clusters,othercl):
             i.dp =round(cov)
     return(cov)
 
-def change_sec(g,edge, othercl, cl,SNP_pos, data):
+def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
     temp={}
     other_cl=cl
     for cluster in othercl:
@@ -373,9 +373,11 @@ def change_sec(g,edge, othercl, cl,SNP_pos, data):
 
 
             seq = ''.join(seq)
-            seq = seq[cl_consensuns["OTHER_%s" % edge]["Start"]:cl_consensuns["OTHER_%s" % edge]["Stop"] + 1]
+            if cut==True:
+                seq = seq[cl_consensuns["OTHER_%s" % edge]["Start"]:cl_consensuns["OTHER_%s" % edge]["Stop"] + 1]
             i.sequence=seq
-            print(len(seq))
+
+
 
 
 
@@ -626,7 +628,7 @@ def graph_create_unitigs(i):
             link_clusters_sink[edge] = list(full_clusters) + list(
                 set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
         else:
-            change_sec(g, edge, [clusters[0]], cl, SNP_pos, data)
+            change_sec(g, edge, [clusters[0]], cl, SNP_pos, data, False)
     except(FileNotFoundError, IndexError):
         pass
         clusters = []
@@ -806,6 +808,7 @@ def test(g):
     repeat=False
     #changed = False
     #print("NEW ERA")
+    #for edge in ['edge_673', 'edge_677', 'edge_806_160', 'edge_806_461', 'edge_807_113', 'edge_807_140', 'edge_807_179', 'edge_807_249']:
     for edge in g.segment_names:
         changed = clear_links2(edge)
         #print (changed)
@@ -837,7 +840,7 @@ gfapy.Gfa.to_file(g,gfa_transformed)
 test(g)
 
 
-gfapy.Gfa.to_file(g,gfa_transformed)
+gfapy.Gfa.to_file(g,gfa_transformed1)
 gfapy.GraphOperations.merge_linear_paths(g)
-gfapy.Gfa.to_file(g,gfa_transformed)
+gfapy.Gfa.to_file(g,gfa_transformed2)
 
