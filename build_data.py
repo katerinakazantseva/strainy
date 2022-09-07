@@ -42,28 +42,71 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
             if i[0] == 4 or i[0] == 5:
                 if i[1] > clipp:
                     clipping = 1
+        #and read.is_supplementary == False
+        if read.mapping_quality>min_mapping_quality  and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
+                int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) < 3  or int(stop) == int(ln) - 1):
 
-        if read.mapping_quality>min_mapping_quality and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
-                int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) == 0  or int(stop) == int(ln) - 1):
             data[read.query_name] = {}
             data[read.query_name]["Start"]=start
             data[read.query_name]["Stop"] = stop
             tags = read.get_tags()[9]
 
-            left_clip = []
-            right_clip = []
+            left_clip = {}
+            right_clip = {}
 
             if re.search("SA", str(tags)):
-                if start == 0:
+
+                #if start==0 and stop ==  int(ln) - 1:
+                #if read.cigartuples[0][0] == 4 and read.cigartuples[len(read.cigartuples) - 1][0] == 4:
+                    #print(read.query_name)
+
+                    # print(read.query_alignment_end-read.query_alignment_length)
+                    # print(read.query_alignment_end)
+                    #print(tags)
+                    #print(read.cigartuples)
+                    #print()
+                #if start == 0:
+                #print(read.query_name)
+                #fields = read.to_string().split()
+                #read_id, flags, chr_id, position = fields[0:4]
+                #ref_id, ref_start = fields[2], int(fields[3])
+                #print(ref_id)
+                #print(ref_start)
+                if read.cigartuples[0][0]==4 and read.cigartuples[len(read.cigartuples)-1][0]!=4:
                     for i in tags[1].split(';'):
-                        if len(i)>0:
-                         left_clip.append(i.split(',')[0])
-                if stop ==  int(ln) - 1:
+                        if len(i)>0 and int(i.split(',')[4])>20:
+                         #print(i)
+                         orient = '+' if read.is_reverse==False else '-'
+                         left_clip[i.split(',')[0]]=[i.split(',')[2], orient]
+                         break
+                #if stop ==  int(ln) - 1:
+                if read.cigartuples[0][0] != 4 and read.cigartuples[len(read.cigartuples) - 1][0] == 4:
                     for i in tags[1].split(';'):
-                        if len(i) > 0:
-                            right_clip.append(i.split(',')[0])
-            data[read.query_name]["Rclip"]=list(set(right_clip))
-            data[read.query_name]["Lclip"]=list(set(left_clip))
+                        if len(i) > 0 and int(i.split(',')[4])>20:
+                            #print(i)
+                            orient = '+' if read.is_reverse == False else '-'
+                            right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
+                else:
+                    #print(read.cigartuples[0][1])
+                    #print(read.cigartuples[len(read.cigartuples) - 1][1])
+                    for i in tags[1].split(';'):
+                        if len(i) > 0 and int(i.split(',')[4]) > 20:
+                            l=int(re.match('.*?([0-9]+)$', re.sub(r"M.*$", "", str(i.split(',')[3]))).group(1))
+                            if l==read.cigartuples[0][1]:
+                                orient = '+' if read.is_reverse == False else '-'
+                                left_clip[i.split(',')[0]] = [i.split(',')[2], orient]
+                            elif l==read.cigartuples[len(read.cigartuples) - 1][1]:
+                                orient = '+' if read.is_reverse == False else '-'
+                                right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
+
+
+
+                #print()
+            #print(left_clip)
+
+
+            data[read.query_name]["Rclip"]=right_clip
+            data[read.query_name]["Lclip"]=left_clip
 
 
         else:
@@ -127,13 +170,16 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
     clCov=0
 
     for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
-        start = int(data[read]["Start"])
-        stop = int(data[read]["Stop"])
-        clCov=clCov+(stop-start)
-        if start < clStart:
-            clStart = start
-        if stop > clStop:
-            clStop = stop
+        try:
+            start = int(data[read]["Start"])
+            stop = int(data[read]["Stop"])
+            clCov=clCov+(stop-start)
+            if start < clStart:
+                clStart = start
+            if stop > clStop:
+                clStop = stop
+        except(KeyError):
+            pass
 
     clCov=clCov/(clStop-clStart)
     val["Stop"] = clStop

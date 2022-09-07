@@ -17,40 +17,34 @@ stats.close()
 
 
 def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
-    f = g.segments
     seq=[]
     cl_consensuns = cluster_consensuns(cl, clN, SNP_pos, data, cons)
-    for i in f:
-        if i == edge:
-            seq = i.sequence
-            #print(len(seq))
-            seq = list(seq)
+    try:
+        i=g.try_get_segment(edge)
+        seq = i.sequence
+        seq = list(seq)
 
-            for key, val in cl_consensuns[clN].items():
-                try:
-                    seq[int(key)-1] = val
-                except (ValueError, KeyError):
-                    continue
-    seq = ''.join(seq)
-    seq = seq[left:righ+1]
-    #print(len(seq))
+        for key, val in cl_consensuns[clN].items():
+            try:
+                seq[int(key)-1] = val
+            except (ValueError, KeyError):
+                continue
+        seq = ''.join(seq)
+        seq = seq[left:righ+1]
+    except(gfapy.NotFoundError):
+        pass
 
     if len(seq)==0:
         remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq)>0:
-        #g.add_line("S\tNEW\t*")
         g.add_line("S\t%s_%s\t*" % (edge, clN))
-        f = g.segments
-        for i in f:
-
-    #if i == "NEW":
-            if i == "%s_%s" % (edge, clN):
-                new_line = i
-                new_line.name = str(edge) + "_" + str(clN)
-                new_line.sid = str(edge) + "_" + str(clN)
-                new_line.sequence = seq
-                new_line.dp = cons[clN]["Cov"]  # coverage
-                print("edge added:" + str(new_line.name))
+        i = g.try_get_segment("%s_%s" % (edge, clN))
+        new_line = i
+        new_line.name = str(edge) + "_" + str(clN)
+        new_line.sid = str(edge) + "_" + str(clN)
+        new_line.sequence = seq
+        new_line.dp = cons[clN]["Cov"]  # coverage
+        print("edge added:" + str(new_line.name))
 
 def remove_link(fr,fr_or, to, to_or):
     res=False
@@ -59,6 +53,15 @@ def remove_link(fr,fr_or, to, to_or):
             g.rm(i)
             res=True
             print("remove line: " + str(i.from_segment) + str(i.from_orient) + " to " + str(i.to_segment) + str(i.to_orient))
+    return (res)
+
+def remove_link_old(fr,fr_or, to, to_or):
+    res=False
+    for i in g.dovetails:
+        if (i.from_segment == fr and i.to_segment == to) or (i.from_segment == to and i.to_segment == fr) :
+            g.rm(i)
+            res=True
+            #print("remove line: " + str(i.from_segment) + str(i.from_orient) + " to " + str(i.to_segment) + str(i.to_orient))
     return (res)
 
 def clear_links_weight(edge):
@@ -104,13 +107,14 @@ def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots
         intersect = set(range(cons[first_cl]["Start"], cons[first_cl]["Stop"])).intersection(
             set(range(cons[second_cl]["Start"], cons[second_cl]["Stop"])))
         G[e[0]][e[1]]['weight'] = len(intersect)
+    print(full_clusters)
     for full_cluster in full_clusters:
         if strong_tail(full_cluster, cl, ln, "root", data)==True and strong_tail(full_cluster, cl, ln, "leaf", data)==True:
             G.remove_node(full_cluster)
             full_paths_roots.remove(full_cluster)
             full_paths_leafs.remove(full_cluster)
             #print("------------------")
-    #print(G)
+
     path_remove = []
     G=remove_nested(G, cons)
     G = remove_not_strong_tails(G, cl, cons, data, ln, full_paths_roots, full_paths_leafs)
@@ -125,7 +129,10 @@ def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots
     for n_path in path_remove:
         #print(n_path)
         try:
-            G.remove_edge(n_path[0], n_path[2])
+            #G.remove_edge(n_path[0], n_path[2])
+            G.remove_edge(n_path[0], n_path[1])
+            #G.remove_edge(n_path[1], n_path[2])
+
 
         except:
             continue
@@ -196,14 +203,6 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
     return(cl_removed)
 
 def find_full_paths(G, paths_roots, paths_leafs):
-    #for node in G.nodes():
-       # neighbors = nx.all_neighbors(G, node)
-        #for neighbor in list(neighbors):
-           # n_paths = nx.algorithms.all_simple_paths(G, node, neighbor)
-            #for n_path in list(n_paths):
-                #if len(n_path) == 3:
-                    #G.remove_edge(n_path[0], n_path[1])
-
     paths = []
     for root in paths_roots:
         paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs)
@@ -247,40 +246,60 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for path in paths[edge]:
         for member in path:
             path_cl.append(member)
-    cut_l = {}
-    cut_r = {}
+    cut_l_unsorted = {}
+    cut_r_unsorted = {}
+
+
 
 
     for path_cluster in set(path_cl):
-        cut_l[path_cluster] = None
-        cut_r[path_cluster] = None
-        if path_cluster in paths_roots:
+        cut_l_unsorted[path_cluster] = None
+        cut_r_unsorted[path_cluster] = None
+        if path_cluster in paths_roots and cons[path_cluster]["Start"]<3 :
 
-            cut_l[path_cluster] = 0
+            cut_l_unsorted[path_cluster] = 0
             #cut_r[path_cluster] = None
         if path_cluster in paths_leafs:
 
-            cut_r[path_cluster] = ln - 1
+            cut_r_unsorted[path_cluster] = ln - 1
             #cut_l[path_cluster] = None
         #else:
             #cut_l[path_cluster] = None
             #cut_r[path_cluster] = None
+    stop_pos={}
+    for i in cut_r_unsorted.keys():
+        stop_pos[i]=cons[i]["Stop"]
+
+
+    order_by_stop_pos = list(dict(sorted(stop_pos.items(), key=lambda item: item[1])).keys())
+
+    cut_l = {}
+    cut_r = {}
+    for i in order_by_stop_pos:
+        cut_l[i] = cut_l_unsorted[i]
+        cut_r[i] = cut_r_unsorted[i]
+
 
     while None in cut_l.values():
         for member in cut_l.keys():
             if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
+                #print(member)
                 Q = deque()
                 L = []
                 R = []
                 for path in paths[edge]:
+
                     try:
                         L.append(path[path.index(member) + 1])
+
                         Q.append(path[path.index(member) + 1])
                     except (ValueError, IndexError):
                         continue
                 visited = []
                 while Q:
+
                     n = Q.pop()
+
                     visited.append(n)
                     if n in L:
                         for path in paths[edge]:
@@ -288,6 +307,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                                 if path.index(n)>0:
                                     #R.append(path[path.index(n) - 1])
                                     if path[path.index(n) - 1] not in visited:
+                                        #print("add R" + path[path.index(n) - 1])
                                         R.append(path[path.index(n) - 1])
                                         Q.append(path[path.index(n) - 1])
                             except (ValueError, IndexError):
@@ -298,6 +318,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                                 #L.append(path[path.index(n) + 1])
                                 if path[path.index(n) + 1] not in visited:
                                     L.append(path[path.index(n) + 1])
+                                    #print("add L" + path[path.index(n) + 1])
                                     Q.append(path[path.index(n) + 1])
 
                             except (ValueError, IndexError):
@@ -314,12 +335,15 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                 L=list(set(L))
                 R = list(set(R))
+                print(L)
+                print(R)
 
                 for i in L:
                     cut_l[i] = border
 
                 for i in R:
                     cut_r[i] = border
+
 
 
     for path_cluster in set(path_cl):
@@ -337,7 +361,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
 
 def change_cov(g,edge,cons,ln,clusters,othercl):
-    f = g.segments
     cov=0
     len_cl=[]
     for i in othercl:
@@ -347,9 +370,8 @@ def change_cov(g,edge,cons,ln,clusters,othercl):
     if (len(set(len_cl))/ln)<0.7 and len(clusters)-len(othercl)!=0:
         remove_clusters.append(edge)
     cov=cov/ln
-    for i in f:
-        if i == edge:
-            i.dp =round(cov)
+    i = g.try_get_segment(edge)
+    i.dp =round(cov)
     return(cov)
 
 def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
@@ -359,23 +381,22 @@ def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
         other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
     cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp)
 
-    for i in g.segments:
-        if i == edge:
-            seq = i.sequence
-            seq = list(seq)
-            for key, val in cl_consensuns["OTHER_%s" %edge].items():
-                try:
-                    #seq[int(key)] = val
-                    seq[int(key) - 1] = val
-                    #print("changed")
-                except (ValueError):
-                    continue
+    i = g.try_get_segment(edge)
+    seq = i.sequence
+    seq = list(seq)
+    for key, val in cl_consensuns["OTHER_%s" %edge].items():
+        try:
+            #seq[int(key)] = val
+            seq[int(key) - 1] = val
+            #print("changed")
+        except (ValueError):
+            continue
 
 
-            seq = ''.join(seq)
-            if cut==True:
-                seq = seq[cl_consensuns["OTHER_%s" % edge]["Start"]:cl_consensuns["OTHER_%s" % edge]["Stop"] + 1]
-            i.sequence=seq
+    seq = ''.join(seq)
+    if cut==True:
+        seq = seq[cl_consensuns["OTHER_%s" % edge]["Start"]:cl_consensuns["OTHER_%s" % edge]["Stop"] + 1]
+    i.sequence=seq
 
 
 
@@ -486,13 +507,20 @@ def clear_links(edge):
 def clear_links2(edge):
     changed=False
     to_n=to_neighbours(g,edge,'+')
-    if len(to_n)==1:
+    edge_cov=g.try_get_segment(edge).dp
+    if edge_cov==0:
+        pass
+    elif len(to_n)==1 and g.try_get_segment(to_n[0][0]).dp/edge_cov<1.6:
+    #if len(to_n) == 1:
         for i in from_neighbours(g,to_n[0][0],to_n[0][1]):
             if len(to_neighbours(g,i[0],i[1]))>1:
                 changed=remove_link(i[0],i[1], to_n[0][0],to_n[0][1])
 
     from_n = from_neighbours(g, edge, '+')
-    if len(from_n) == 1:
+    if edge_cov==0:
+        pass
+    elif len(from_n) == 1 and g.try_get_segment(from_n[0][0]).dp/edge_cov<1.6:
+    #if len(from_n) == 1:
         for i in to_neighbours(g, from_n[0][0], from_n[0][1]):
             if len(from_neighbours(g, i[0], i[1])) > 1:
                 changed=remove_link(from_n[0][0], from_n[0][1],i[0], i[1])
@@ -505,21 +533,32 @@ def clear_links2(edge):
 
 
 def strong_tail(cluster, cl, ln, type, data):
-    count = 0
+    count_start = 10000
+    count_stop = 10000
     reads = list(cl.loc[cl['Cluster'] == cluster, 'ReadName'])
     for read in reads:
-        if (data[read]["Start"] == 0 and type=="root") or (data[read]["Stop"] == ln - 1 and type=="leaf"):
-            count = count + 1
-    if count > 2:
+        if (data[read]["Start"] < 3 and type=="root"):
+            if count_start == 10000:
+                count_start = 0
+            count_start=count_start+1
+        if (data[read]["Stop"] == ln - 1 and type=="leaf"):
+            if count_stop == 10000:
+                count_stop = 0
+            count_stop = count_stop + 1
+    if count_stop > 2 and count_start>2:
         res = True
+    elif count_stop>2:
+        res="UnsufStart"
     else:
-        res = False
+        res = "UnsufStop"
     return (res)
 
 
 def remove_not_strong_tails(G, cl,cons, data,ln, full_paths_roots, full_paths_leafs):
     path_remove=[]
+
     for cluster in full_paths_roots:
+
         if strong_tail(cluster, cl, ln, "root", data) == True:
             neighbors = nx.all_neighbors(G, cluster)
             for neighbor in list(neighbors):
@@ -531,7 +570,11 @@ def remove_not_strong_tails(G, cl,cons, data,ln, full_paths_roots, full_paths_le
             #print(cluster)
             full_paths_roots.remove(cluster)
             #print(cons[cluster]["Start"])
-            cons[cluster]["Start"]=2
+            if strong_tail(cluster, cl, ln, "root", data) == 'UnsufStart':
+                cons[cluster]["Start"] = cons[cluster]["Start"] + 2
+            if strong_tail(cluster, cl, ln, "root", data) == 'UnsufStop':
+                cons[cluster]["Stop"] = cons[cluster]["Stop"]-2
+            #cons[cluster]["Start"]=2
     for cluster in full_paths_leafs:
         if strong_tail(cluster, cl, ln, "leaf", data) == True:
             neighbors = nx.all_neighbors(G, cluster)
@@ -543,7 +586,11 @@ def remove_not_strong_tails(G, cl,cons, data,ln, full_paths_roots, full_paths_le
 
             full_paths_leafs.remove(cluster)
             #print(cons[cluster]["Stop"])
-            cons[cluster]["Stop"] = cons[cluster]["Stop"]-2
+            #с какой стороны бедный??
+            if strong_tail(cluster, cl, ln, "leaf", data) == 'UnsufStart':
+                cons[cluster]["Start"] = cons[cluster]["Start"] + 2
+            if strong_tail(cluster, cl, ln, "leaf", data) == 'UnsufStop':
+                cons[cluster]["Stop"] = cons[cluster]["Stop"]-2
             #print(cons[cluster]["Stop"])
     for n_path in path_remove:
         #print(n_path)
@@ -551,6 +598,13 @@ def remove_not_strong_tails(G, cl,cons, data,ln, full_paths_roots, full_paths_le
 
     return (G)
 
+def gfa_to_nx(g):
+    G = nx.Graph()
+    for i in g.segment_names:
+        G.add_node(i)
+    for i in g.dovetails:
+        G.add_edge(i.from_segment.name, i.to_segment.name)
+    return(G)
 
 full_cl = {}
 full_paths = {}
@@ -564,9 +618,11 @@ link_clusters_src = {}
 link_clusters_sink = {}
 remove_clusters = []
 remove_zeroes = []
+all_data={}
 
 def graph_create_unitigs(i):
     edge = edges[i]
+    print(edge)
     full_paths_roots = []
     full_paths_leafs = []
     full_clusters = []
@@ -574,6 +630,7 @@ def graph_create_unitigs(i):
         cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
         SNP_pos = read_snp(snp, edge,bam, AF)
         data = read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
+        all_data[edge]=data
         ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
         cons = build_data_cons(cl, SNP_pos, data)
@@ -581,7 +638,7 @@ def graph_create_unitigs(i):
             for cluster in clusters:
                 clStart=cons[cluster]["Start"]
                 clStop = cons[cluster]["Stop"]
-                if clStart == 0 and clStop == ln - 1:
+                if clStart < 3 and clStop == ln - 1:
 
                     full_paths_roots.append(cluster)
                     full_paths_leafs.append(cluster)
@@ -589,11 +646,17 @@ def graph_create_unitigs(i):
                                                                                          data) == True:
                         add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
                         full_clusters.append(cluster)
+                    elif strong_tail(cluster, cl, ln, "root", data) != True:
+                        cons[cluster]["Start"] = cons[cluster]["Start"] + 2
+                    else:
+                        cons[cluster]["Stop"] = cons[cluster]["Stop"] - 2
 
-                elif clStart == 0:
+
+                elif clStart < 3:
                     full_paths_roots.append(cluster)
                 elif clStop == ln - 1:
                     full_paths_leafs.append(cluster)
+
             #G = build_paths_graph(SNP_pos, cl, cons, full_clusters)
             G=build_paths_graph(SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs)
             #G = remove_not_strong_tails(G, cl, cons,data,ln,full_paths_roots,full_paths_leafs)
@@ -607,17 +670,40 @@ def graph_create_unitigs(i):
                 #print(full_paths)
             except(ValueError):
                 pass
+
             add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,cons)
             #print("paths clusters added")
             #print(G)
             add_path_links(edge, full_paths[edge], G)
             #print("paths links added")
+
+
+
             othercl=list(set(clusters)-set(full_clusters)-set([j for i in full_paths[edge] for j in i])-set(cl_removed))
+            #print("OTHET")
+
+            close_to_full=[]
+            for cluster in othercl.copy():
+                M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+                M = change_w(M, 1)
+                G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
+                neighbors = nx.all_neighbors(G, cluster)
+                if len(set(list(neighbors)).intersection(set(full_clusters)))>0:
+                    othercl.remove(cluster)
+                    close_to_full.append(cluster)
+
+            if len(othercl)>0:
+                othercl=othercl+close_to_full
+
+
+
+
             new_cov=change_cov(g,edge,cons,ln,clusters,othercl)
             if new_cov<6 and len(clusters)-len(othercl)!=0: #PARAMETER
             #if len(clusters) - len(othercl) != 0:
                 remove_clusters.append(edge)
             else:
+                #othercl=othercl+close_to_full
                 change_sec(g, edge, othercl, cl, SNP_pos, data)
 
             link_clusters[edge] = list(full_clusters) + list(
@@ -652,11 +738,11 @@ def graph_create_unitigs(i):
 
 
 
-def graph_link_unitigs(i):
+def graph_link_unitigs(i,G):
     print("CREATING NEW LINKS")
     edge = edges[i]
-    #SNP_pos = read_snp(snp, edge, bam, AF)
-    #data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+    print(edge)
+    link_added = False
 
     clusters=[]
     try:
@@ -686,7 +772,7 @@ def graph_link_unitigs(i):
         als = als.to_dict('split')['data']
         neighbours={}
         orient={}
-
+        """
         for aln in als:
             al = aln[1]
             read = aln[0]
@@ -713,29 +799,85 @@ def graph_link_unitigs(i):
                     orient[n]=[fr_or, to_or]
                     neighbours[read]=n
                 except(UnboundLocalError): continue
-
-        print("neighbours")
-        print(set({k for k, v in Counter(neighbours.values()).items() if v > 1}))
-        #print(neighbours.values())
+        """
+        #print("neighbours")
+        #print(set({k for k, v in Counter(neighbours.values()).items() if v > 1}))
+        print(set(neighbours.values()))
 
 
 
         #if len(set({k for k, v in Counter(neighbours.values()).items() if v > 0})) == 0:
-        '''
-        for read in reads:
-                #print(data[read]["Lclip"])
-                #print(data[read]["Rclip"])
-                #print()
-                for n in data[read]["Lclip"]:
-                    neighbours[read]=n
-                    orient[n]=['+','+']
+        if 1==1:
+        #start
+            #SNP_pos = read_snp(snp, edge, bam, AF)
+            #data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+            data=all_data[edge]
+            for read in reads:
+                    #print(data[read]["Lclip"])
+                    # print(data[read]["Lclip"])
+                    for n, v in data[read]["Rclip"].items():
+                        #print(data[read]["Rclip"])
+                        try:
+                            if len(nx.shortest_path(G,n,edge))<=10:
+                                #neighbours[read]=n
+                                #orient[n]=['+','+']
+                                neighbours[read]=n
+                                #neighbours.append(n)
+                                #orient[n]=[v[1],v[0]]
+                                if v[0]=='+' and v[1]=='+':
+                                    orient[n] = ['+', '+']
+                                elif v[0] == '-' and v[1] == '-':
+                                    orient[n] = ['+', '+']
+                                else:
+                                    #orient[n]=[v[0],v[1]]
+                                    orient[n] = ['+', '-']
+                        except(nx.NetworkXNoPath):
+                            if v[0] == '+' and v[1] == '+':
+                                orient[n] = ['+', '+']
+                            elif v[0] == '-' and v[1] == '-':
+                                orient[n] = ['+', '+']
+                            else:
+                                # orient[n]=[v[0],v[1]]
+                                orient[n] = ['+', '-']
 
 
-                for n in data[read]["Lclip"]:
-                    neighbours[read]=n
-                    orient[n]=['-','-']'''
+                    ##for n in data[read]["Lclip"]:
+                    for n, v in data[read]["Lclip"].items():
+                        #print(data[read]["Lclip"])
+                        try:
+                            if len(nx.shortest_path(G, n, edge)) <= 10:
+                                #neighbours[read]=n
+                                #orient[n]=['-','-']
+                                neighbours[read]=n
+                                #neighbours.append(n)
+                                #orient[n] = [v[1], v[0]]
 
-        for n in set({k for k, v in Counter(neighbours.values()).items() if v > 1}):
+                                if v[0]=='+' and v[1]=='+':
+                                    orient[n] = ['-', '-']
+                                elif v[0] == '-' and v[1] == '-':
+                                    orient[n] = ['-', '-']
+                                else:
+                                    #orient[n]=[v[1], v[0]]
+                                    orient[n] = ['-', '+']
+                        except(nx.NetworkXNoPath):
+                            if v[0] == '+' and v[1] == '+':
+                                orient[n] = ['-', '-']
+                            elif v[0] == '-' and v[1] == '-':
+                                orient[n] = ['-', '-']
+                            else:
+                                # orient[n]=[v[1], v[0]]
+                                orient[n] = ['-', '+']
+                            #pass
+
+
+        #print(neighbours)
+        #print(set(neighbours))
+        #print(set(neighbours.values()))
+
+        for n in set({k for k, v in Counter(neighbours.values()).items() if v > 0}):
+        #for n in set({k for k, v in Counter(neighbours).items() if v > 4}):
+            #print(n)
+            #print(orient[n])
             fr_or=orient[n][0]
             to_or=orient[n][1]
             w=1
@@ -748,11 +890,12 @@ def graph_link_unitigs(i):
             for k, v in neighbours.items():
                 if v == n:
                     reads.append(k)
+            #print(reads)
             n_cl = cl_n.loc[cl_n['ReadName'].isin(reads), 'Cluster']
 
             n_cl_set = list(
                 set([x for x in list(n_cl) if Counter(list(n_cl))[x] / sum(Counter(list(n_cl)).values()) >= 0.2]))
-
+            #print(n_cl)
 
             if len(n_cl_set)==0:
                 try:
@@ -794,6 +937,7 @@ def graph_link_unitigs(i):
 
                 else:
                     add_link("%s_%s" % (edge, clN), fr_or, n, to_or,w)
+                    link_added = True
                     #n_cl_set = link_clusters_src[n]
             for i in n_cl_set:
                 try:
@@ -802,6 +946,53 @@ def graph_link_unitigs(i):
                         add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or,w)
                 except(gfapy.NotFoundError):
                     continue
+
+    if link_added==False:
+        print("restore links")
+        for d in g.dovetails:
+            repl=[]
+            if d.from_segment==edge:
+                if d.to_orient=='+':
+                    try:
+                        for i in link_clusters_src[d.to_segment.name]:
+                            repl.append(i)
+                    except(KeyError):
+                        pass
+                if d.to_orient == '-':
+                    try:
+                        for i in link_clusters_sink[d.to_segment.name]:
+                            repl.append(i)
+                    except(KeyError):
+                        pass
+                for i in repl:
+                    print(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
+                    try:
+                        g.add_line(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
+                    except(gfapy.error.NotUniqueError):
+                        pass
+            if d.to_segment==edge:
+                print(d.from_segment.name)
+                if d.from_orient == '+':
+                    try:
+                        for i in link_clusters_sink[d.from_segment.name]:
+                            repl.append(i)
+                    except(KeyError):
+                        pass
+                if d.from_orient == '-':
+                    try:
+                        for i in link_clusters_src[d.from_segment.name]:
+                            repl.append(i)
+                    except(KeyError):
+                        pass
+                for i in repl:
+                    print(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
+                    try:
+                        g.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
+                    except(gfapy.error.NotUniqueError):
+                        pass
+                #print(d.from_segment.name)
+                #link_clusters_src[d.from_segment.name]
+
 
 def test(g):
     #gfapy.Gfa.to_file(g, gfa_transformed)
@@ -819,11 +1010,12 @@ def test(g):
         test(g)
 
 
+G=gfa_to_nx(g)
 
 for i in range(0, len(edges)):
     graph_create_unitigs(i)
 for i in range(0, len(edges)):
-    graph_link_unitigs(i)
+    graph_link_unitigs(i,G)
 gfapy.Gfa.to_file(g,gfa_transformed)
 
 
