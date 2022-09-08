@@ -1,5 +1,6 @@
 import subprocess
 import os
+import shutil
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -7,18 +8,19 @@ from Bio.SeqRecord import SeqRecord
 
 from params import *
 
-
 """
 extract_reads
 Created by Tim Stuart
 based on https://timoast.github.io/blog/2015-10-12-extractreads/
 """
-def extract_reads(cluster_start, read_names, bam_file, output_file, edge=""):
+def extract_reads(read_names, bam_file, output_file, edge=""):
     bamfile = pysam.AlignmentFile(bam_file, "rb")
     name_indexed = pysam.IndexedReads(bamfile)
     name_indexed.build()
     header = bamfile.header.copy()
-    out = pysam.Samfile(output_file, "wb", header=header)
+    cluster_start = -1
+    cluster_end = -1
+    read_list = []  # stores to reads to be written after the cluster start/end is calculated
     for name in read_names:
         try:
             name_indexed.find(name)
@@ -28,28 +30,36 @@ def extract_reads(cluster_start, read_names, bam_file, output_file, edge=""):
             iterator = name_indexed.find(name)
             for x in iterator:
                 if x.reference_name == edge or edge == "":
+                    if x.reference_start < cluster_start or cluster_start == -1:
+                        cluster_start = x.reference_start
+                    if x.reference_end > cluster_end or cluster_end == -1:
+                        cluster_end = x.reference_end
                     edge = x.reference_name
-                    temp_dict = x.to_dict()
-                    temp_dict["ref_pos"] = str(int(temp_dict["ref_pos"]) - cluster_start)
-                    y = x.from_dict(temp_dict, x.header)  # create a new read from the modified dictionary
-                    out.write(y)
+                    read_list.append(x)
+
+    out = pysam.Samfile(output_file, "wb", header=header)
+    for x in read_list:
+        temp_dict = x.to_dict()
+        temp_dict["ref_pos"] = str(int(temp_dict["ref_pos"]) - cluster_start)
+        y = x.from_dict(temp_dict, x.header)  # create a new read from the modified dictionary
+        out.write(y)
+
     out.close()
-    return edge
+    return edge, cluster_start, cluster_end
 
 
 # compute the consensus for a single cluster and return it as a string
-def flye_consensus(edge, cl, cluster, data, cluster_start, cluster_end):
+def flye_consensus(edge, cl, cluster, data):
     # clusters: ID (int of the clusters)
     # cl: a .csv file under the clusters dir with fields (read name, cluster id)
 
-    print(f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}")
-
     reads_from_curr_cluster = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
     # TODO: use edge parameter
-    edge = extract_reads(cluster_start, reads_from_curr_cluster, bam, f"cluster_{cluster}_reads.bam")
+    edge, cluster_start, cluster_end = extract_reads(reads_from_curr_cluster, bam, f"cluster_{cluster}_reads.bam")
     g = gfapy.Gfa.from_file(gfa)  # read the gfa file
     # access the edge in the graph and cut according to the cluster start and end
-    edge_seq_cut = (g.line(edge)).sequence[cluster_start:]
+    edge_seq_cut = (g.line(edge)).sequence[cluster_start:cluster_end]
+    print(f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}, CLUSTER_END:{cluster_end}")
     # create a new fasta file with the sequence of the cut edge (will be an input to the Flye polisher)
     fname = f"{edge}-cluster{cluster}"
     record = SeqRecord(
@@ -68,7 +78,7 @@ def flye_consensus(edge, cl, cluster, data, cluster_start, cluster_end):
     subprocess.check_output(index_cmd, shell=True, capture_output=False)
     # run the Flye polisher
     polish_cmd = f"{flye} --polish-target output/{fname}.fa --pacbio-hifi cluster_{cluster}_reads_sorted.bam " \
-          f"-o output/flye_consensus_{edge}_{cluster}"
+                 f"-o output/flye_consensus_{edge}_{cluster}"
     subprocess.check_output(polish_cmd, shell=True, capture_output=False)
 
     # read back the output of the Flye polisher
@@ -79,9 +89,6 @@ def flye_consensus(edge, cl, cluster, data, cluster_start, cluster_end):
     os.remove(f"cluster_{cluster}_reads.bam")
     os.remove(f"cluster_{cluster}_reads_sorted.bam")
     os.remove(f"cluster_{cluster}_reads_sorted.bam.bai")
+    shutil.rmtree(f"output/flye_consensus_{edge}_{cluster}")
 
     return consensus.seq
-
-
-
-
