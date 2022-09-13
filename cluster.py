@@ -35,7 +35,7 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
 
 
     for index in cl.index:
-        cl.loc[index, 'Color'] = colors[cl.loc[index, 'Cluster']]
+        cl.loc[index, 'Color'] = colors[int(cl.loc[index, 'Cluster'])]
     G.remove_edges_from(list(nx.selfloop_edges(G)))
     nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5,
             node_color=cl['Color'])
@@ -60,19 +60,27 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
 
 def cluster(i):
     edge=edges[i]
-    print ("### Reading SNPs...")
-    SNP_pos=read_snp(snp,edge, bam, AF)
-    if len(SNP_pos)==0:
-        return
 
     #READ READS AND POSITIONS
+    print("### Reading SNPs...")
+    SNP_pos = read_snp(snp, edge, bam, AF)
     print ("### Reading Reads...")
     data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
+
     cl=pd.DataFrame(data={'ReadName': data.keys()})
+    print(str(len(cl['ReadName'])) + " reads found")
     cl['Cluster'] = 'NA'
-    print (str(len(cl['ReadName']))+" reads found")
     if len(cl['ReadName'])==0:
         return
+
+    if len(SNP_pos)==0:
+        data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+        cl = pd.DataFrame(data={'ReadName': data.keys()})
+        cl['Cluster'] = 1
+        cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
+        return
+
+
 
     #CALCULATE DISTANCE and ADJ MATRIX
     print ("### Calculatind distances/Building adj matrix...")
@@ -114,6 +122,10 @@ def cluster(i):
     cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
     print("### Graph viz...")
     clusters_vis_stats (G,cl, clN,uncl,SNP_pos, bam, edge, I, AF)
+    cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
+
+
+
 
 
 

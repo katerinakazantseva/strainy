@@ -100,21 +100,22 @@ def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots
     M = change_w(M, 1)
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
-
+    try:
+        G.remove_node(0)
+    except:
+        pass
     for e in G.edges():
         first_cl=e[0]
         second_cl=e[1]
         intersect = set(range(cons[first_cl]["Start"], cons[first_cl]["Stop"])).intersection(
             set(range(cons[second_cl]["Start"], cons[second_cl]["Stop"])))
         G[e[0]][e[1]]['weight'] = len(intersect)
-    print(full_clusters)
     for full_cluster in full_clusters:
         if strong_tail(full_cluster, cl, ln, "root", data)==True and strong_tail(full_cluster, cl, ln, "leaf", data)==True:
             G.remove_node(full_cluster)
             full_paths_roots.remove(full_cluster)
             full_paths_leafs.remove(full_cluster)
             #print("------------------")
-
     path_remove = []
     G=remove_nested(G, cons)
     G = remove_not_strong_tails(G, cl, cons, data, ln, full_paths_roots, full_paths_leafs)
@@ -141,6 +142,7 @@ def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots
 
 def remove_nested(G, cons):
     nodes=list(G.nodes())
+    print(G.nodes)
     for node in nodes:
         try:
             neighbors = nx.all_neighbors(G, node)
@@ -152,6 +154,7 @@ def remove_nested(G, cons):
                         continue
         except:
             continue
+    print(G.nodes)
     return (G)
 
 
@@ -170,6 +173,7 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
             for n_path in nx.algorithms.all_simple_paths(G_vis, node, neighbor):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
+
     #for n_path in path_remove:
         #try:
             #G_vis.remove_edge(n_path[0], n_path[1])
@@ -177,6 +181,8 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
             #print(n_path)
         #except:
             #continue
+
+
     for e in G_vis.edges():
         first_cl = e[0]
         second_cl = e[1]
@@ -395,6 +401,8 @@ def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
 
     seq = ''.join(seq)
     if cut==True:
+        print("CUTTING")
+        print(cl_consensuns["OTHER_%s" % edge]["Start"])
         seq = seq[cl_consensuns["OTHER_%s" % edge]["Start"]:cl_consensuns["OTHER_%s" % edge]["Stop"] + 1]
     i.sequence=seq
 
@@ -556,9 +564,7 @@ def strong_tail(cluster, cl, ln, type, data):
 
 def remove_not_strong_tails(G, cl,cons, data,ln, full_paths_roots, full_paths_leafs):
     path_remove=[]
-
     for cluster in full_paths_roots:
-
         if strong_tail(cluster, cl, ln, "root", data) == True:
             neighbors = nx.all_neighbors(G, cluster)
             for neighbor in list(neighbors):
@@ -595,6 +601,7 @@ def remove_not_strong_tails(G, cl,cons, data,ln, full_paths_roots, full_paths_le
     for n_path in path_remove:
         #print(n_path)
         G.remove_edge(n_path[0], n_path[1])
+
 
     return (G)
 
@@ -633,7 +640,28 @@ def graph_create_unitigs(i):
         all_data[edge]=data
         ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+
+        try:
+            clusters.remove(0)
+        except:
+            pass
         cons = build_data_cons(cl, SNP_pos, data)
+        print(clusters)
+        if len(clusters) == 1:
+            for cluster in clusters:
+                clStart=cons[cluster]["Start"]
+                clStop = cons[cluster]["Stop"]
+                if clStart < 3 and clStop == ln - 1:
+
+                    full_paths_roots.append(cluster)
+                    full_paths_leafs.append(cluster)
+
+                add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
+            link_clusters[edge] = list(clusters)
+            link_clusters_sink[edge] = list(clusters)
+            link_clusters_src[edge] = list(clusters)
+            remove_clusters.append(edge)
+
         if len(clusters)>1:
             for cluster in clusters:
                 clStart=cons[cluster]["Start"]
@@ -662,7 +690,6 @@ def graph_create_unitigs(i):
             #G = remove_not_strong_tails(G, cl, cons,data,ln,full_paths_roots,full_paths_leafs)
 
 
-
             full_cl[edge] = full_clusters
             cl_removed=paths_graph_add_vis(edge,cons, SNP_pos,cl,full_paths_roots, full_paths_leafs)
             try:
@@ -677,26 +704,35 @@ def graph_create_unitigs(i):
             add_path_links(edge, full_paths[edge], G)
             #print("paths links added")
 
+            print("CREATED clusters")
+
 
 
             othercl=list(set(clusters)-set(full_clusters)-set([j for i in full_paths[edge] for j in i])-set(cl_removed))
-            #print("OTHET")
 
             close_to_full=[]
+            print(othercl)
             for cluster in othercl.copy():
+                print(cluster)
                 M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
                 M = change_w(M, 1)
                 G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
                 neighbors = nx.all_neighbors(G, cluster)
-                if len(set(list(neighbors)).intersection(set(full_clusters)))>0:
+                A=set(neighbors)
+                B=set([j for i in full_paths[edge] for j in i])
+                #print(A)
+                #print(B)
+                #print(A.intersection(B))
+                if len(set(list(neighbors)).intersection(set(full_clusters)))>0 or len(A.intersection(B))>0:
                     othercl.remove(cluster)
                     close_to_full.append(cluster)
+                    print("REMOVE "+str(cluster))
 
-            if len(othercl)>0:
-                othercl=othercl+close_to_full
+            #if len(othercl)>0:
+                #othercl=othercl+close_to_full
 
 
-
+            print(othercl)
 
             new_cov=change_cov(g,edge,cons,ln,clusters,othercl)
             if new_cov<6 and len(clusters)-len(othercl)!=0: #PARAMETER
@@ -704,7 +740,7 @@ def graph_create_unitigs(i):
                 remove_clusters.append(edge)
             else:
                 #othercl=othercl+close_to_full
-                change_sec(g, edge, othercl, cl, SNP_pos, data)
+                change_sec(g, edge, othercl, cl, SNP_pos, data,True)
 
             link_clusters[edge] = list(full_clusters) + list(
                 set(full_paths_roots).intersection(set([j for i in full_paths[edge] for j in i]))) + list(
@@ -716,6 +752,11 @@ def graph_create_unitigs(i):
         else:
             change_sec(g, edge, [clusters[0]], cl, SNP_pos, data, False)
     except(FileNotFoundError, IndexError):
+        print("NO CLUSTERS")
+        cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
+        i = g.try_get_segment(edge)
+        print(cov)
+        i.dp = round(float(cov))
         pass
         clusters = []
     stats = open('output/stats_clusters.txt', 'a')
@@ -754,6 +795,8 @@ def graph_link_unitigs(i,G):
     except(FileNotFoundError):
         pass
     link_unitigs=[]
+
+
     for clN in set(clusters):
         try:
             if g.try_get_segment("%s_%s" % (edge, clN)):
@@ -761,48 +804,22 @@ def graph_link_unitigs(i,G):
         except:
             continue
 
-    #print(link_unitigs)
+    print(link_unitigs)
+
     #for clN in set(clusters):
     for clN in link_unitigs:
         print()
         print("START")
         print("%s_%s" % (edge, clN))
         reads = list(cl.loc[cl['Cluster'] == clN, 'ReadName'])
+        #print(reads)
         als = gaf.loc[gaf['ReadName'].isin(reads)]
         als = als.to_dict('split')['data']
         neighbours={}
         orient={}
-        """
-        for aln in als:
-            al = aln[1]
-            read = aln[0]
-            n=None
-            if re.search(">%s>.*" % edge, al):
-                fr_or="+"
-                to_or='+'
-                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*>%s>" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
-            if re.search("<%s<.*" % edge, al):
-                fr_or="-"
-                to_or='-'
-                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*<%s<" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
-            if re.search(">%s<.*" % edge, al):
-                fr_or="+"
-                to_or='-'
-                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*>%s<" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
-            if re.search("<%s>.*" % edge, al):
-                fr_or="-"
-                to_or='+'
-                n=re.sub("<.*" , "", re.sub(">.*" , "", re.sub(".*<%s>" % edge, "", al, count=0, flags=0), count=0, flags=0), count=0, flags=0)
-            if n!=None:
-                try:
-                    #common_reads[read]=[n,fr_or, to_or]
-                    orient[n]=[fr_or, to_or]
-                    neighbours[read]=n
-                except(UnboundLocalError): continue
-        """
         #print("neighbours")
         #print(set({k for k, v in Counter(neighbours.values()).items() if v > 1}))
-        print(set(neighbours.values()))
+        #print(set(neighbours.values()))
 
 
 
@@ -903,10 +920,13 @@ def graph_link_unitigs(i,G):
                     #add_link("%s_%s" % (edge, clN), fr_or, n, to_or)
                     #когда мы не находим соседей, соединяем со всеми
                     if n in remove_clusters:
-                        if clN in link_clusters_sink[edge]:
-                            n_cl_set = link_clusters_src[n] #
-                        if clN in link_clusters_src[edge]:
-                            n_cl_set = link_clusters_sink[n]
+                        try:
+                            if clN in link_clusters_sink[edge]:
+                                n_cl_set = link_clusters_src[n] #
+                            if clN in link_clusters_src[edge]:
+                                n_cl_set = link_clusters_sink[n]
+                        except(KeyError):
+                            pass
                         #for n_cluster in link_clusters_src[n]:
 
                     else:
@@ -929,10 +949,13 @@ def graph_link_unitigs(i,G):
             if link_added==False:
                 if n in remove_clusters:
                     #n_cl_set = link_clusters_src[n]
-                    if clN in link_clusters_sink[edge]:
-                        n_cl_set = link_clusters_src[n]  #
-                    if clN in link_clusters_src[edge]:
-                        n_cl_set = link_clusters_sink[n]
+                    try:
+                        if clN in link_clusters_sink[edge]:
+                            n_cl_set = link_clusters_src[n]  #
+                        if clN in link_clusters_src[edge]:
+                            n_cl_set = link_clusters_sink[n]
+                    except(KeyError):
+                        pass
                     # for n_cluster in link_clusters_src[n]:
 
                 else:
@@ -947,7 +970,7 @@ def graph_link_unitigs(i,G):
                 except(gfapy.NotFoundError):
                     continue
 
-    if link_added==False:
+    if link_added==False or edge not in remove_clusters:
         print("restore links")
         for d in g.dovetails:
             repl=[]

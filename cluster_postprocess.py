@@ -137,7 +137,8 @@ def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
     for group in groups:
         if len(group) > 0:
             for i in range(1, len(group)):
-                cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = list(group)[0]
+                #print(type(list(group)[0]))
+                cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = int(list(group)[0])
     return (cl)
 
 def postprocess (bam,cl,SNP_pos, data, edge, R, I):

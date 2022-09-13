@@ -33,7 +33,6 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
     data = {}
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     for read in bamfile.fetch(edge):
-
         clipping = 0
         start = read.get_reference_positions()[0]
         stop = read.get_reference_positions()[len(read.get_reference_positions()) - 1]
@@ -43,13 +42,17 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                 if i[1] > clipp:
                     clipping = 1
         #and read.is_supplementary == False
-        if read.mapping_quality>min_mapping_quality  and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
+        if read.mapping_quality>=min_mapping_quality  and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
                 int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) < 3  or int(stop) == int(ln) - 1):
 
             data[read.query_name] = {}
+            #print(read.query_name)
             data[read.query_name]["Start"]=start
             data[read.query_name]["Stop"] = stop
-            tags = read.get_tags()[9]
+            try:
+                tags = read.get_tags()[9]
+            except (IndexError):
+                tags=""
 
             left_clip = {}
             right_clip = {}
@@ -110,6 +113,7 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
 
 
         else:
+
             continue
 
 
