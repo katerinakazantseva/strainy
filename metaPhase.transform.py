@@ -8,6 +8,8 @@ import gfapy
 from collections import Counter, deque
 from build_data  import *
 from params import *
+import numpy as np
+from simplify_links import *
 
 g = gfapy.Gfa.from_file(gfa)
 stats = open('output/stats_clusters.txt', 'a')
@@ -46,6 +48,8 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
         new_line.dp = cons[clN]["Cov"]  # coverage
         print("edge added:" + str(new_line.name))
 
+'''
+
 def remove_link(fr,fr_or, to, to_or):
     res=False
     for i in g.dovetails:
@@ -53,47 +57,9 @@ def remove_link(fr,fr_or, to, to_or):
             g.rm(i)
             res=True
             print("remove line: " + str(i.from_segment) + str(i.from_orient) + " to " + str(i.to_segment) + str(i.to_orient))
-    return (res)
+    return (res)'''
 
-def remove_link_old(fr,fr_or, to, to_or):
-    res=False
-    for i in g.dovetails:
-        if (i.from_segment == fr and i.to_segment == to) or (i.from_segment == to and i.to_segment == fr) :
-            g.rm(i)
-            res=True
-            #print("remove line: " + str(i.from_segment) + str(i.from_orient) + " to " + str(i.to_segment) + str(i.to_orient))
-    return (res)
 
-def clear_links_weight(edge):
-    to_lines=[]
-    to_tags=[]
-    fr_lines=[]
-    fr_tags=[]
-    for d in g.dovetails:
-            if (d.from_segment==edge and d.from_orient=="+") or (d.to_segment==edge and d.from_orient=="-"):
-                if d.ex!=None:
-                    to_lines.append(d)
-                    to_tags.append(d.ex)
-            if (d.from_segment==edge and d.from_orient=="-") or (d.to_segment==edge and d.from_orient=="+"):
-                if d.ex != None:
-                    fr_lines.append(d)
-                    fr_tags.append(d.ex)
-    try:
-        max_index=to_tags.index(max(to_tags))
-        for i in to_lines:
-            if to_lines.index(i)!=max_index:
-                g.rm(i)
-                print("line removed: "+str(i))
-    except(ValueError):
-        pass
-    try:
-        max_index = fr_tags.index(max(fr_tags))
-        for i in fr_lines:
-            if fr_lines.index(i)!=max_index:
-                g.rm(i)
-                print("line removed: "+str(i))
-    except(ValueError):
-        pass
 
 def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
     M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
@@ -408,10 +374,7 @@ def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
 
 
 
-
-
-
-
+'''
 def to_neighbours(g,edge,orient):
     to_ng=[]
     for i in g.dovetails:
@@ -426,7 +389,6 @@ def to_neighbours(g,edge,orient):
     return (to_ng)
 
 
-
 def from_neighbours(g,edge, orient):
     from_ng=[]
     for i in g.dovetails:
@@ -438,7 +400,7 @@ def from_neighbours(g,edge, orient):
             if i.from_segment.name == edge and (i.from_orient=='-'):
                 nei = [i.to_segment.name, i.to_orient]
                 from_ng.append(nei)
-    return (from_ng)
+    return (from_ng) '''
 
 
 def cut(edge):
@@ -460,83 +422,6 @@ def cut(edge):
         res=True
     else: res=False
     return res
-
-def clear_links(edge):
-    print('-------------------')
-    print("CLEAR to + "+ str(edge))
-    changed=False
-    to_n=to_neighbours(g,edge,'+')
-    print(to_n)
-    if len(to_n)==1:
-        print(from_neighbours(g,to_n[0][0],to_n[0][1]))
-        for i in from_neighbours(g,to_n[0][0],to_n[0][1]):
-            print()
-            print(i)
-            print(to_neighbours(g,i[0],i[1]))
-            if len(to_neighbours(g,i[0],i[1]))>1:
-                remove_link(i[0],i[1], to_n[0][0],to_n[0][1])
-                print("remove")
-                changed = True
-    print()
-    print("CLEAR to - " + str(edge))
-    to_n=to_neighbours(g,edge,'-')
-    print(to_n)
-    if len(to_n)==1:
-        #print(from_neighbours(g,to_n[0][0],to_n[0][1]))
-        for i in from_neighbours(g,to_n[0][0],to_n[0][1]):
-            #print(to_neighbours(g,i[0],i[1]))
-            if len(to_neighbours(g,i[0],i[1]))>1:
-                remove_link(i[0],i[1], to_n[0][0],to_n[0][1])
-                changed = True
-
-    print("CLEAR from + " + str(edge))
-    from_n = from_neighbours(g, edge, '+')
-    print(from_n)
-    if len(from_n) == 1:
-        #print("len 1")
-        #print(to_neighbours(g, from_n[0][0], from_n[0][1]))
-        for i in to_neighbours(g, from_n[0][0], from_n[0][1]):
-            if len(from_neighbours(g, i[0], i[1])) > 1:
-                remove_link(from_n[0][0], from_n[0][1],i[0], i[1])
-                changed = True
-    print("CLEAR from - " + str(edge))
-    from_n = from_neighbours(g, edge, '-')
-    if len(from_n) == 1:
-        for i in to_neighbours(g, from_n[0][0], from_n[0][1]):
-            if len(from_neighbours(g, i[0], i[1])) > 1:
-                remove_link(from_n[0][0], from_n[0][1],i[0], i[1])
-                changed = True
-    print("  ")
-    return (changed)
-
-
-
-
-def clear_links2(edge):
-    changed=False
-    to_n=to_neighbours(g,edge,'+')
-    edge_cov=g.try_get_segment(edge).dp
-    if edge_cov==0:
-        pass
-    elif len(to_n)==1 and g.try_get_segment(to_n[0][0]).dp/edge_cov<1.6:
-    #if len(to_n) == 1:
-        for i in from_neighbours(g,to_n[0][0],to_n[0][1]):
-            if len(to_neighbours(g,i[0],i[1]))>1:
-                changed=remove_link(i[0],i[1], to_n[0][0],to_n[0][1])
-
-    from_n = from_neighbours(g, edge, '+')
-    if edge_cov==0:
-        pass
-    elif len(from_n) == 1 and g.try_get_segment(from_n[0][0]).dp/edge_cov<1.6:
-    #if len(from_n) == 1:
-        for i in to_neighbours(g, from_n[0][0], from_n[0][1]):
-            if len(from_neighbours(g, i[0], i[1])) > 1:
-                changed=remove_link(from_n[0][0], from_n[0][1],i[0], i[1])
-                #changed = True
-    return (changed)
-
-
-
 
 
 
@@ -636,8 +521,13 @@ def graph_create_unitigs(i):
     try:
         cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
         SNP_pos = read_snp(snp, edge,bam, AF)
-        data = read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
-        all_data[edge]=data
+        # Save
+        try:
+            data=all_data[edge]
+        except(KeyError, FileNotFoundError):
+            data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+            all_data[edge]=data
+
         ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
@@ -813,8 +703,8 @@ def graph_link_unitigs(i,G):
         print("%s_%s" % (edge, clN))
         reads = list(cl.loc[cl['Cluster'] == clN, 'ReadName'])
         #print(reads)
-        als = gaf.loc[gaf['ReadName'].isin(reads)]
-        als = als.to_dict('split')['data']
+        #als = gaf.loc[gaf['ReadName'].isin(reads)]
+        #als = als.to_dict('split')['data']
         neighbours={}
         orient={}
         #print("neighbours")
@@ -910,10 +800,14 @@ def graph_link_unitigs(i,G):
             #print(reads)
             n_cl = cl_n.loc[cl_n['ReadName'].isin(reads), 'Cluster']
 
-            n_cl_set = list(
-                set([x for x in list(n_cl) if Counter(list(n_cl))[x] / sum(Counter(list(n_cl)).values()) >= 0.2]))
-            #print(n_cl)
+            #n_cl_set = list(
+                #set([x for x in list(n_cl) if Counter(list(n_cl))[x] / sum(Counter(list(n_cl)).values()) >= 0.001]))
+            #print(Counter(list(n_cl)))
 
+            n_cl_set = list(set([x for x in list(Counter(list(n_cl))) if Counter(list(n_cl))[x]  >= 3]))
+            print(Counter(list(n_cl)))
+            print("nei "+str(n) +"cl "+str(n_cl_set))
+            '''
             if len(n_cl_set)==0:
                 try:
 
@@ -934,6 +828,7 @@ def graph_link_unitigs(i,G):
                         #n_cl_set=link_clusters_src[n]
                 except (KeyError):
                     continue
+            '''
 
             link_added=False
 
@@ -969,6 +864,9 @@ def graph_link_unitigs(i,G):
                         add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or,w)
                 except(gfapy.NotFoundError):
                     continue
+
+
+
 
     if link_added==False or edge not in remove_clusters:
         print("restore links")
@@ -1035,8 +933,13 @@ def test(g):
 
 G=gfa_to_nx(g)
 
+try:
+    all_data = np.load("output/all_data.npy" , allow_pickle='TRUE').item()
+except(FileNotFoundError):
+    pass
 for i in range(0, len(edges)):
     graph_create_unitigs(i)
+    np.save("output/all_data.npy", all_data)
 for i in range(0, len(edges)):
     graph_link_unitigs(i,G)
 gfapy.Gfa.to_file(g,gfa_transformed)
@@ -1052,7 +955,7 @@ for link in g.dovetails:
 
 gfapy.Gfa.to_file(g,gfa_transformed)
 
-test(g)
+simplify_links(g)
 
 
 gfapy.Gfa.to_file(g,gfa_transformed1)
