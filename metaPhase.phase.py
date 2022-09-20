@@ -15,7 +15,7 @@ for dir in dirs:
          os.mkdir(dir)
 
 def phase(edges):
-    pool = multiprocessing.Pool(2)
+    pool = multiprocessing.Pool(3)
     pool.map(cluster, range(0, len(edges)))
     pool.close()
 
@@ -27,7 +27,9 @@ def col(edges):
     #subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True,capture_output=False)
     #pysam.samtools.index("output/bam/coloredBAM.bam", "output/bam/coloredBAM.bai")
 
-
+import numpy as np
+all_data={}
+#np.save("output/all_data.npy", all_data)
 
 
 if __name__ == "__main__":

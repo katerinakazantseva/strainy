@@ -59,13 +59,22 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
 
 
 def cluster(i):
-    edge=edges[i]
 
+
+    edge=edges[i]
     #READ READS AND POSITIONS
     print("### Reading SNPs...")
     SNP_pos = read_snp(snp, edge, bam, AF)
     print ("### Reading Reads...")
-    data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
+    #try:
+        #all_data = np.load("output/all_data.npy", allow_pickle='TRUE').item()
+        #data=all_data[edge]
+    #except(KeyError):
+        #pass
+        #data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
+        #all_data[edge]=data
+    #np.save("output/all_data.npy", all_data)
+    data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
 
     cl=pd.DataFrame(data={'ReadName': data.keys()})
     print(str(len(cl['ReadName'])) + " reads found")

@@ -63,6 +63,7 @@ def from_neighbours(g,edge, orient):
 
 
 def simplify_links(g):
+
     repeat=False
     for edge in g.segment_names:
         changed = clear_links(edge,g)
@@ -70,7 +71,7 @@ def simplify_links(g):
             repeat=True
 
     if repeat ==True:
-        test(g)
+        simplify_links(g)
 
 def clear_links(edge,g):
     changed=False

@@ -43,7 +43,7 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                     clipping = 1
         #and read.is_supplementary == False
         if read.mapping_quality>=min_mapping_quality  and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
-                int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) < 3  or int(stop) == int(ln) - 1):
+                int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) < 5  or int(stop) > int(ln) - 5):
 
             data[read.query_name] = {}
             #print(read.query_name)
@@ -53,11 +53,12 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                 tags = read.get_tags()[9]
             except (IndexError):
                 tags=""
-
+            #print(tags)
             left_clip = {}
             right_clip = {}
 
             if re.search("SA", str(tags)):
+
 
                 #if start==0 and stop ==  int(ln) - 1:
                 #if read.cigartuples[0][0] == 4 and read.cigartuples[len(read.cigartuples) - 1][0] == 4:
@@ -101,6 +102,14 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                             elif l==read.cigartuples[len(read.cigartuples) - 1][1]:
                                 orient = '+' if read.is_reverse == False else '-'
                                 right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
+                            elif l>read.cigartuples[0][1]:
+                                orient = '+' if read.is_reverse == False else '-'
+                                right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
+                            elif l> read.cigartuples[len(read.cigartuples) - 1][1]:
+                                orient = '+' if read.is_reverse == False else '-'
+                                left_clip[i.split(',')[0]] = [i.split(',')[2], orient]
+
+
 
 
 
@@ -110,6 +119,8 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
 
             data[read.query_name]["Rclip"]=right_clip
             data[read.query_name]["Lclip"]=left_clip
+            #print(right_clip)
+            #print(left_clip)
 
 
         else:
