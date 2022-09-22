@@ -11,6 +11,8 @@ import pygraphviz as gv
 import pylab
 from community_detection import find_communities
 from more_itertools import sort_together
+from flye_consensus import cluster_distance_via_alignment
+from params import bam
 
 
 
@@ -54,7 +56,7 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
 
 
 
-def build_adj_matrix_clusters (cons, SNP_pos,cl,only_with_common_snip=True):
+def build_adj_matrix_clusters (cons, SNP_pos,cl, edge, only_with_common_snip=True):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     Y=[]
     X=[]
@@ -70,6 +72,11 @@ def build_adj_matrix_clusters (cons, SNP_pos,cl,only_with_common_snip=True):
         sorted_by_pos.append(i[0])
     clusters=sorted(set(sorted_by_pos) & set(clusters), key=sorted_by_pos.index)
     m = pd.DataFrame(-1, index=clusters, columns=clusters)
+    # bam file and read and indexed here, will be used in all calls to cluster_distance_via_alignment
+    bam_file = pysam.AlignmentFile(bam, "rb")
+    name_indexed = pysam.IndexedReads(bam_file)
+    name_indexed.build()
+    bam_header = bam_file.header.copy()
     for i in range(0,m.shape[1]):
         first_cl=m.index[i]
         for k in range(i+1,m.shape[1]):
@@ -77,17 +84,20 @@ def build_adj_matrix_clusters (cons, SNP_pos,cl,only_with_common_snip=True):
 
             if m[second_cl][first_cl]==-1:
                 if only_with_common_snip==True:
-                    m[second_cl][first_cl] = distance_clusters(first_cl,second_cl, cons,SNP_pos)
+                    # TODO: what does only_with_common_snip mean?
+                    m[second_cl][first_cl] = cluster_distance_via_alignment(first_cl, second_cl, cl, name_indexed,
+                                                                            bam_header, edge)
                 else:
-                    m[second_cl][first_cl] = distance_clusters(first_cl, second_cl, cons, SNP_pos,False)
+                    m[second_cl][first_cl] = cluster_distance_via_alignment(first_cl, second_cl, cl, name_indexed,
+                                                                            bam_header, edge)
     return (m)
 
 
 def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
     if only_with_common_snip==False:
-        M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+        M = build_adj_matrix_clusters(cons, SNP_pos, cl, edge, False) # pass edge as a parameter
     else:
-        M = build_adj_matrix_clusters(cons, SNP_pos, cl)
+        M = build_adj_matrix_clusters(cons, SNP_pos, cl, edge) # pass edge as a parameter
 
     M=change_w(M,R)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)

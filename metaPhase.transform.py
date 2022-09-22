@@ -8,6 +8,7 @@ import gfapy
 from collections import Counter, deque
 from build_data  import *
 from params import *
+from flye_consensus import flye_consensus
 
 g = gfapy.Gfa.from_file(gfa)
 stats = open('output/stats_clusters.txt', 'a')
@@ -32,7 +33,10 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
                 except (ValueError, KeyError):
                     continue
     seq = ''.join(seq)
-    seq = seq[left:righ+1]
+    try:
+        seq = seq[left:righ+1]
+    except TypeError:
+        seq = seq[left]
     #print(len(seq))
 
     if len(seq)==0:
@@ -92,8 +96,8 @@ def clear_links_weight(edge):
     except(ValueError):
         pass
 
-def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
-    M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs, edge):
+    M = build_adj_matrix_clusters(cons, SNP_pos, cl, edge, False) # How to get the edge
     M = change_w(M, 1)
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
@@ -149,7 +153,7 @@ def remove_nested(G, cons):
 
 
 def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs):
-    M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+    M = build_adj_matrix_clusters(cons, SNP_pos, cl, edge, False) # pass edge as a parameter
     M = change_w(M, 1)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
@@ -353,34 +357,13 @@ def change_cov(g,edge,cons,ln,clusters,othercl):
     return(cov)
 
 def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
-    temp={}
-    other_cl=cl
-    for cluster in othercl:
-        other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
-    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp)
-
-    for i in g.segments:
-        if i == edge:
-            seq = i.sequence
-            seq = list(seq)
-            for key, val in cl_consensuns["OTHER_%s" %edge].items():
-                try:
-                    #seq[int(key)] = val
-                    seq[int(key) - 1] = val
-                    #print("changed")
-                except (ValueError):
-                    continue
-
-
-            seq = ''.join(seq)
-            if cut==True:
-                seq = seq[cl_consensuns["OTHER_%s" % edge]["Start"]:cl_consensuns["OTHER_%s" % edge]["Stop"] + 1]
-            i.sequence=seq
-
-
-
-
-
+    # bam file and read and indexed here, will be used in all calls to cluster_distance_via_alignment
+    bam_file = pysam.AlignmentFile(bam, "rb")
+    name_indexed = pysam.IndexedReads(bam_file)
+    name_indexed.build()
+    bam_header = bam_file.header.copy()
+    consensus = flye_consensus("OTHER_%s" %edge, edge, cl, name_indexed, bam_header)
+    g.line(edge).sequence = consensus
 
 
 def to_neighbours(g,edge,orient):
@@ -547,7 +530,10 @@ def remove_not_strong_tails(G, cl,cons, data,ln, full_paths_roots, full_paths_le
             #print(cons[cluster]["Stop"])
     for n_path in path_remove:
         #print(n_path)
-        G.remove_edge(n_path[0], n_path[1])
+        try:
+            G.remove_edge(n_path[0], n_path[1])
+        except:
+            print('tried to remove non-existant edge')
 
     return (G)
 
@@ -595,7 +581,7 @@ def graph_create_unitigs(i):
                 elif clStop == ln - 1:
                     full_paths_leafs.append(cluster)
             #G = build_paths_graph(SNP_pos, cl, cons, full_clusters)
-            G=build_paths_graph(SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs)
+            G=build_paths_graph(SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs, edge) # pass edge as a parameter
             #G = remove_not_strong_tails(G, cl, cons,data,ln,full_paths_roots,full_paths_leafs)
 
 
@@ -840,7 +826,7 @@ gfapy.Gfa.to_file(g,gfa_transformed)
 test(g)
 
 
-gfapy.Gfa.to_file(g,gfa_transformed1)
+# gfapy.Gfa.to_file(g,gfa_transformed1)
 gfapy.GraphOperations.merge_linear_paths(g)
-gfapy.Gfa.to_file(g,gfa_transformed2)
+# gfapy.Gfa.to_file(g,gfa_transformed2)
 
