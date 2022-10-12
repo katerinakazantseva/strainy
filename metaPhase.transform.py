@@ -62,6 +62,8 @@ def remove_link(fr,fr_or, to, to_or):
 
 
 def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
+    print(full_paths_roots)
+    print(full_paths_leafs)
 
     M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
     M = change_w(M, 1)
@@ -109,6 +111,7 @@ def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots
     #G = remove_not_strong_tails(G, cl, cons, data, ln, full_paths_roots, full_paths_leafs)
 
 
+
     for node in node_remove:
         try:
             G.remove_node(node)
@@ -117,6 +120,7 @@ def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots
             full_paths_leafs.remove(node)
         except:
             continue
+
 
 
     for node in G.nodes():
@@ -248,9 +252,17 @@ def add_path_links(edge, paths, G):
 
 
 
-def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs, cons):
+def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters  ,cons):
 
     path_cl = []
+    print("ADD PATH")
+    for node in full_clusters:
+        try:
+            paths_roots.remove(node)
+            paths_leafs.remove(node)
+        except:
+            pass
+
 
     for path in paths[edge]:
         for member in path:
@@ -264,7 +276,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for path_cluster in set(path_cl):
         cut_l_unsorted[path_cluster] = None
         cut_r_unsorted[path_cluster] = None
-        if path_cluster in paths_roots and cons[path_cluster]["Start"]<3 :
+        if path_cluster in paths_roots and cons[path_cluster]["Start"]<10 :
 
             cut_l_unsorted[path_cluster] = 0
             #cut_r[path_cluster] = None
@@ -472,13 +484,13 @@ def strong_tail(cluster, cl, ln, data):
             if count_start == 10000:
                 count_start = 0
             count_start=count_start+1
-        if data[read]["Stop"] == ln - 5:
+        if data[read]["Stop"] > ln - 5:
             if count_stop == 10000:
                 count_stop = 0
             count_stop = count_stop + 1
-    if count_start>2:
+    if count_start>2 and count_start!=10000:
         res[0] = True
-    if count_stop>2:
+    if count_stop>2 and count_stop!=10000:
         res[1] = True
     return (res)
 
@@ -566,8 +578,10 @@ def graph_create_unitigs(i):
             all_data[edge]=data
 
         ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
+        if len(cl.loc[cl['Cluster'] == 0]['Cluster'].values)>10:
+            cl.loc[cl['Cluster'] == 0, 'Cluster'] = 1000000
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
-
+        print(clusters)
         try:
             clusters.remove(0)
         except:
@@ -591,10 +605,12 @@ def graph_create_unitigs(i):
 
         if len(clusters)>1:
             for cluster in clusters:
-
+                #print(cluster)
+                #print(strong_tail(cluster, cl, ln, data))
                 clStart=cons[cluster]["Start"]
                 clStop = cons[cluster]["Stop"]
                 if clStart < 5 and clStop > ln - 5:
+
                     #full_paths_roots.append(cluster)
                     #full_paths_leafs.append(cluster)
                     if strong_tail(cluster, cl, ln, data)[0] == True and strong_tail(cluster, cl, ln,
@@ -610,10 +626,12 @@ def graph_create_unitigs(i):
                     full_paths_roots.append(cluster)
 
                 if clStop > ln - 5 and strong_tail(cluster, cl, ln, data)[1] == True:
+                    #print("True")
                     full_paths_leafs.append(cluster)
 
             #G = build_paths_graph(SNP_pos, cl, cons, full_clusters)
             G=build_paths_graph(SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs)
+
             #G = remove_not_strong_tails(G, cl, cons,data,ln,full_paths_roots,full_paths_leafs)
 
 
@@ -625,7 +643,7 @@ def graph_create_unitigs(i):
             except(ValueError):
                 pass
 
-            add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,cons)
+            add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,full_clusters,cons)
             #print("paths clusters added")
             #print(G)
             add_path_links(edge, full_paths[edge], G)
@@ -747,6 +765,7 @@ def graph_link_unitigs(i,G):
         if 1==1:
             data=all_data[edge]
             for read in reads:
+                    #print(data[read]["Lclip"])
 
 
                     for n, v in data[read]["Rclip"].items():
@@ -982,7 +1001,9 @@ for link in g.dovetails:
 
 gfapy.Gfa.to_file(g,gfa_transformed)
 
-#simplify_links(g)
+
+
+simplify_links(g)
 
 
 gfapy.Gfa.to_file(g,gfa_transformed1)

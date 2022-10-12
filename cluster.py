@@ -60,7 +60,6 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
 
 def cluster(i):
 
-
     edge=edges[i]
     #READ READS AND POSITIONS
     print("### Reading SNPs...")
@@ -75,7 +74,6 @@ def cluster(i):
         #all_data[edge]=data
     #np.save("output/all_data.npy", all_data)
     data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
-
     cl=pd.DataFrame(data={'ReadName': data.keys()})
     print(str(len(cl['ReadName'])) + " reads found")
     cl['Cluster'] = 'NA'
@@ -94,7 +92,6 @@ def cluster(i):
     #CALCULATE DISTANCE and ADJ MATRIX
     print ("### Calculatind distances/Building adj matrix...")
     m=build_adj_matrix(cl, data, SNP_pos, I, bam, edge, R)
-
     m.to_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF))
     #m=pd.read_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF),index_col='ReadName')
     print("### Removing overweighed egdes...")

@@ -74,16 +74,24 @@ def simplify_links(g):
         simplify_links(g)
 
 def clear_links(edge,g):
+    try:
+        i=g.try_get_segment(edge)
+        edge_cov = int(i.dp)
+        if edge_cov==0:
+            edge_cov=0.1
+    except:
+        edge_cov = 0.1
+        pass
     changed=False
     to_n=to_neighbours(g,edge,'+')
-    if len(to_n)==1: #and g.try_get_segment(to_n[0][0]).dp/edge_cov<1.6:
+    if len(to_n)==1 and g.try_get_segment(to_n[0][0]).dp/edge_cov<1.6:
         for i in from_neighbours(g,to_n[0][0],to_n[0][1]):
             if i[0] != edge:
                 if len(to_neighbours(g,i[0],i[1]))>1:
                     changed=remove_link(i[0],i[1], to_n[0][0],to_n[0][1],g)
 
     from_n = from_neighbours(g, edge, '+')
-    if len(from_n) == 1: # and g.try_get_segment(from_n[0][0]).dp/edge_cov<1.6:
+    if len(from_n) == 1 and g.try_get_segment(from_n[0][0]).dp/edge_cov<1.6:
         for i in to_neighbours(g, from_n[0][0], from_n[0][1]):
             if i[0]!=edge:
                 if len(from_neighbours(g, i[0], i[1])) > 1:
