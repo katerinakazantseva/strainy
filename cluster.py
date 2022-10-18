@@ -14,9 +14,6 @@ import numpy as np
 
 
 
-
-
-
 def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 0
     cmap = plt.get_cmap('viridis')
@@ -59,7 +56,6 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
 
 
 def cluster(i):
-
     edge=edges[i]
     #READ READS AND POSITIONS
     print("### Reading SNPs...")
@@ -111,7 +107,7 @@ def cluster(i):
 
     for value in set(cluster_membership.values()):
         group = [k for k, v in cluster_membership.items() if v == value]
-        if len(group) > 3:
+        if len(group) >= min_cluster_size:
             clN = clN + 1
             cl['Cluster'][group] = value
         else:
@@ -129,8 +125,6 @@ def cluster(i):
     print("### Graph viz...")
     clusters_vis_stats (G,cl, clN,uncl,SNP_pos, bam, edge, I, AF)
     cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
-
-
 
 
 

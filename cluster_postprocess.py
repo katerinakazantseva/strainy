@@ -17,7 +17,7 @@ from more_itertools import sort_together
 def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
     print("Strange cluster detected")
     reads=sorted(set(cl.loc[cl['Cluster'] == cluster]['ReadName'].values))
-    if cluster==1000000:
+    if cluster==unclustered_group_N: #NA cluster
         print("Build na matrix")
         m = build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam, edge, R, only_with_common_snip=False)
     else:
@@ -34,20 +34,19 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
 
     for value in set(cluster_membership.values()):
         group = [k for k, v in cluster_membership.items() if v == value]
-
-        if len(group) > 2:
+        if len(group) > min_cluster_size:
             clN = clN + 1
-            child_clusters.append(cluster+10000+clN)
+            child_clusters.append(cluster+split_id+clN)
             for i in group:
-                cl.loc[cl['ReadName'] == reads[i], "Cluster"] =  cluster+10000+clN
+                cl.loc[cl['ReadName'] == reads[i], "Cluster"] =  cluster+split_id+clN
 
         else:
             uncl = uncl + 1
             for i in group:
-                if cluster==1000000:
+                if cluster==unclustered_group_N:
                     cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 'NA'
                 else:
-                    cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 1000000
+                    cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N
 
     print(str(clN)+" new clusters found")
 
@@ -153,9 +152,9 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
                 cluster=child
                 cluster_consensuns(cl,cluster,SNP_pos, data, cons)
 
-    if len(cl.loc[cl['Cluster'] == 1000000]['ReadName'].values) != 0:
-        cluster_consensuns(cl, 1000000, SNP_pos, data, cons)
-        cluster = 1000000
+    if len(cl.loc[cl['Cluster'] == unclustered_group_N]['ReadName'].values) != 0:
+        cluster_consensuns(cl, unclustered_group_N, SNP_pos, data, cons)
+        cluster = unclustered_group_N
         val=cons[cluster]
         clSNP = SNP_pos
         child_clusters = []

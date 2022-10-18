@@ -23,9 +23,9 @@ def col(edges):
     pool = multiprocessing.Pool(1)
     pool.map(color, range(0, len(edges)))
     pool.close()
-    #subprocess.check_output('samtools merge output/bam/coloredBAM.bam -f `find output/bam -name "*edge*.bam"`', shell=True, capture_output=False)
-    #subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True,capture_output=False)
-    #pysam.samtools.index("output/bam/coloredBAM.bam", "output/bam/coloredBAM.bai")
+    subprocess.check_output('samtools merge output/bam/coloredBAM.bam -f `find output/bam -name "*edge*.bam"`', shell=True, capture_output=False)
+    subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True,capture_output=False)
+    pysam.samtools.index("output/bam/coloredBAM.bam", "output/bam/coloredBAM.bai")
 
 import numpy as np
 all_data={}

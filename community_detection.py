@@ -3,7 +3,6 @@ from networkx.algorithms import community
 import networkx as nx
 
 
-
 def find_communities(G):
     to_remove = [(a, b) for a, b, attrs in G.edges(data=True) if attrs["weight"] == 0]
     G.remove_edges_from(to_remove)
