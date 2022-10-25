@@ -3,6 +3,7 @@ import subprocess
 import os
 import shutil
 import random
+import re
 
 import pysam
 from Bio import SeqIO, Align
@@ -13,11 +14,13 @@ from params import *
 
 
 class FlyeConsensus:
-    def __init__(self, bam_file_name, gfa_file_name, consensus_dict={}, lock=None):
+    def __init__(self, bam_file_name, gfa_file_name, num_processes=1, consensus_dict={}, lock=None):
         self._bam_file = pysam.AlignmentFile(bam_file_name, "rb")
 
-        self._name_indexed = pysam.IndexedReads(self._bam_file)
-        self._name_indexed.build()
+        self._name_indexed_list = []
+        for i in range(num_processes):
+            self._name_indexed_list.append(pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb")))
+            self._name_indexed_list[i].build()
 
         self._bam_header = self._bam_file.header.copy()
         self._gfa_file = gfapy.Gfa.from_file(gfa_file_name)
@@ -26,7 +29,6 @@ class FlyeConsensus:
 
         self._key_hit = 0
         self._key_miss = 0
-
 
     def get_consensus_dict(self):
         return self._consensus_dict.copy()
@@ -38,32 +40,31 @@ class FlyeConsensus:
 
     def extract_reads(self, read_names, output_file, edge=""):
         """
-            based on the code by Tim Stuart https://timoast.github.io/blog/2015-10-12-extractreads/
-            Extract the reads given query names to a new bam file
+        based on the code by Tim Stuart https://timoast.github.io/blog/2015-10-12-extractreads/
+        Extract the reads given query names to a new bam file
         """
         cluster_start = -1
         cluster_end = -1
+        pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
 
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
         for name in read_names:
             try:
-                self._name_indexed.find(name)
+                self._name_indexed_list[pid].find(name)
             except KeyError:
                 pass
             else:
-                iterator = self._name_indexed.find(name)
-                try:
-                    with self._lock:
-                        for x in iterator:
-                            if x.reference_name == edge:
-                                if x.reference_start < cluster_start or cluster_start == -1:
-                                    cluster_start = x.reference_start
-                                if x.reference_end > cluster_end or cluster_end == -1:
-                                    cluster_end = x.reference_end
-                                read_list.append(x)
-                except OSError as e:
-                    print(e)
+                iterator = self._name_indexed_list[pid].find(name)
+                with self._lock:
+                    for x in iterator:
+                        if x.reference_name == edge:
+                            if x.reference_start < cluster_start or cluster_start == -1:
+                                cluster_start = x.reference_start
+                            if x.reference_end > cluster_end or cluster_end == -1:
+                                cluster_end = x.reference_end
+                            read_list.append(x)
 
+                    print("Error in extract_reads")
         out = pysam.Samfile(output_file, "wb", header=self._bam_header)
         for x in read_list:
             temp_dict = x.to_dict()
@@ -93,8 +94,9 @@ class FlyeConsensus:
         # Flye polisher
         reads_from_curr_cluster = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
         salt = random.randint(1000, 10000)
+        fprefix = "output/flye_inputs/"
         cluster_start, cluster_end = self.extract_reads(reads_from_curr_cluster,
-                                                        f"cluster_{cluster}_reads_{salt}.bam", edge)
+                                                        f"{fprefix}cluster_{cluster}_reads_{salt}.bam", edge)
 
         print((f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}, CLUSTER_END:{cluster_end}, EDGE:{edge},"
                f"# OF READS:{len(reads_from_curr_cluster)}"))
@@ -102,22 +104,23 @@ class FlyeConsensus:
         # access the edge in the graph and cut its sequence according to the cluster start and end positions
         # this sequence is written to a fasta file to be used by the Flye polisher
         edge_seq_cut = (self._gfa_file.line(edge)).sequence[cluster_start:cluster_end]
-        fname = f"{edge}-cluster{cluster}-{salt}"
+        fname = f"{fprefix}{edge}-cluster{cluster}-{salt}"
         record = SeqRecord(
             Seq(edge_seq_cut),
             id=f"{edge}",
             name=f"{edge} sequence cut for cluster {cluster}",
             description=""
         )
-        SeqIO.write([record], f"output/{fname}.fa", "fasta")
+        SeqIO.write([record], f"{fname}.fa", "fasta")
 
         # sort the bam file
-        pysam.sort("-o", f"cluster_{cluster}_reads_sorted_{salt}.bam", f"cluster_{cluster}_reads_{salt}.bam")
+        pysam.sort("-o", f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam",
+                   f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
         # index the bam file
-        pysam.index(f"cluster_{cluster}_reads_sorted_{salt}.bam")
-        polish_cmd = f"{flye} --polish-target output/{fname}.fa " \
-                     f"--pacbio-hifi cluster_{cluster}_reads_sorted_{salt}.bam " \
-                     f"-o output/flye_consensus_{edge}_{cluster}_{salt}"
+        pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
+        polish_cmd = f"{flye} --polish-target {fname}.fa " \
+                     f"--pacbio-hifi {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
+                     f"-o output/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             subprocess.check_output(polish_cmd, shell=True, capture_output=False)
         except subprocess.CalledProcessError as e:
@@ -133,18 +136,20 @@ class FlyeConsensus:
 
         try:
             # read back the output of the Flye polisher
-            consensus = SeqIO.read(f"output/flye_consensus_{edge}_{cluster}_{salt}/polished_1.fasta", "fasta")
+            consensus = SeqIO.read(f"output/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/polished_1.fasta",
+                                   "fasta")
         except ImportError as e:
             # If there is an error, the sequence string is set to empty by default
+            print("WARNING: error reading back the flye output, defaulting to empty sequence for consensus")
             consensus = SeqRecord(
                 seq=''
             )
         # delete the created input files to Flye
-        os.remove(f"output/{fname}.fa")
-        os.remove(f"cluster_{cluster}_reads_{salt}.bam")
-        os.remove(f"cluster_{cluster}_reads_sorted_{salt}.bam")
-        os.remove(f"cluster_{cluster}_reads_sorted_{salt}.bam.bai")
-        shutil.rmtree(f"output/flye_consensus_{edge}_{cluster}_{salt}")
+        os.remove(f"{fname}.fa")
+        os.remove(f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
+        os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
+        os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
+        shutil.rmtree(f"output/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
 
         with self._lock:
             self._consensus_dict[consensus_dict_key] = {

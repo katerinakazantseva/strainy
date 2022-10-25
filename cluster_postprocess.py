@@ -56,8 +56,7 @@ def build_adj_matrix_clusters (cons, cl, edge, flye_consensus, only_with_common_
         for k in range(i+1,m.shape[1]):
             second_cl = m.index[k]
             if m[second_cl][first_cl] == -1:
-                m[second_cl][first_cl] = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl,
-                                                                                       edge)
+                m[second_cl][first_cl] = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
     return m
 
 

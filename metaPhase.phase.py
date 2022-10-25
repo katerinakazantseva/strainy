@@ -17,7 +17,8 @@ dirs = ("output/",
         "output/clusters/",
         "output/graphs/",
         "output/bam/",
-        "output/consensus")
+        "output/flye_inputs",
+        "output/flye_outputs")
 for dir in dirs:
     try:
         os.stat(dir)
@@ -36,8 +37,9 @@ def phase(edges):
         default_manager = multiprocessing.Manager()
         lock = default_manager.Lock()
         empty_consensus_dict = {}
-        shared_flye_consensus = manager.FlyeConsensus(bam, gfa, empty_consensus_dict, lock)
-        pool = multiprocessing.Pool(4)
+        num_processes = multiprocessing.cpu_count() if processes == -1 else processes
+        shared_flye_consensus = manager.FlyeConsensus(bam, gfa, num_processes, empty_consensus_dict, lock)
+        pool = multiprocessing.Pool(num_processes)
         init_args = [(i, shared_flye_consensus) for i in range(len(edges))]
         pool.map(cluster, init_args)
         pool.close()
