@@ -1,8 +1,10 @@
 import subprocess
 import pysam
-from Bio import SeqIO
+import os
 import re
 from collections import Counter
+
+os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 
 
 def read_snp(snp,edge, bam, AF):
@@ -14,18 +16,18 @@ def read_snp(snp,edge, bam, AF):
             lines = f.readlines()
             for line in lines:
                 try:
-                    AlFreq=int(str(line.split()[2]).split(',')[2])/int(line.split()[3])
-                except(IndexError):  AlFreq=0
+                    AlFreq = int(str(line.split()[2]).split(',')[2])/int(line.split()[3])
+                except IndexError:
+                    AlFreq = 0
                 if AlFreq>AF:
                     SNP_pos.append(line.split()[1])
-
     else:
         vcf = open(snp, "rt")
         for line in vcf:
             if line.split()[0] == edge:
                 SNP_pos.append(line.split()[1])
     print(str(len(SNP_pos)) + " SNPs found")
-    return(SNP_pos)
+    return SNP_pos
 
 
 def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max):
@@ -44,7 +46,7 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                     clipping = 1
 
         if read.mapping_quality>min_mapping_quality and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
-                int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) == 0  or int(stop) == int(ln) - 1):
+                int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) == 0 or int(stop) == int(ln) - 1):
             data[read.query_name] = {}
             data[read.query_name]["Start"]=start
             data[read.query_name]["Stop"] = stop
@@ -64,11 +66,8 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                             right_clip.append(i.split(',')[0])
             data[read.query_name]["Rclip"]=list(set(right_clip))
             data[read.query_name]["Lclip"]=list(set(left_clip))
-
-
         else:
             continue
-
 
     for pos in SNP_pos:
         for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=0,
@@ -78,13 +77,10 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                 if not pileupread.is_del and not pileupread.is_refskip:
                     try:
                         data[pileupread.alignment.query_name][pos] = pileupread.alignment.query_sequence[pileupread.query_position]
-
-                    except (KeyError):
+                    except KeyError:
                         continue
     bamfile.close()
-    return (data)
-
-
+    return data
 
 
 def build_data_cons(cl,SNP_pos, data):
@@ -92,10 +88,10 @@ def build_data_cons(cl,SNP_pos, data):
     cons = {}
     for cluster in clusters:
         cons=cluster_consensuns(cl,cluster,SNP_pos, data, cons)
-    return(cons)
+    return cons
 
 
-def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
+def cluster_consensuns(cl, cluster, SNP_pos, data, cons):
     strange = 0
     val = {}
     clSNP = []
@@ -104,7 +100,7 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
             try:
                 npos.append(data[read][pos])
-            except(KeyError):
+            except KeyError:
                 continue
         try:
             if len(npos) >= 2:
@@ -129,7 +125,7 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
     for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
         start = int(data[read]["Start"])
         stop = int(data[read]["Stop"])
-        clCov=clCov+(stop-start)
+        clCov = clCov+(stop-start)
         if start < clStart:
             clStart = start
         if stop > clStop:
@@ -140,4 +136,13 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
     val["Start"] = clStart
     val["Cov"]=clCov
     cons[cluster] = val
+    # val = {
+    # "Stop": end of the last read,
+    # "Start: beginning of the first read,
+    # "Cov: X cluster coverage,
+    # "clSNP = [], positions where strange happens
+    # pos: most common,
+    # pos: most common,
+    # ...
+    # }
     return (cons)
