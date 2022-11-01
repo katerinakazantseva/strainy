@@ -138,7 +138,7 @@ class FlyeConsensus:
             # read back the output of the Flye polisher
             consensus = SeqIO.read(f"output/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/polished_1.fasta",
                                    "fasta")
-        except ImportError as e:
+        except (ImportError, ValueError) as e:
             # If there is an error, the sequence string is set to empty by default
             print("WARNING: error reading back the flye output, defaulting to empty sequence for consensus")
             consensus = SeqRecord(
