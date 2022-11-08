@@ -700,7 +700,7 @@ try:
 except:
     consensus_dict = {}
 
-flye_consensus = FlyeConsensus(bam, gfa, consensus_dict)
+flye_consensus = FlyeConsensus(bam, gfa, 1, consensus_dict)
 
 for i in range(0, len(edges)):
     graph_create_unitigs(i, flye_consensus)

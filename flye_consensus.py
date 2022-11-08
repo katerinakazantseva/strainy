@@ -22,6 +22,7 @@ class FlyeConsensus:
             self._name_indexed_list.append(pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb")))
             self._name_indexed_list[i].build()
 
+        self._num_processes = num_processes
         self._bam_header = self._bam_file.header.copy()
         self._gfa_file = gfapy.Gfa.from_file(gfa_file_name)
         self._consensus_dict = consensus_dict
@@ -45,7 +46,10 @@ class FlyeConsensus:
         """
         cluster_start = -1
         cluster_end = -1
-        pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
+        if self._num_processes == 1:
+            pid = 0
+        else:
+            pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
 
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
         for name in read_names:
@@ -64,7 +68,6 @@ class FlyeConsensus:
                                 cluster_end = x.reference_end
                             read_list.append(x)
 
-                    print("Error in extract_reads")
         out = pysam.Samfile(output_file, "wb", header=self._bam_header)
         for x in read_list:
             temp_dict = x.to_dict()
@@ -141,6 +144,8 @@ class FlyeConsensus:
         except (ImportError, ValueError) as e:
             # If there is an error, the sequence string is set to empty by default
             print("WARNING: error reading back the flye output, defaulting to empty sequence for consensus")
+            if type(e).__name__ == 'ImportError':
+                print('found ImportError')
             consensus = SeqRecord(
                 seq=''
             )
