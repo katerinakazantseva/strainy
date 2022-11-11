@@ -11,6 +11,8 @@ from params import *
 import numpy as np
 from simplify_links import *
 
+
+
 g = gfapy.Gfa.from_file(gfa)
 stats = open('output/stats_clusters.txt', 'a')
 stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
@@ -20,7 +22,7 @@ stats.close()
 
 def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
     seq=[]
-    cl_consensuns = cluster_consensuns(cl, clN, SNP_pos, data, cons)
+    cl_consensuns = cluster_consensuns(cl, clN, SNP_pos, data, cons,edge)
     try:
         i=g.try_get_segment(edge)
         seq = i.sequence
@@ -50,10 +52,13 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
 
 
 def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
+
     M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
     M = change_w(M, 1)
+
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
+    #print(G)
     try:
         G.remove_node(0)
     except:
@@ -309,7 +314,7 @@ def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
     other_cl=cl
     for cluster in othercl:
         other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
-    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp)
+    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp,edge)
 
     i = g.try_get_segment(edge)
     seq = i.sequence
@@ -362,9 +367,9 @@ def strong_tail(cluster, cl, ln, data):
             if count_stop == None:
                 count_stop = 0
             count_stop = count_stop + 1
-    if count_start>strong_cluster_min_reads and count_start!=None:
+    if count_start!=None and count_start>strong_cluster_min_reads :
         res[0] = True
-    if count_stop>strong_cluster_min_reads and count_stop!=None:
+    if  count_stop!=None and count_stop>strong_cluster_min_reads:
         res[1] = True
     return (res)
 
@@ -416,7 +421,7 @@ def graph_create_unitigs(i):
             clusters.remove(0)
         except:
             pass
-        cons = build_data_cons(cl, SNP_pos, data)
+        cons = build_data_cons(cl, SNP_pos, data,edge)
 
         if len(clusters) == 1:
             for cluster in clusters:
@@ -728,7 +733,7 @@ gfapy.Gfa.to_file(g,gfa_transformed)
 simplify_links(g)
 
 
-gfapy.Gfa.to_file(g,gfa_transformed)
+gfapy.Gfa.to_file(g,gfa_transformed1)
 gfapy.GraphOperations.merge_linear_paths(g)
-gfapy.Gfa.to_file(g,gfa_transformed)
+gfapy.Gfa.to_file(g,gfa_transformed2)
 

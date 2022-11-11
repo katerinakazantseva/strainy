@@ -7,7 +7,7 @@ import os
 import subprocess
 
 
-dirs = ("output/","output/vcf/","output/adj_M/","output/clusters/","output/graphs/","output/bam/")
+dirs = ("output/","output/vcf/","output/adj_M/","output/clusters/","output/graphs/","output/bam/","output/bam/clusters")
 for dir in dirs:
     try:
         os.stat(dir)
@@ -15,7 +15,7 @@ for dir in dirs:
          os.mkdir(dir)
 
 def phase(edges):
-    pool = multiprocessing.Pool(3)
+    pool = multiprocessing.Pool(1)
     pool.map(cluster, range(0, len(edges)))
     pool.close()
 
@@ -23,12 +23,12 @@ def col(edges):
     pool = multiprocessing.Pool(1)
     pool.map(color, range(0, len(edges)))
     pool.close()
-    subprocess.check_output('samtools merge output/bam/coloredBAM.bam -f `find output/bam -name "*edge*.bam"`', shell=True, capture_output=False)
-    subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True,capture_output=False)
-    pysam.samtools.index("output/bam/coloredBAM.bam", "output/bam/coloredBAM.bai")
+    #subprocess.check_output('samtools merge output/bam/coloredBAM.bam -f `find output/bam -name "*edge*.bam"`', shell=True, capture_output=False)
+    #subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True,capture_output=False)
+    #pysam.samtools.index("output/bam/coloredBAM.bam", "output/bam/coloredBAM.bai")
 
 import numpy as np
-all_data={}
+#all_data={}
 #np.save("output/all_data.npy", all_data)
 
 
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     phase(edges)
     col(edges)
 
-
+#np.save("output/all_data.npy", all_data)
 
 
 

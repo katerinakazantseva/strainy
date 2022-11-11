@@ -61,15 +61,16 @@ def cluster(i):
     print("### Reading SNPs...")
     SNP_pos = read_snp(snp, edge, bam, AF)
     print ("### Reading Reads...")
-    #try:
-        #all_data = np.load("output/all_data.npy", allow_pickle='TRUE').item()
-        #data=all_data[edge]
-    #except(KeyError):
-        #pass
-        #data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
-        #all_data[edge]=data
-    #np.save("output/all_data.npy", all_data)
-    data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+    all_data={}
+    try:
+        all_data = np.load("output/all_data.npy", allow_pickle='TRUE').item()
+        data=all_data[edge]
+    except(KeyError,FileNotFoundError):
+        #Gpass
+        data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
+        all_data[edge]=data
+    np.save("output/all_data.npy", all_data)
+    #data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
     cl=pd.DataFrame(data={'ReadName': data.keys()})
     print(str(len(cl['ReadName'])) + " reads found")
     cl['Cluster'] = 'NA'
@@ -87,9 +88,9 @@ def cluster(i):
 
     #CALCULATE DISTANCE and ADJ MATRIX
     print ("### Calculatind distances/Building adj matrix...")
-    m=build_adj_matrix(cl, data, SNP_pos, I, bam, edge, R)
-    m.to_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF))
-    #m=pd.read_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF),index_col='ReadName')
+    #m=build_adj_matrix(cl, data, SNP_pos, I, bam, edge, R)
+    #m.to_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF))
+    m=pd.read_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF),index_col='ReadName')
     print("### Removing overweighed egdes...")
     m=remove_edges (m, R)
 
@@ -112,18 +113,20 @@ def cluster(i):
             cl['Cluster'][group] = value
         else:
             uncl = uncl + 1
+            print("UNCLUSTERED READ DETECTED")
+            cl['Cluster'][group] = unclustered_group_N
 
     print(str(clN)+" clusters found")
     cl.to_csv("output/clusters/clusters_before_splitting_%s_%s_%s.csv" % (edge, I, AF))
     print("### Cluster post-processing...")
-    cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 1000000
+    #cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 1000000
     if clN!=0:
         cl=postprocess(bam, cl, SNP_pos, data, edge, R, I)
     clN=len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
     print(str(clN) + " clusters after post-processing")
     cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
     print("### Graph viz...")
-    clusters_vis_stats (G,cl, clN,uncl,SNP_pos, bam, edge, I, AF)
+    #clusters_vis_stats (G,cl, clN,uncl,SNP_pos, bam, edge, I, AF)
     cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
 
 

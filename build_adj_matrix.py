@@ -95,14 +95,24 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
     d=-1
     firstSNPs=list(cons[first_cl].keys())
     secondSNPs = list(cons[second_cl].keys())
-    keys=('clSNP', 'Strange','Stop','Start','Cov')
+    keys=('clSNP','clSNP2', 'Strange', 'Strange2','Stop','Start','Cov')
     firstSNPs = [key for key in firstSNPs if key not in keys]
     secondSNPs= [key for key in secondSNPs if key not in keys]
     commonSNP=sorted(set(firstSNPs).intersection(secondSNPs))
+    #print("")
+    #print(d)
+    #print(cons[first_cl]["clSNP2"])
+    #print(cons[second_cl]["clSNP2"])
+    #print(cons[first_cl])
+    #print(cons[second_cl])
+
     try:
         intersect=set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
         if only_with_common_snip==False and len(commonSNP)==0 and len(intersect)>0:
             d=0
+        #elif only_with_common_snip==True and (len(cons[first_cl]["clSNP2"])==0 or len(cons[second_cl]["clSNP2"])==0):
+        elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
+            d = 1
         else:
             for snp in commonSNP:
                 try:
@@ -124,6 +134,8 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
 
                 else:
                     continue
+
+
     except(IndexError):pass
     return (d)
 

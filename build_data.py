@@ -3,26 +3,53 @@ import pysam
 from Bio import SeqIO
 import re
 from collections import Counter
+from params import *
+from subprocess import STDOUT
 
-def read_snp(snp,edge, bam, AF):
+
+def read_snp(snp,edge, bam, AF,cluster=None):
     SNP_pos = []
     if snp==None:
-        snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >output/vcf/vcf_{}.txt'.format(edge,bam,edge)
-        subprocess.check_output(snpos, shell=True, capture_output=False)
-        with open("output/vcf/vcf_%s.txt" % edge) as f:
-            lines = f.readlines()
-            for line in lines:
-                try:
-                    AlFreq=int(str(line.split()[2]).split(',')[2])/int(line.split()[3])
-                except(IndexError):  AlFreq=0
-                if AlFreq>AF:
-                    SNP_pos.append(line.split()[1])
+        if cluster==None:
+            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >output/vcf/vcf_{}.txt'.format(edge,bam,edge)
+            #subprocess.check_output(snpos, shell=True, capture_output=False)
+            subprocess.call(snpos, shell=True, stderr=subprocess.DEVNULL)
+            with open("output/vcf/vcf_%s.txt" % edge) as f:
+                lines = f.readlines()
+                for line in lines:
+                    try:
+                        AlFreq = int(str(line.split()[2]).split(',')[2]) / int(line.split()[3])
+                    except(IndexError):
+                        AlFreq = 0
+                    if AlFreq > AF:
+                        SNP_pos.append(line.split()[1])
+        else:
+            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >output/vcf/vcf_{}_{}.txt'.format(fa,edge,bam,edge,cluster)
+            subprocess.check_output(snpos, shell=True, capture_output=False)
+            with open("output/vcf/vcf_%s_%s.txt" % (edge,cluster)) as f:
+                lines = f.readlines()
+                for line in lines:
+                    try:
+                        AlFreq = int(str(line.split()[3]).split(',')[2]) / int(line.split()[4])
+                    except(IndexError):
+                        AlFreq = 0
+                    if AlFreq > AF:
+                        SNP_pos.append(line.split()[1])
+                    if int(str(line.split()[3]).split(',')[0])==0 and int(str(line.split()[3]).split(',')[1])>min_reads_cluster and len(str(line.split()[2]).split(','))>1:
+                        SNP_pos.append(line.split()[1])
+
+
+
+
+
+
+
     else:
         vcf = open(snp, "rt")
         for line in vcf:
             if line.split()[0] == edge:
                 SNP_pos.append(line.split()[1])
-    print(str(len(SNP_pos)) + " SNPs found")
+    #print(str(len(SNP_pos)) + " SNPs found")
     return(SNP_pos)
 
 def read_bam_new(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max):
@@ -167,20 +194,44 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
 
 
 
-def build_data_cons(cl,SNP_pos, data):
+def build_data_cons(cl,SNP_pos, data,edge):
+
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     cons = {}
     for cluster in clusters:
-        cons=cluster_consensuns(cl,cluster,SNP_pos, data, cons)
+        cons=cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge)
     return(cons)
 
 
-def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
+def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
+
     strange = 0
+    strange2=0
     val = {}
     clSNP = []
+    clSNP2 = []
+
+    reads = list(cl.loc[cl['Cluster'] == cluster, 'ReadName'])
+    with open('output/clusters/reads_%s_%s.txt' % (edge,cluster), 'w') as fp:
+        for line in reads:
+            fp.write(str(line))
+            fp.write("\n")
+    #Create bam for cluster
+    pysam.samtools.view("-N", 'output/clusters/reads_%s_%s.txt' % (edge,cluster), "-o", 'output/bam/clusters/%s_%s.bam' % (edge,cluster), bam, edge,catch_stdout=False)
+    pysam.samtools.index('output/bam/clusters/%s_%s.bam' % (edge,cluster))
+
+
+    clSNP2=read_snp(snp,edge, 'output/bam/clusters/%s_%s.bam' % (edge,cluster), AF,cluster)
+
+
+    try:
+        if len(clSNP2)>0 and max([int(clSNP2[i+1])-int(clSNP2[i]) for i in range(0,len(clSNP2)-1)])>1.5*1000:
+            strange2 = 1
+    except(ValueError):
+        pass
     for pos in SNP_pos:
         npos = []
+
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
             try:
                 npos.append(data[read][pos])
@@ -190,17 +241,17 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
             if len(npos) >= 2:
                 if int(Counter(npos).most_common()[0][1]) >= 2:
                     val[pos] = Counter(npos).most_common()[0][0]
+
             if int(Counter(npos).most_common()[1][1]) >= 2:
                 strange = 1
                 clSNP.append(pos)
+                #clSNP2.append(pos)
         except(IndexError):
             continue
 
-    if strange == 1:
-        val["Strange"] = 1
-    else:
-        val["Strange"] = 0
+
     val["clSNP"] = clSNP
+    val["clSNP2"] = clSNP2
 
     clStart = 1000000000000  # change fo ln
     clStop = 0
@@ -217,6 +268,20 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons):
                 clStop = stop
         except(KeyError):
             pass
+    try:
+        if (int(clSNP2[0])-int(clStart))>1.5*I or int(clStop)-int(clSNP2[len(clSNP2)-1])>1.5*I:
+            strange2 = 1
+    except(IndexError):
+        pass
+    if strange == 1:
+        val["Strange"] = 1
+    else:
+        val["Strange"] = 0
+
+    if strange2 == 1:
+        val["Strange2"] = 1
+    else:
+        val["Strange2"] = 0
 
     clCov=clCov/(clStop-clStart)
     val["Stop"] = clStop

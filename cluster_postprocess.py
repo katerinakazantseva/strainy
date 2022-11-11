@@ -3,6 +3,7 @@ import pysam
 import pandas as pd
 from collections import Counter
 import sys,os,subprocess
+from params import *
 import networkx as nx
 import matplotlib.pyplot as plt
 from build_adj_matrix import *
@@ -14,11 +15,11 @@ from more_itertools import sort_together
 
 
 
-def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
-    print("Strange cluster detected")
+def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I,only_with_common_snip=True):
     reads=sorted(set(cl.loc[cl['Cluster'] == cluster]['ReadName'].values))
-    if cluster==unclustered_group_N: #NA cluster
-        print("Build na matrix")
+    if cluster==unclustered_group_N or only_with_common_snip==False: #NA cluster
+    #if cluster == unclustered_group_N and len(clSNP)==0:  # NA cluster
+        #print("Build na matrix")
         m = build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam, edge, R, only_with_common_snip=False)
     else:
         m=build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam,edge,R)
@@ -26,12 +27,20 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
     m.columns=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
     m.index=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
     m = change_w(m, R)
-    G = nx.from_pandas_adjacency(m)
-    cluster_membership = find_communities(G)
+    G_sub = nx.from_pandas_adjacency(m)
+
+    import matplotlib.pyplot as plt
+    nx.draw(G_sub, nodelist=G_sub.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5)
+    plt.suptitle(str(edge) + " cluster:" + str(cluster))
+    plt.savefig("output/graphs/test/test_%s.png" % cluster, format="PNG", dpi=300)
+    plt.close()
+
+
+    cluster_membership = find_communities(G_sub)
     clN=0
     uncl=0
     reads = cl[cl['Cluster'] == cluster]['ReadName'].values
-
+    #print(cluster_membership)
     for value in set(cluster_membership.values()):
         group = [k for k, v in cluster_membership.items() if v == value]
         if len(group) > min_cluster_size:
@@ -43,32 +52,47 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I):
         else:
             uncl = uncl + 1
             for i in group:
-                if cluster==unclustered_group_N:
+                cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N
+
+                '''if cluster==unclustered_group_N:
                     cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 'NA'
+                    #cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N
+                    #child_clusters.append(cluster + split_id + clN)
                 else:
                     cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N
+                    #child_clusters.append(cluster + split_id + clN)
+                    #cl.loc[cl['ReadName'] == reads[i], "Cluster"] = cluster + split_id
+                '''
 
-    print(str(clN)+" new clusters found")
+
+
 
 
 
 
 def build_adj_matrix_clusters (cons, SNP_pos,cl,only_with_common_snip=True):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+    try:
+        clusters.remove(0)
+    except:
+        pass
     Y=[]
     X=[]
     Z=[]
     sort=[]
+
     for k,v in cons.items():
         X.append(k)
         Y.append(int(v["Start"]))
         Z.append(int(v["Stop"]))
         sort.append([k,int(v["Start"]),int(v["Stop"])])
     sorted_by_pos=[]
+
     for i in sorted(sort, key=lambda sort: [sort[1], sort[2]]):
         sorted_by_pos.append(i[0])
     clusters=sorted(set(sorted_by_pos) & set(clusters), key=sorted_by_pos.index)
     m = pd.DataFrame(-1, index=clusters, columns=clusters)
+
     for i in range(0,m.shape[1]):
         first_cl=m.index[i]
         for k in range(i+1,m.shape[1]):
@@ -92,9 +116,9 @@ def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
     to_remove = []
-    G_vis_temp = nx.nx_agraph.to_agraph(G_vis)
-    G_vis_temp.layout(prog="neato")
-    G_vis_temp.draw("output/graphs/cluster_GV_graph_%s_beforeremove.png" % (edge))
+    G_vis_before = nx.nx_agraph.to_agraph(G_vis)
+    G_vis_before.layout(prog="neato")
+    G_vis_before.draw("output/graphs/cluster_GV_graph_before_remove_%s.png" % (edge))
 
     path_remove=[]
     for node in G_vis.nodes():
@@ -141,29 +165,75 @@ def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
     return (cl)
 
 def postprocess (bam,cl,SNP_pos, data, edge, R, I):
-    cons=build_data_cons(cl, SNP_pos, data)
+    cons=build_data_cons(cl, SNP_pos, data,edge)
     for key, val in cons.copy().items():
-        if val["Strange"]==1:
+        if val["Strange"]==1 and key!=unclustered_group_N:
             cluster=key
             clSNP=val["clSNP"]
             child_clusters=[]
             split_cluster(cl, cluster, data, clSNP, bam, edge,child_clusters, R, I)
-            for child in child_clusters:
-                cluster=child
-                cluster_consensuns(cl,cluster,SNP_pos, data, cons)
+            for child in set(child_clusters):
+                cluster_consensuns(cl,child,SNP_pos, data, cons,edge)
+                if cons[child]["Strange"]==1:
+                    split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I)
+
+
+
+    cluster=unclustered_group_N
+    cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge)
+    child_clusters = []
+    clSNP = cons[cluster]["clSNP"]
+    split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I)
+
+    for child in set(child_clusters):
+        cluster_consensuns(cl, child, SNP_pos, data, cons, edge)
+        if cons[child]["Strange"] == 1:
+            split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I)
+
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+
+
+    for cluster in clusters:
+        try:
+            if cons[cluster]["Strange2"]==1 and cluster!=unclustered_group_N:
+                clSNP=cons[cluster]["clSNP2"]
+
+                child_clusters=[]
+                split_cluster(cl, cluster, data, clSNP, bam, edge,child_clusters, R, I)
+                for child in set(child_clusters):
+                    cluster_consensuns(cl,child,SNP_pos, data, cons,edge)
+                    if cons[child]["Strange2"]==1:
+                        split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I)
+        except(KeyError):
+            continue
+
+
 
     if len(cl.loc[cl['Cluster'] == unclustered_group_N]['ReadName'].values) != 0:
-        cluster_consensuns(cl, unclustered_group_N, SNP_pos, data, cons)
+        cluster_consensuns(cl, unclustered_group_N, SNP_pos, data, cons,edge)
         cluster = unclustered_group_N
         val=cons[cluster]
-        clSNP = SNP_pos
+        #clSNP = SNP_pos
+        clSNP = val["clSNP2"]
         child_clusters = []
-        split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I)
-        for child in child_clusters:
+        split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I,only_with_common_snip = False)
+        for child in set(child_clusters):
             cluster = child
-            cluster_consensuns(cl, cluster, SNP_pos, data, cons)
+            cluster_consensuns(cl, cluster, SNP_pos, data, cons,edge)
+            split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I,only_with_common_snip = False)
+
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+
+    counts = cl['Cluster'].value_counts(dropna=False)
+    cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  #change for cov*01.
+
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
 
     cl.to_csv("output/clusters/clusters_before_joining_%s_%s_%s.csv" % (edge, I, 0.1))
+
+    cons = build_data_cons(cl, SNP_pos, data, edge)
     cl=join_clusters(cons, SNP_pos, cl,R, edge)
+    counts = cl['Cluster'].value_counts(dropna=False)
+    cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
     return(cl)
