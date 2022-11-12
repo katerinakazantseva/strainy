@@ -6,49 +6,16 @@ from params import *
 import re
 #gaf file path
 
-gfa ="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/before_rr/test2.gfa"
+gfa ="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/minigraph/test_split_1.gfa"
 #gfa ="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/before_rr/graph_before_rr.gfa"
 #transformed gfa file path
-gfa_transformedtest = "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/before_rr/testtest.gfa"
-gfa_transformedtest1 = "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/before_rr/testtest1.gfa"
+gfa_transformedtest = "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/minigraph/test_split_rr.gfa"
+gfa_transformedtest1 = "/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/minigraph/test_split_rr+sm.gfa"
 gaf_file="/Users/ekaterina.kazantseva/Downloads/aln_beforerr.gaf"
-g = gfapy.Gfa.from_file(gfa)
+
 AF=0.1
 I=1000
-
-def clear_links2(edge):
-    changed=False
-    to_n=to_neighbours(g,edge,'+')
-    if len(to_n)==1:
-        for i in from_neighbours(g,to_n[0][0],to_n[0][1]):
-            if len(to_neighbours(g,i[0],i[1]))>1:
-                changed=remove_link(i[0],i[1], to_n[0][0],to_n[0][1])
-
-    from_n = from_neighbours(g, edge, '+')
-    if len(from_n) == 1:
-        for i in to_neighbours(g, from_n[0][0], from_n[0][1]):
-            if len(from_neighbours(g, i[0], i[1])) > 1:
-                changed=remove_link(from_n[0][0], from_n[0][1],i[0], i[1])
-                #changed = True
-    return (changed)
-
-
-
-def test(g):
-    #gfapy.Gfa.to_file(g, gfa_transformed)
-    repeat=False
-    #changed = False
-    print("NEW ERA")
-    #for edge in ['edge_673', 'edge_677', 'edge_806_160', 'edge_806_461', 'edge_807_113', 'edge_807_140', 'edge_807_179', 'edge_807_249']:
-    for edge in g.segment_names:
-        changed = clear_links2(edge)
-        #print (changed)
-        if changed==True:
-            repeat=True
-
-    if repeat ==True:
-        test(g)
-
+''''''
 
 
 def remove_link(fr,fr_or, to, to_or):
@@ -123,12 +90,15 @@ def simple(g,unitig,remove_clusters):
 
     for i in set1:
         nei={}
-        if len(i[0].split('_'))>2:
+        if len(i[0].split('_'))>1: #change for two for edges (metaflye) 1 for mini
             clN=i[0].split('_')[-1]
-            edge="edge_%s" % i[0].split('_')[-2]
+            #edge="edge_%s" % i[0].split('_')[-2]
+            edge = i[0].split('_')[0]
         else:
             edge=i[0]
             clN=None
+
+
         try:
             cl=pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
         except(FileNotFoundError): break
@@ -142,27 +112,33 @@ def simple(g,unitig,remove_clusters):
         else:
             reads = list(cl['ReadName'])
         #print(type(clN))
-        #print(reads)
+        print(reads)
         #print(from_neighbours(g, unitig,'+'))
         for j in set2:
             #print(j)
-            if len(j[0].split('_')) > 2:
+            if len(j[0].split('_')) > 1: #change for two
                 clN2 = j[0].split('_')[-1]
-                edge2 = "edge_%s" % j[0].split('_')[-2]
+                #edge2 = "edge_%s" % j[0].split('_')[-2]
+                edge2 = j[0].split('_')[0]
             else:
                 edge2 = j[0]
                 clN2 = None
             try:
                 cl2 = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge2, I, AF), keep_default_na=False)
             except(FileNotFoundError): break
-            #print(clN2)
+
+
+
             if clN2 != None:
                 if type(cl2['Cluster'][0])!=str:
                     reads2 = list(cl2.loc[cl2['Cluster'] == int(clN2), 'ReadName'])
+                    print("1")
                 else:
                     reads2 = list(cl2.loc[cl2['Cluster'] == clN2, 'ReadName'])
+
             else:
                 reads2 = list(cl2['ReadName'])
+
 
             if len(set(reads).intersection(set(reads2)))>0:
                 nei[j[0]]=len(set(reads).intersection(set(reads2)))
@@ -207,12 +183,16 @@ def simple(g,unitig,remove_clusters):
     for i in set1+set2:
         all_n.append(i[0])
     for i in set1:
+        print(i)
         try:
             nei=n[i[0]]
-        except(KeyError): pass
 
+        except(KeyError):
+            nei={}
 
+        print(nei)
         if len(nei)>0:
+            print("yes")
             j = max(nei, key=nei.get)
             N = N + 1
             if 1==1:
@@ -234,6 +214,7 @@ def simple(g,unitig,remove_clusters):
                             for nj in range (1,n_j):
                                 add_link("%s_%s" % (j,nj), '+', "%s_%s" % (unitig, N), '+', 1)
                         except (KeyError):
+                                #print("cccc")
                                 add_link(j, '+', "%s_%s" % (unitig, N), '+', 1)
 
                         try:
@@ -241,6 +222,7 @@ def simple(g,unitig,remove_clusters):
                             for ni in range (1,n_i):
                                 add_link("%s_%s" % (unitig, N), '+', "%s_%s" % (i[0], ni), '+', 1)
                         except (KeyError):
+                                #print("cccc22")
                                 add_link("%s_%s" % (unitig, N), '+', i[0], '+', 1)
 
                         remove_link(j, '+', unitig, '+')
@@ -250,7 +232,7 @@ def simple(g,unitig,remove_clusters):
             #except (gfapy.error.NotUniqueError):
                     #continue
 
-    print(opt)
+    #print(opt)
     #print(all_n)
     if len(all_n)>0:
         for i in all_n:
@@ -327,18 +309,23 @@ def simple(g,unitig,remove_clusters):
 
 remove_clusters=[]
 
+
+#unitigs=["s325_1"]
+
+g = gfapy.Gfa.from_file(gfa, vlevel=0)
 unitigs=g.segment_names
-
-
 for unitig in unitigs:
-    i = g.try_get_segment(unitig)
-    cov = int(i.dp)
-    #print(unitig)
-    if len(to_neighbours(g, unitig,'+'))>1 and len(from_neighbours(g, unitig,'+'))>1 and cov>55:
+    try:
+        i = g.try_get_segment(unitig)
+        cov = int(i.dp)
+        if len(to_neighbours(g, unitig,'+'))>1 and len(from_neighbours(g, unitig,'+'))>1: #and ((len(unitig.split('_'))==2 and unitig.split('_')[-1]==1) or len(unitig.split('_'))==1):
 
-        print(unitig)
-        remove_clusters=simple(g,unitig,remove_clusters)
-        print()
+            print(unitig)
+            remove_clusters=simple(g,unitig,remove_clusters)
+            print()
+    except:
+        pass
+
     gfapy.Gfa.to_file(g, gfa_transformedtest)
 
 
@@ -355,10 +342,10 @@ for unitig in remove_clusters:
 
 
 
-
+from simplify_links import *
 gfapy.Gfa.to_file(g,gfa_transformedtest)
-gfapy.GraphOperations.merge_linear_paths(g)
-test(g)
+
+simplify_links(g)
 gfapy.Gfa.to_file(g,gfa_transformedtest1)
 
 
