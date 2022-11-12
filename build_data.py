@@ -11,9 +11,9 @@ def read_snp(snp,edge, bam, AF,cluster=None):
     SNP_pos = []
     if snp==None:
         if cluster==None:
-            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >output/vcf/vcf_{}.txt'.format(edge,bam,edge)
-            #subprocess.check_output(snpos, shell=True, capture_output=False)
-            subprocess.call(snpos, shell=True, stderr=subprocess.DEVNULL)
+            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >output/vcf/vcf_{}.txt'.format(edge,bam,edge)
+            subprocess.check_output(snpos, shell=True, capture_output=False)
+            #subprocess.call(snpos, shell=True, stderr=subprocess.DEVNULL)
             with open("output/vcf/vcf_%s.txt" % edge) as f:
                 lines = f.readlines()
                 for line in lines:
@@ -24,7 +24,7 @@ def read_snp(snp,edge, bam, AF,cluster=None):
                     if AlFreq > AF:
                         SNP_pos.append(line.split()[1])
         else:
-            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >output/vcf/vcf_{}_{}.txt'.format(fa,edge,bam,edge,cluster)
+            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >output/vcf/vcf_{}_{}.txt'.format(fa,edge,bam,edge,cluster)
             subprocess.check_output(snpos, shell=True, capture_output=False)
             with open("output/vcf/vcf_%s_%s.txt" % (edge,cluster)) as f:
                 lines = f.readlines()

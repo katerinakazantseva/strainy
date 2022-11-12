@@ -57,6 +57,7 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
 
 def cluster(i):
     edge=edges[i]
+    print(edge)
     #READ READS AND POSITIONS
     print("### Reading SNPs...")
     SNP_pos = read_snp(snp, edge, bam, AF)

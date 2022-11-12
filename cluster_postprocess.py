@@ -29,11 +29,14 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I,only_w
     m = change_w(m, R)
     G_sub = nx.from_pandas_adjacency(m)
 
+    '''
+
     import matplotlib.pyplot as plt
     nx.draw(G_sub, nodelist=G_sub.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5)
     plt.suptitle(str(edge) + " cluster:" + str(cluster))
     plt.savefig("output/graphs/test/test_%s.png" % cluster, format="PNG", dpi=300)
     plt.close()
+    '''
 
 
     cluster_membership = find_communities(G_sub)
@@ -192,7 +195,7 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
 
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
-
+    '''
     for cluster in clusters:
         try:
             if cons[cluster]["Strange2"]==1 and cluster!=unclustered_group_N:
@@ -206,7 +209,7 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
                         split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I)
         except(KeyError):
             continue
-
+    '''
 
 
     if len(cl.loc[cl['Cluster'] == unclustered_group_N]['ReadName'].values) != 0:
