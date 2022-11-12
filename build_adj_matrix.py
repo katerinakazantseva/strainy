@@ -99,12 +99,6 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
     firstSNPs = [key for key in firstSNPs if key not in keys]
     secondSNPs= [key for key in secondSNPs if key not in keys]
     commonSNP=sorted(set(firstSNPs).intersection(secondSNPs))
-    #print("")
-    #print(d)
-    #print(cons[first_cl]["clSNP2"])
-    #print(cons[second_cl]["clSNP2"])
-    #print(cons[first_cl])
-    #print(cons[second_cl])
 
     try:
         intersect=set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
