@@ -48,4 +48,3 @@ def color(i):
         write_bam(edge, I, AF)
     except (FileNotFoundError):
         pass
-
