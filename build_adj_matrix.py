@@ -1,5 +1,6 @@
 import pandas as pd
 import pysam
+from params import *
 
 
 def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):
@@ -10,7 +11,6 @@ def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=
             for j in range(1, m.shape[1]):
                 second_read=m.index[j]
                 m[second_read][first_read] = distance(first_read, second_read, data, SNP_pos, R, only_with_common_snip=False)
-
     else:
         for i in range(1, m.shape[1]):
             print(str(i) + "/" + str(m.shape[1]) + " Reads processed \r", end="")
@@ -25,17 +25,18 @@ def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=
 
             for pos in [border1, border2]:
                 for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools',
-                                               ignore_overlaps=False,
-                                               ignore_orphans=False, truncate=True):
+                                                   ignore_overlaps=False,
+                                                   ignore_orphans=False,
+                                                   truncate=True):
                     for pileupread in pileupcolumn.pileups:
                         second_read = pileupread.alignment.query_name
 
                         try:
                             if m[second_read][first_read] == -1:
                                 m[second_read][first_read] = distance(first_read, second_read, data, SNP_pos, R)
-                        except:
-                            KeyError
-    return (m)
+                        except KeyError:
+                            pass
+    return m
 
 
 def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
@@ -73,13 +74,13 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
             d = 0
         else:
             d = 1
-    return (d)
+    return d
 
 
 def remove_edges(m, R):
     m_transformed = m
     m_transformed[m_transformed >= R] = -1
-    return (m_transformed)
+    return m_transformed
 
 
 def change_w(m, R):
@@ -87,11 +88,9 @@ def change_w(m, R):
     m_transformed[m_transformed == 0] = 0.001
     m_transformed[m_transformed == -1] = 0
     m_transformed[m_transformed >= R] = 0
-    return (m_transformed)
+    return m_transformed
 
-
-
-def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=True):
+def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus,only_with_common_snip=True):
     d=-1
     firstSNPs=list(cons[first_cl].keys())
     secondSNPs = list(cons[second_cl].keys())
@@ -122,14 +121,17 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
                         d=d
                 except:
                     continue
-                if d>=1:
+            print(d)
+            d=flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
+            print(d)
+            print()
+            '''if d>=1:
                     d=1
                     break
 
                 else:
-                    continue
+                    continue'''
 
 
     except(IndexError):pass
     return (d)
-

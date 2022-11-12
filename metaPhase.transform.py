@@ -10,6 +10,7 @@ from build_data  import *
 from params import *
 import numpy as np
 from simplify_links import *
+from flye_consensus import FlyeConsensus
 
 
 
@@ -51,9 +52,11 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
 
 
 
-def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
+def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
 
-    M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+    #M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+    M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
+
     M = change_w(M, 1)
 
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
@@ -125,8 +128,8 @@ def remove_nested(G, cons):
     return (G)
 
 
-def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs,full_clusters):
-    M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+def paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs,full_clusters):
+    M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
     M = change_w(M, 1)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
@@ -396,7 +399,7 @@ remove_clusters = []
 remove_zeroes = []
 all_data={}
 
-def graph_create_unitigs(i):
+def graph_create_unitigs(i,flye_consensus):
     edge = edges[i]
     print(edge)
     full_paths_roots = []
@@ -457,10 +460,10 @@ def graph_create_unitigs(i):
                     full_paths_leafs.append(cluster)
 
 
-            G=build_paths_graph(SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs)
+            G=build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs)
 
             full_cl[edge] = full_clusters
-            cl_removed=paths_graph_add_vis(edge,cons, SNP_pos,cl,full_paths_roots, full_paths_leafs,full_clusters)
+            cl_removed=paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos,cl,full_paths_roots, full_paths_leafs,full_clusters)
             try:
                 full_paths[edge] = find_full_paths(G,full_paths_roots, full_paths_leafs)
             except(ValueError):
@@ -474,7 +477,7 @@ def graph_create_unitigs(i):
             close_to_full=[]
             for cluster in othercl.copy():
                 print(cluster)
-                M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+                M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
                 M = change_w(M, 1)
                 G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
                 neighbors = nx.all_neighbors(G, cluster)
@@ -709,8 +712,21 @@ except(FileNotFoundError):
     pass
 
 
+
+
+try:
+    with open(consensus_cache_path, 'rb') as f:
+        print(os.getcwd())
+        consensus_dict = pickle.load(f)
+except:
+    consensus_dict = {}
+
+flye_consensus = FlyeConsensus(bam, gfa, 1, consensus_dict)
+
+
+
 for i in range(0, len(edges)):
-    graph_create_unitigs(i)
+    graph_create_unitigs(i,flye_consensus)
     np.save("output/all_data.npy", all_data)
 for i in range(0, len(edges)):
     graph_link_unitigs(i,G)

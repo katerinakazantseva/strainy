@@ -1,79 +1,66 @@
-import csv
-import pysam
-import pandas as pd
-from collections import Counter
-import sys,os,subprocess
-from params import *
 import networkx as nx
-import matplotlib.pyplot as plt
-from build_adj_matrix import *
-from build_data  import *
-import pygraphviz as gv
-import pylab
 from community_detection import find_communities
-from more_itertools import sort_together
+
+from build_adj_matrix import *
+from build_data import *
 
 
-
-def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I,only_with_common_snip=True):
-    reads=sorted(set(cl.loc[cl['Cluster'] == cluster]['ReadName'].values))
-    if cluster==unclustered_group_N or only_with_common_snip==False: #NA cluster
-    #if cluster == unclustered_group_N and len(clSNP)==0:  # NA cluster
-        #print("Build na matrix")
+def split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I):
+    print("Strange cluster detected")
+    if cluster==1000000:
+        print("Build na matrix")
         m = build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam, edge, R, only_with_common_snip=False)
     else:
-        m=build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam,edge,R)
+        m = build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam, edge, R)
     m = remove_edges(m, 1)
     m.columns=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
     m.index=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
     m = change_w(m, R)
-    G_sub = nx.from_pandas_adjacency(m)
-
-    '''
-
-    import matplotlib.pyplot as plt
-    nx.draw(G_sub, nodelist=G_sub.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5)
-    plt.suptitle(str(edge) + " cluster:" + str(cluster))
-    plt.savefig("output/graphs/test/test_%s.png" % cluster, format="PNG", dpi=300)
-    plt.close()
-    '''
-
-
-    cluster_membership = find_communities(G_sub)
+    G = nx.from_pandas_adjacency(m)
+    cluster_membership = find_communities(G)
     clN=0
     uncl=0
     reads = cl[cl['Cluster'] == cluster]['ReadName'].values
-    #print(cluster_membership)
+
     for value in set(cluster_membership.values()):
         group = [k for k, v in cluster_membership.items() if v == value]
-        if len(group) > min_cluster_size:
-            clN = clN + 1
-            child_clusters.append(cluster+split_id+clN)
-            for i in group:
-                cl.loc[cl['ReadName'] == reads[i], "Cluster"] =  cluster+split_id+clN
 
+        if len(group) > 2:
+            clN = clN + 1
+            child_clusters.append(cluster+10000+clN)
+            for i in group:
+                cl.loc[cl['ReadName'] == reads[i], "Cluster"] =  cluster+10000+clN
         else:
             uncl = uncl + 1
             for i in group:
-                cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N
-
-                '''if cluster==unclustered_group_N:
+                if cluster==1000000:
                     cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 'NA'
-                    #cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N
-                    #child_clusters.append(cluster + split_id + clN)
                 else:
-                    cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N
-                    #child_clusters.append(cluster + split_id + clN)
-                    #cl.loc[cl['ReadName'] == reads[i], "Cluster"] = cluster + split_id
-                '''
+                    cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 1000000
+
+    print(str(clN)+" new clusters found")
 
 
+def build_adj_matrix_clusters_atab (cons, cl, edge, flye_consensus, only_with_common_snip=True):
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+    sort=[]
+    for k,v in cons.items():
+        sort.append([k, int(v["Start"]), int(v["Stop"])])
+    sorted_by_pos=[]
+    for i in sorted(sort, key=lambda sort: [sort[1], sort[2]]):
+        sorted_by_pos.append(i[0])
+    clusters = sorted(set(sorted_by_pos) & set(clusters), key=sorted_by_pos.index)
+    m = pd.DataFrame(-1, index=clusters, columns=clusters)
+    for i in range(0, m.shape[1]):
+        first_cl = m.index[i]
+        for k in range(i+1,m.shape[1]):
+            second_cl = m.index[k]
+            if m[second_cl][first_cl] == -1:
+                m[second_cl][first_cl] = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
+    return m
 
 
-
-
-
-def build_adj_matrix_clusters (cons, SNP_pos,cl,only_with_common_snip=True):
+def build_adj_matrix_clusters (edge,cons,cl,flye_consensus, only_with_common_snip=True):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     try:
         clusters.remove(0)
@@ -103,25 +90,29 @@ def build_adj_matrix_clusters (cons, SNP_pos,cl,only_with_common_snip=True):
 
             if m[second_cl][first_cl]==-1:
                 if only_with_common_snip==True:
-                    m[second_cl][first_cl] = distance_clusters(first_cl,second_cl, cons,SNP_pos)
+                    m[second_cl][first_cl] = distance_clusters(edge,first_cl,second_cl, cons, cl,flye_consensus)
                 else:
-                    m[second_cl][first_cl] = distance_clusters(first_cl, second_cl, cons, SNP_pos,False)
+                    m[second_cl][first_cl] = distance_clusters(edge,first_cl, second_cl, cons,cl,flye_consensus,False)
     return (m)
 
 
-def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
+
+def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
+#def join_clusters(cons, cl, R, edge, only_with_common_snip=True):
     if only_with_common_snip==False:
-        M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+        #M = build_adj_matrix_clusters(cons, cl, edge, consensus, False)
+        M = build_adj_matrix_clusters(edge,cons, cl,consensus, False)
     else:
-        M = build_adj_matrix_clusters(cons, SNP_pos, cl)
+        #M = build_adj_matrix_clusters(cons, cl, edge, consensus)
+        M = build_adj_matrix_clusters(edge,cons, cl,consensus)
 
     M=change_w(M,R)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
     to_remove = []
-    G_vis_before = nx.nx_agraph.to_agraph(G_vis)
-    G_vis_before.layout(prog="neato")
-    G_vis_before.draw("output/graphs/cluster_GV_graph_before_remove_%s.png" % (edge))
+    G_vis_temp = nx.nx_agraph.to_agraph(G_vis)
+    G_vis_temp.layout(prog="neato")
+    G_vis_temp.draw("output/graphs/cluster_GV_graph_%s_beforeremove.png" % (edge))
 
     path_remove=[]
     for node in G_vis.nodes():
@@ -163,11 +154,11 @@ def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
     for group in groups:
         if len(group) > 0:
             for i in range(1, len(group)):
-                #print(type(list(group)[0]))
-                cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = int(list(group)[0])
-    return (cl)
+                cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = list(group)[0]
+    return cl
 
-def postprocess (bam,cl,SNP_pos, data, edge, R, I):
+
+def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cons=build_data_cons(cl, SNP_pos, data,edge)
     for key, val in cons.copy().items():
         if val["Strange"]==1 and key!=unclustered_group_N:
@@ -236,7 +227,7 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
     cl.to_csv("output/clusters/clusters_before_joining_%s_%s_%s.csv" % (edge, I, 0.1))
 
     cons = build_data_cons(cl, SNP_pos, data, edge)
-    cl=join_clusters(cons, SNP_pos, cl,R, edge)
+    cl=join_clusters(cons, cl, R, edge, flye_consensus)
     counts = cl['Cluster'].value_counts(dropna=False)
     cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
     return(cl)
