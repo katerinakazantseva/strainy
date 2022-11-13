@@ -219,7 +219,7 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
     counts = cl['Cluster'].value_counts(dropna=False)
-    cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  #change for cov*01.
+    #cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  #change for cov*01.
 
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
@@ -229,5 +229,5 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cons = build_data_cons(cl, SNP_pos, data, edge)
     cl=join_clusters(cons, cl, R, edge, flye_consensus)
     counts = cl['Cluster'].value_counts(dropna=False)
-    cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
+    #cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
     return(cl)

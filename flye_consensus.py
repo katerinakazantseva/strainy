@@ -198,6 +198,7 @@ class FlyeConsensus:
         aligner.mismatch_score = -1
         aligner.gap_score = -1
         alignments = aligner.align(first_consensus_clipped, second_consensus_clipped)
-
+        #print(alignments)
+        #print(alignments[0].score)
         # score multiplied by -1 to reflect distance, normalized by the intersection length
         return 1 - (alignments[0].score / (intersection_end - intersection_start))

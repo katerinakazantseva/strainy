@@ -59,7 +59,7 @@ def col(edges):
     pool.map(color, range(0, len(edges)))
     pool.close()
     #subprocess.check_output('samtools merge output/bam/coloredBAM.bam -f `find output/bam -name "*edge*.bam"`',
-                            shell=True, capture_output=False)
+                            #shell=True, capture_output=False)
     #subprocess.check_output('rm `find output/bam -name "*edge*.bam"`', shell=True, capture_output=False)
     #pysam.index("output/bam/coloredBAM.bam")
 

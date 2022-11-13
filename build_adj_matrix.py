@@ -121,9 +121,10 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus,only_with
                         d=d
                 except:
                     continue
-            print(d)
+            print("CLUSTERS:"+str(first_cl)+" "+str(second_cl))
+            print("old distance"+str(d))
             d=flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
-            print(d)
+            print("flye distance"+str(d))
             print()
             '''if d>=1:
                     d=1

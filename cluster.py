@@ -29,6 +29,7 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     for index in cl.index:
         cl.loc[index, 'Color'] = colors[cl.loc[index, 'Cluster']]
     G.remove_edges_from(list(nx.selfloop_edges(G)))
+
     nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5,
             node_color=cl['Color'])
 

@@ -11,6 +11,7 @@ from params import *
 import numpy as np
 from simplify_links import *
 from flye_consensus import FlyeConsensus
+import pickle
 
 
 
@@ -312,27 +313,12 @@ def change_cov(g,edge,cons,ln,clusters,othercl):
     i.dp =round(cov)
     return(cov)
 
-def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
-    temp={}
-    other_cl=cl
+def change_sec(g, edge, othercl, cl, flye_consensus):
+    cl_copy = cl.copy()
     for cluster in othercl:
-        other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
-    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp,edge)
-
-    i = g.try_get_segment(edge)
-    seq = i.sequence
-    seq = list(seq)
-    for key, val in cl_consensuns["OTHER_%s" %edge].items():
-        try:
-            seq[int(key) - 1] = val
-        except (ValueError):
-            continue
-
-
-    seq = ''.join(seq)
-    if cut==True:
-        seq = seq[cl_consensuns["OTHER_%s" % edge]["Start"]:cl_consensuns["OTHER_%s" % edge]["Stop"] + 1]
-    i.sequence=seq
+        cl_copy.loc[cl['Cluster'] == cluster, "Cluster"] = "OTHER_%s" % edge
+    consensus = flye_consensus.flye_consensus("OTHER_%s" % edge, edge, cl_copy)
+    g.line(edge).sequence = str(consensus['consensus'])
 
 
 def cut(edge):
