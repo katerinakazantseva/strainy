@@ -5,40 +5,41 @@ from build_adj_matrix import *
 from build_data import *
 
 
-def split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I):
-    print("Strange cluster detected")
-    if cluster==1000000:
-        print("Build na matrix")
+def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I,only_with_common_snip=True):
+    print("Split cluster  "+str(cluster))
+    reads=sorted(set(cl.loc[cl['Cluster'] == cluster]['ReadName'].values))
+    if cluster==unclustered_group_N or only_with_common_snip==False: #NA cluster
+    #if cluster == unclustered_group_N and len(clSNP)==0:  # NA cluster
+        #print("Build na matrix")
         m = build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam, edge, R, only_with_common_snip=False)
     else:
-        m = build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam, edge, R)
+        m=build_adj_matrix(cl[cl['Cluster'] == cluster], data, clSNP, I, bam,edge,R)
     m = remove_edges(m, 1)
     m.columns=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
     m.index=range(0,len(cl[cl['Cluster'] == cluster]['ReadName']))
     m = change_w(m, R)
-    G = nx.from_pandas_adjacency(m)
-    cluster_membership = find_communities(G)
+    G_sub = nx.from_pandas_adjacency(m)
+
+    cluster_membership = find_communities(G_sub)
     clN=0
     uncl=0
     reads = cl[cl['Cluster'] == cluster]['ReadName'].values
-
+    #print(cluster_membership)
     for value in set(cluster_membership.values()):
         group = [k for k, v in cluster_membership.items() if v == value]
-
-        if len(group) > 2:
+        if len(group) > min_cluster_size:
             clN = clN + 1
-            child_clusters.append(cluster+10000+clN)
+            child_clusters.append(cluster+split_id+clN)
             for i in group:
-                cl.loc[cl['ReadName'] == reads[i], "Cluster"] =  cluster+10000+clN
+                cl.loc[cl['ReadName'] == reads[i], "Cluster"] =  cluster+split_id+clN
+
         else:
             uncl = uncl + 1
             for i in group:
-                if cluster==1000000:
-                    cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 'NA'
-                else:
-                    cl.loc[cl['ReadName'] == reads[i], "Cluster"] = 1000000
+                cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N
 
-    print(str(clN)+" new clusters found")
+    print("New clusters  "+str(clN))
+    print("Unclustered"+str(uncl))
 
 
 def build_adj_matrix_clusters_atab (cons, cl, edge, flye_consensus, only_with_common_snip=True):
