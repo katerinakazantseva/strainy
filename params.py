@@ -43,6 +43,7 @@ AF=0.1
 #cluster parameters
 min_cluster_size=2
 unclustered_group_N=1000000
+unclustered_group_N2=3000000
 split_id=10000
 
 #transformation
