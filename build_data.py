@@ -230,6 +230,7 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
     except(ValueError):
         pass
     for pos in SNP_pos:
+
         npos = []
 
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
@@ -238,10 +239,16 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
             except(KeyError):
                 continue
         try:
-            if len(npos) >= 2:
-                if int(Counter(npos).most_common()[0][1]) >= 2:
+            if len(npos) >2:
+                if int(Counter(npos).most_common()[0][1]) > 2:
                     val[pos] = Counter(npos).most_common()[0][0]
-
+                    #if cluster==3020004 or cluster==3020003:
+                        #print("CONSENSUS")
+                        #print(cluster)
+                        #print(pos)
+                        #print(val[pos])
+                        #print(Counter(npos))
+                        #print(Counter(npos).most_common())
             if int(Counter(npos).most_common()[1][1]) >= 2:
                 strange = 1
                 clSNP.append(pos)

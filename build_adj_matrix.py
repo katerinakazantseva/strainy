@@ -1,5 +1,6 @@
 import pandas as pd
 import pysam
+from params import *
 
 
 def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):
@@ -46,26 +47,27 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
     firstSNPs = [key for key in firstSNPs if key not in keys]
     secondSNPs= [key for key in secondSNPs if key not in keys]
     commonSNP = sorted(set(firstSNPs).intersection(secondSNPs).intersection(SNP_pos))
-    for snp in commonSNP:
-        try:
-            b1 = data[read1][snp]
-            b2 = data[read2][snp]
-            if b1 != b2 and len(b1) != 0 and len(b2) != 0:
-                if d == -1:
-                    d = 0
-                d = d + 1
-            elif b1 == b2:
-                if d == -1:
-                    d = 0
-                d = d
-        except:
-            continue
-        if d >= R:
-            d = R
-            break
+    if 1==1:
+        for snp in commonSNP:
+            try:
+                b1 = data[read1][snp]
+                b2 = data[read2][snp]
+                if b1 != b2 and len(b1) != 0 and len(b2) != 0:
+                    if d == -1:
+                        d = 0
+                    d = d + 1
+                elif b1 == b2:
+                    if d == -1:
+                        d = 0
+                    d = d
+            except:
+                continue
+            if d >= R:
+                d = R
+                break
 
-        else:
-            continue
+            else:
+                continue
     if len(commonSNP) == 0 and only_with_common_snip == False:
         intersect = set(range(data[read1]["Start"], data[read1]["Stop"])).intersection(
             set(range(data[read2]["Start"], data[read2]["Stop"])))
@@ -99,6 +101,8 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
     firstSNPs = [key for key in firstSNPs if key not in keys]
     secondSNPs= [key for key in secondSNPs if key not in keys]
     commonSNP=sorted(set(firstSNPs).intersection(secondSNPs))
+    #print(commonSNP)
+
 
     try:
         intersect=set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
@@ -113,6 +117,9 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
                     b1=cons[first_cl][snp]
                     b2=cons[second_cl][snp]
                     if b1 != b2 and len(b1)!=0 and  len(b2)!=0:
+                        #print(b1)
+                        #print(b2)
+                        #print("!")
                         if d==-1:
                             d=0
                         d=d+1
@@ -120,6 +127,8 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
                         if d==-1:
                             d=0
                         d=d
+
+                    #print(" ")
                 except:
                     continue
                 if d>=1:
@@ -128,8 +137,7 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
 
                 else:
                     continue
-
-
     except(IndexError):pass
+    #print("Distance "+str(first_cl)+str(" ")+str(second_cl)+str(": ")+str(d))
     return (d)
 

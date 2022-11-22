@@ -109,6 +109,7 @@ def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots
 
 
 def remove_nested(G, cons):
+
     nodes=list(G.nodes())
     for node in nodes:
         try:
@@ -116,8 +117,15 @@ def remove_nested(G, cons):
             for neighbor in list(neighbors):
                 if cons[node]["Start"]<cons[neighbor]["Start"] and cons[node]["Stop"]>cons[neighbor]["Stop"]:
                     try:
+
                         G.remove_node(neighbor)
                         print("REMOVE NESTED"+str(neighbor))
+                        print(node)
+                        print(cons[node]["Start"])
+                        print(cons[node]["Stop"])
+                        print(neighbor)
+                        print(cons[neighbor]["Start"])
+                        print(cons[neighbor]["Stop"])
                     except:
                         continue
         except:
@@ -129,6 +137,12 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
     M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
     M = change_w(M, 1)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
+
+    G_vis_before = nx.nx_agraph.to_agraph(G_vis)
+    G_vis_before.layout(prog="neato")
+    G_vis_before.draw("output/test.png" )
+
+
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
     cl_removed = []
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
@@ -138,12 +152,17 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
         pass
     path_remove = []
     G_vis=remove_nested(G_vis, cons)
+    G_vis_nested = nx.nx_agraph.to_agraph(G_vis)
+    G_vis_nested.layout(prog="neato")
+    G_vis_nested.draw("output/test2.png" )
     for node in G_vis.nodes():
         neighbors = nx.all_neighbors(G_vis, node)
         for neighbor in list(neighbors):
+
             for n_path in nx.algorithms.all_simple_paths(G_vis, node, neighbor):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
+
     for e in G_vis.edges():
         first_cl = e[0]
         second_cl = e[1]
@@ -170,10 +189,13 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
 
 def find_full_paths(G, paths_roots, paths_leafs):
     paths = []
+    print("PATHS")
     for root in paths_roots:
         paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs)
         for path in list(paths_nx):
+            print(path)
             paths.append(path)
+
     return (paths)
 
 
@@ -736,4 +758,3 @@ simplify_links(g)
 gfapy.Gfa.to_file(g,gfa_transformed1)
 gfapy.GraphOperations.merge_linear_paths(g)
 gfapy.Gfa.to_file(g,gfa_transformed2)
-
