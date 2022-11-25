@@ -11,10 +11,10 @@ def read_snp(snp,edge, bam, AF,cluster=None):
     SNP_pos = []
     if snp==None:
         if cluster==None:
-            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >output/vcf/vcf_{}.txt'.format(edge,bam,edge)
+            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt'.format(edge,bam,output,edge)
             subprocess.check_output(snpos, shell=True, capture_output=False)
             #subprocess.call(snpos, shell=True, stderr=subprocess.DEVNULL)
-            with open("output/vcf/vcf_%s.txt" % edge) as f:
+            with open("%s/vcf/vcf_%s.txt" % (output,edge)) as f:
                 lines = f.readlines()
                 for line in lines:
                     try:
@@ -24,9 +24,9 @@ def read_snp(snp,edge, bam, AF,cluster=None):
                     if AlFreq > AF:
                         SNP_pos.append(line.split()[1])
         else:
-            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >output/vcf/vcf_{}_{}.txt'.format(fa,edge,bam,edge,cluster)
+            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt'.format(fa,edge,bam,output,edge,cluster)
             subprocess.check_output(snpos, shell=True, capture_output=False)
-            with open("output/vcf/vcf_%s_%s.txt" % (edge,cluster)) as f:
+            with open("%s/vcf/vcf_%s_%s.txt" % (output,edge,cluster)) as f:
                 lines = f.readlines()
                 for line in lines:
                     try:
@@ -212,16 +212,16 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
     clSNP2 = []
 
     reads = list(cl.loc[cl['Cluster'] == cluster, 'ReadName'])
-    with open('output/clusters/reads_%s_%s.txt' % (edge,cluster), 'w') as fp:
+    with open('%s/clusters/reads_%s_%s.txt' % (output,edge,cluster), 'w') as fp:
         for line in reads:
             fp.write(str(line))
             fp.write("\n")
     #Create bam for cluster
-    pysam.samtools.view("-N", 'output/clusters/reads_%s_%s.txt' % (edge,cluster), "-o", 'output/bam/clusters/%s_%s.bam' % (edge,cluster), bam, edge,catch_stdout=False)
-    pysam.samtools.index('output/bam/clusters/%s_%s.bam' % (edge,cluster))
+    pysam.samtools.view("-N", '%s/clusters/reads_%s_%s.txt' % (output,edge,cluster), "-o", '%s/bam/clusters/%s_%s.bam' % (output,edge,cluster), bam, edge,catch_stdout=False)
+    pysam.samtools.index('%s/bam/clusters/%s_%s.bam' % (output,edge,cluster))
 
 
-    clSNP2=read_snp(snp,edge, 'output/bam/clusters/%s_%s.bam' % (edge,cluster), AF,cluster)
+    clSNP2=read_snp(snp,edge, '%s/bam/clusters/%s_%s.bam' % (output,edge,cluster), AF,cluster)
 
 
     try:
@@ -242,17 +242,9 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
             if len(npos) >2:
                 if int(Counter(npos).most_common()[0][1]) > 2:
                     val[pos] = Counter(npos).most_common()[0][0]
-                    #if cluster==3020004 or cluster==3020003:
-                        #print("CONSENSUS")
-                        #print(cluster)
-                        #print(pos)
-                        #print(val[pos])
-                        #print(Counter(npos))
-                        #print(Counter(npos).most_common())
             if int(Counter(npos).most_common()[1][1]) >= 2:
                 strange = 1
                 clSNP.append(pos)
-                #clSNP2.append(pos)
         except(IndexError):
             continue
 

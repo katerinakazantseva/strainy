@@ -117,9 +117,6 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
                     b1=cons[first_cl][snp]
                     b2=cons[second_cl][snp]
                     if b1 != b2 and len(b1)!=0 and  len(b2)!=0:
-                        #print(b1)
-                        #print(b2)
-                        #print("!")
                         if d==-1:
                             d=0
                         d=d+1
