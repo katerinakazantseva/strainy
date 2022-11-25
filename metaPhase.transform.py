@@ -14,7 +14,7 @@ from simplify_links import *
 
 
 g = gfapy.Gfa.from_file(gfa)
-stats = open('output/stats_clusters.txt', 'a')
+stats = open('%s/stats_clusters.txt' % output, 'a')
 stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
 stats.close()
 
@@ -138,9 +138,6 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
     M = change_w(M, 1)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
 
-    G_vis_before = nx.nx_agraph.to_agraph(G_vis)
-    G_vis_before.layout(prog="neato")
-    G_vis_before.draw("output/test.png" )
 
 
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
@@ -151,10 +148,6 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
     except:
         pass
     path_remove = []
-    G_vis=remove_nested(G_vis, cons)
-    G_vis_nested = nx.nx_agraph.to_agraph(G_vis)
-    G_vis_nested.layout(prog="neato")
-    G_vis_nested.draw("output/test2.png" )
     for node in G_vis.nodes():
         neighbors = nx.all_neighbors(G_vis, node)
         for neighbor in list(neighbors):
@@ -182,7 +175,7 @@ def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs
     graph_vis = str(graph_vis)
     graph_vis = gv.AGraph(graph_vis)
     graph_vis.layout(prog="neato")
-    graph_vis.draw("output/graphs/full_paths_cluster_GV_graph_%s.png" % (edge))
+    graph_vis.draw("%s/graphs/full_paths_cluster_GV_graph_%s.png" % (output, edge))
     G_vis.remove_node("Src")
     G_vis.remove_node("Sink")
     return(cl_removed)
@@ -425,7 +418,7 @@ def graph_create_unitigs(i):
     full_paths_leafs = []
     full_clusters = []
     try:
-        cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF), keep_default_na=False)
         SNP_pos = read_snp(snp, edge,bam, AF)
         # Save
         try:
@@ -533,7 +526,7 @@ def graph_create_unitigs(i):
         i.dp = round(float(cov))
         pass
         clusters = []
-    stats = open('output/stats_clusters.txt', 'a')
+    stats = open('%s/stats_clusters.txt' % output, 'a')
     fcN = 0
     fpN = 0
 
@@ -565,7 +558,7 @@ def graph_link_unitigs(i,G):
     except(KeyError):
         pass
     try:
-        cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF), keep_default_na=False)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF), keep_default_na=False)
     except(FileNotFoundError):
         pass
     link_unitigs=[]
@@ -634,7 +627,7 @@ def graph_link_unitigs(i,G):
             to_or=orient[n][1]
             w=1
             try:
-                cl_n = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (n, I, AF), keep_default_na=False)
+                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,n, I, AF), keep_default_na=False)
             except(FileNotFoundError):
                 add_link("%s_%s" % (edge, clN), fr_or,n, to_or,w)
                 continue
@@ -726,14 +719,14 @@ def graph_link_unitigs(i,G):
 
 G=gfa_to_nx(g)
 try:
-    all_data = np.load("output/all_data.npy" , allow_pickle='TRUE').item()
+    all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
 except(FileNotFoundError):
     pass
 
 
 for i in range(0, len(edges)):
     graph_create_unitigs(i)
-    np.save("output/all_data.npy", all_data)
+    np.save("%s/all_data.npy" % output, all_data)
 for i in range(0, len(edges)):
     graph_link_unitigs(i,G)
 

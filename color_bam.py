@@ -13,8 +13,8 @@ import os
 
 def write_bam(edge, I, AF):
     infile = pysam.AlignmentFile(bam, "rb")
-    outfile = pysam.AlignmentFile("output/bam/coloredBAM_%s.bam" % edge, "wb", template=infile)
-    cl = pd.read_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF),keep_default_na=False)
+    outfile = pysam.AlignmentFile("%s/bam/coloredBAM_unitig_%s.bam" % (output,edge), "wb", template=infile)
+    cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF),keep_default_na=False)
     iter = infile.fetch(edge,until_eof=True)
     cmap = plt.get_cmap('viridis')
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 0

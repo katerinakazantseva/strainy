@@ -30,14 +30,6 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I,only_w
     m = change_w(m, R)
     G_sub = nx.from_pandas_adjacency(m)
 
-    '''
-
-    import matplotlib.pyplot as plt
-    nx.draw(G_sub, nodelist=G_sub.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5)
-    plt.suptitle(str(edge) + " cluster:" + str(cluster))
-    plt.savefig("output/graphs/test/test_%s.png" % cluster, format="PNG", dpi=300)
-    plt.close()
-    '''
 
 
     cluster_membership = find_communities(G_sub)
@@ -127,7 +119,7 @@ def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
     to_remove = []
     G_vis_before = nx.nx_agraph.to_agraph(G_vis)
     G_vis_before.layout(prog="neato")
-    G_vis_before.draw("output/graphs/cluster_GV_graph_before_remove_%s.png" % (edge))
+    G_vis_before.draw("%s/graphs/cluster_GV_graph_before_remove_%s.png" % (output,edge))
 
     path_remove=[]
     for node in G_vis.nodes():
@@ -157,7 +149,7 @@ def join_clusters(cons, SNP_pos, cl,R, edge, only_with_common_snip=True):
     G_vis.remove_edges_from(ebunch=to_remove)
     G_vis = nx.nx_agraph.to_agraph(G_vis)
     G_vis.layout(prog="neato")
-    G_vis.draw("output/graphs/cluster_GV_graph_%s.png" % (edge))
+    G_vis.draw("%s/graphs/cluster_GV_graph_%s.png" % (output,edge))
     G = nx.from_pandas_adjacency(M)
     for n_path in path_remove:
         try:
@@ -242,15 +234,11 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
 
-    cl.to_csv("output/clusters/clusters_before_joining_%s_%s_%s.csv" % (edge, I, 0.1))
+    cl.to_csv("%s/clusters/clusters_before_joining_%s_%s_%s.csv" % (output,edge, I, 0.1))
 
     cons = build_data_cons(cl, SNP_pos, data, edge)
     cl=join_clusters(cons, SNP_pos, cl,R, edge)
-    cl.to_csv("1.csv")
     cons = build_data_cons(cl, SNP_pos, data, edge)
-    #print()
-    #print()
-    #print("BORDER")
     cl=join_clusters(cons, SNP_pos, cl, R, edge, False)
     counts = cl['Cluster'].value_counts(dropna=False)
     cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
