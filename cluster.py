@@ -26,6 +26,7 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
         KeyError
     colors[0] = "#505050"
     i = 0
+
     for cluster in clusters:
         colors[cluster] = mt.colors.to_hex(cmap[i])
         i = i + 1
@@ -33,13 +34,19 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
 
     for index in cl.index:
         cl.loc[index, 'Color'] = colors[int(cl.loc[index, 'Cluster'])]
-    G.remove_edges_from(list(nx.selfloop_edges(G)))
+
+        G.remove_edges_from(list(nx.selfloop_edges(G)))
+
+    [G.remove_node(i) for i in set(G.nodes) if i not in set(cl['ReadName'])]
+
+
+
     nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5,
             node_color=cl['Color'])
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
     plt.suptitle(str(edge) + " coverage:" + str(cov) + " length:" + str(ln) + " clN:" + str(clN))
-    plt.savefig("output/graphs/graph_%s_%s_%s.png" % (edge, I, AF), format="PNG", dpi=300)
+    plt.savefig("%s/graphs/graph_%s_%s_%s.png" % (output,edge, I, AF), format="PNG", dpi=300)
     plt.close()
     # Calculate statistics
     print("Summary for: " + edge)
@@ -48,10 +55,10 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
     print("Number of reads in each cluster: ")
     print(cl['Cluster'].value_counts(dropna=False))
 
-    stats = open('output/stats.txt', 'a')
-    stats.write(edge + "\t" + str(ln) + "\t" + str(cov) + "\t" + str(len(cl['ReadName'])) + "\t" + str(
-        len(SNP_pos)) + "\t" + str(clN) + "\t" + str(uncl) + "\n")
-    stats.close()
+    #stats = open('%s/stats.txt' % output, 'a')
+    #stats.write(edge + "\t" + str(ln) + "\t" + str(cov) + "\t" + str(len(cl['ReadName'])) + "\t" + str(
+        #len(SNP_pos)) + "\t" + str(clN) + "\t" + str(uncl) + "\n")
+    #stats.close()
 
 
 
@@ -64,13 +71,13 @@ def cluster(i):
     print ("### Reading Reads...")
     all_data={}
     try:
-        all_data = np.load("output/all_data.npy", allow_pickle='TRUE').item()
+        all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
         data=all_data[edge]
     except(KeyError,FileNotFoundError):
         #Gpass
         data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
         all_data[edge]=data
-    np.save("output/all_data.npy", all_data)
+    np.save("%s/all_data.npy" % output, all_data)
     #data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
     cl=pd.DataFrame(data={'ReadName': data.keys()})
     print(str(len(cl['ReadName'])) + " reads found")
@@ -82,16 +89,19 @@ def cluster(i):
         data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
         cl = pd.DataFrame(data={'ReadName': data.keys()})
         cl['Cluster'] = 1
-        cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
+        cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output, edge, I, AF))
         return
 
 
 
     #CALCULATE DISTANCE and ADJ MATRIX
     print ("### Calculatind distances/Building adj matrix...")
-    #m=build_adj_matrix(cl, data, SNP_pos, I, bam, edge, R)
-    #m.to_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF))
-    m=pd.read_csv("output/adj_M/adj_M_%s_%s_%s.csv" % (edge, I, AF),index_col='ReadName')
+    try:
+        m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (output, edge, I, AF), index_col='ReadName')
+    except FileNotFoundError:
+        m=build_adj_matrix(cl, data, SNP_pos, I, bam, edge, R)
+        m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (output,edge, I, AF))
+
     print("### Removing overweighed egdes...")
     m=remove_edges (m, R)
 
@@ -118,24 +128,24 @@ def cluster(i):
             cl['Cluster'][group] = unclustered_group_N
 
     print(str(clN)+" clusters found")
-    cl.to_csv("output/clusters/clusters_before_splitting_%s_%s_%s.csv" % (edge, I, AF))
+    cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (output,edge, I, AF))
     print("### Cluster post-processing...")
     #cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 1000000
     if clN!=0:
         cl=postprocess(bam, cl, SNP_pos, data, edge, R, I)
     clN=len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
     print(str(clN) + " clusters after post-processing")
-    cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
+    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF))
     print("### Graph viz...")
-    #clusters_vis_stats (G,cl, clN,uncl,SNP_pos, bam, edge, I, AF)
-    cl.to_csv("output/clusters/clusters_%s_%s_%s.csv" % (edge, I, AF))
+    clusters_vis_stats (G,cl, clN,uncl,SNP_pos, bam, edge, I, AF)
+    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF))
 
 
 
 
-stats = open('output/stats.txt', 'a')
-stats.write("Edge" + "\t" + "Len" + "\t" + "Coverage" + "\t" + "ReadsN" + "\t"+"SNPN"+"\t"+"ClustersN"+"\t"+"UnclusteredRN"+"\n")
-stats.close()
+#stats = open('%s/stats.txt' % output, 'a')
+#stats.write("Edge" + "\t" + "Len" + "\t" + "Coverage" + "\t" + "ReadsN" + "\t"+"SNPN"+"\t"+"ClustersN"+"\t"+"UnclusteredRN"+"\n")
+#stats.close()
 
 
 

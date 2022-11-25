@@ -1,25 +1,55 @@
 import pandas as pd
 import gfapy
 import pysam
+import re
+import os
+import subprocess
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 
-"""Please specify parameters below"""
 
 
-#bam file path
-bam=""
 
-#gfa file path
-gfa=""
+# Parse command line arguments
+parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+parser.add_argument("-o", "--output", help="output dir",required = True)
+parser.add_argument("-b", "--bam", help="bam file",required = True)
+parser.add_argument("-g", "--gfa", help="gfa file",required = True)
+parser.add_argument("-f", "--fa", help="fa file",required = True)
+parser.add_argument("-s", "--snp", help="vcf file", default=None)
+args = vars(parser.parse_args())
+
+# Set up parameters
+
+output = args["output"]
+bam = args["bam"]
+gfa = args["gfa"]
+fa = args["fa"]
+snp = args["snp"]
+
+
+
+bam_index=re.sub(".bam",".bam.bai", bam)
+bam_index_exist = os.path.exists(bam_index)
+if bam_index_exist == False:
+    raise Exception("No index file found (%s) Please create index using \"samtools index\"." % bam_index)
+
+
+
+
+
 
 #transformed gfa file path
-gfa_transformed = ""
+gfa_transformed = "%s/transformed_before_simplification.gfa" % output
+gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % output
+gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % output
+
+
 
 
 minigraph=False
 
-#snp file path. If=None, metaPhase call snp using bcftools
-snp=None
+
 
 
 """It is not recommended to change parameters below"""
@@ -43,6 +73,7 @@ AF=0.1
 #cluster parameters
 min_cluster_size=2
 unclustered_group_N=1000000
+unclustered_group_N2=3000000
 split_id=10000
 
 #transformation
@@ -58,12 +89,13 @@ min_reads_cluster=2
 cov_ratio=1.6
 
 
-#Please do not change
-gf=pd.read_csv(gaf_file, sep="\t")
-gf1=pd.read_csv(gaf_file, sep=" ")
-gaf= pd.concat((gf1[gf1.columns[0]],gf[gf.columns[5]],),axis=1, keys=['ReadName', 'Al'])
 g = gfapy.Gfa.from_file(gfa)
 edges=g.segment_names
+
+
+
+
+
 
 
 
