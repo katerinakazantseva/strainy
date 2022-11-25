@@ -21,25 +21,9 @@ stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n
 stats.close()
 
 
-
-def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
-    seq=[]
-    cl_consensuns = cluster_consensuns(cl, clN, SNP_pos, data, cons,edge)
-    try:
-        i=g.try_get_segment(edge)
-        seq = i.sequence
-        seq = list(seq)
-        for key, val in cl_consensuns[clN].items():
-            try:
-                seq[int(key)-1] = val
-            except (ValueError, KeyError):
-                continue
-        seq = ''.join(seq)
-        seq = seq[left:righ+1]
-    except(gfapy.NotFoundError):
-        pass
-
-    if len(seq)==0:
+def add_child_edge(edge, clN, g, cl, cons, flye_consensus):
+    seq = str(flye_consensus.flye_consensus(clN, edge, cl)['consensus'])
+    if len(seq) == 0:
         remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq)>0:
         g.add_line("S\t%s_%s\t*" % (edge, clN))
@@ -201,7 +185,7 @@ def add_path_links(edge, paths,G):
                     continue
 
 
-def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters  ,cons):
+def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
     path_cl = []
     print("ADD PATH")
     for node in full_clusters:
@@ -287,7 +271,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!=cut_r[path_cluster]:
-            add_child_edge(edge, path_cluster, g,  cl, SNP_pos, data, cut_l[path_cluster], cut_r[path_cluster], cons)
+            add_child_edge(edge, path_cluster, g,  cl, cons, flye_consensus)
         else:
             for i in range(0,len(paths[edge])):
                 if path_cluster in paths[edge][i]:
@@ -420,7 +404,7 @@ def graph_create_unitigs(i,flye_consensus):
                     full_paths_roots.append(cluster)
                     full_paths_leafs.append(cluster)
 
-                add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
+                add_child_edge(edge, cluster, g, cl, cons, flye_consensus)
             link_clusters[edge] = list(clusters)
             link_clusters_sink[edge] = list(clusters)
             link_clusters_src[edge] = list(clusters)
@@ -433,7 +417,7 @@ def graph_create_unitigs(i,flye_consensus):
                 if clStart < start_end_gap and clStop > ln - start_end_gap:
                     if strong_tail(cluster, cl, ln, data)[0] == True and strong_tail(cluster, cl, ln,
                                                                                          data)[1] == True:
-                        add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
+                        add_child_edge(edge, cluster, g, cl, cons, flye_consensus)
                         full_clusters.append(cluster)
 
                     elif strong_tail(cluster, cl, ln, data)[0] != True:
@@ -481,7 +465,7 @@ def graph_create_unitigs(i,flye_consensus):
                 remove_clusters.append(edge)
 
             else:
-                change_sec(g, edge, othercl, cl, SNP_pos, data,True)
+                change_sec(g, edge, othercl, cl, flye_consensus)
 
             link_clusters[edge] = list(full_clusters) + list(
                 set(full_paths_roots).intersection(set([j for i in full_paths[edge] for j in i]))) + list(
@@ -491,7 +475,7 @@ def graph_create_unitigs(i,flye_consensus):
             link_clusters_sink[edge] = list(full_clusters) + list(
                 set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
         else:
-            change_sec(g, edge, [clusters[0]], cl, SNP_pos, data, False)
+            change_sec(g, edge, [clusters[0]], cl, flye_consensus)
     except(FileNotFoundError, IndexError):
         print("NO CLUSTERS")
         cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
@@ -693,7 +677,7 @@ def graph_link_unitigs(i,G):
 
 G=gfa_to_nx(g)
 try:
-    all_data = np.load("output/all_data.npy" , allow_pickle='TRUE').item()
+    twall_data = np.load("output/all_data.npy", allow_pickle='TRUE').item()
 except(FileNotFoundError):
     pass
 
@@ -735,7 +719,7 @@ gfapy.Gfa.to_file(g,gfa_transformed)
 simplify_links(g)
 
 
-gfapy.Gfa.to_file(g,gfa_transformed1)
+#gfapy.Gfa.to_file(g,gfa_transformed1)
 gfapy.GraphOperations.merge_linear_paths(g)
-gfapy.Gfa.to_file(g,gfa_transformed2)
+#gfapy.Gfa.to_file(g,gfa_transformed2)
 

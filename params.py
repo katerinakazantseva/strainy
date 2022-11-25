@@ -25,6 +25,7 @@ snp=None
 # Should be Flye/bin/flye
 flye = "/Users/ataberk/Documents/metagenomic-phasing/software/Flye/bin/flye"
 
+fa = "/Users/ataberk/Documents/metagenomic-phasing/metaphase_data/results/3ecoli.fa"
 
 # Path to store and read the consensus dictionary
 # If one already exists and write_consensus_cache is true, it may be overwritten
@@ -34,8 +35,10 @@ consensus_cache_path = "consensus_dict_2.pkl"
 # This needs to be True to carry out it from phase part to transform part
 write_consensus_cache = True
 
-# Number processes, default use all available
+# Number processes, default (-1) uses all available
 processes = -1
+
+delete_files = False
 
 # snp file path. If=None, metaPhase call snp using bcftools
 snp = None

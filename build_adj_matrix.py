@@ -107,32 +107,15 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus,only_with
         elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
             d = 1
         else:
-            for snp in commonSNP:
-                try:
-                    b1=cons[first_cl][snp]
-                    b2=cons[second_cl][snp]
-                    if b1 != b2 and len(b1)!=0 and  len(b2)!=0:
-                        if d==-1:
-                            d=0
-                        d=d+1
-                    elif b1 == b2:
-                        if d==-1:
-                            d=0
-                        d=d
-                except:
-                    continue
-            print("CLUSTERS:"+str(first_cl)+" "+str(second_cl))
-            print("old distance"+str(d))
             d=flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
-            print("flye distance"+str(d))
-            print()
-            '''if d>=1:
-                    d=1
-                    break
-
-                else:
-                    continue'''
+            # following lines are for debugging
+            # print(f"flye distance:{fd}, old distance:{d}")
+            # if fd != 0 and d == 0:
+            #     print("flye_consensus is not 0")
+            #     fd = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, debug=True)
+            # d = fd
 
 
-    except(IndexError):pass
-    return (d)
+    except(IndexError):
+        pass
+    return d
