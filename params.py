@@ -4,18 +4,18 @@ import pysam
 import re
 import os
 import subprocess
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 
 
 
 
 # Parse command line arguments
-parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
-parser.add_argument("-o", "--output", help="output dir",required = True)
-parser.add_argument("-b", "--bam", help="bam file",required = True)
-parser.add_argument("-g", "--gfa", help="gfa file",required = True)
-parser.add_argument("-f", "--fa", help="fa file",required = True)
+parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
+requiredNamed = parser.add_argument_group('required named arguments')
+requiredNamed.add_argument("-o", "--output", help="output dir",required = True)
+requiredNamed.add_argument("-b", "--bam", help="bam file",required = True)
+requiredNamed.add_argument("-g", "--gfa", help="gfa file",required = True)
+requiredNamed.add_argument("-f", "--fa", help="fa file",required = True)
 parser.add_argument("-s", "--snp", help="vcf file", default=None)
 args = vars(parser.parse_args())
 
@@ -92,7 +92,7 @@ cov_ratio=1.6
 g = gfapy.Gfa.from_file(gfa)
 edges=g.segment_names
 
-
+edges=['s25']
 
 
 
