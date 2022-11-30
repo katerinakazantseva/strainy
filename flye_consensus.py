@@ -346,5 +346,5 @@ class FlyeConsensus:
             self._log_alignment_info(alignment_string, first_cl_dict, second_cl_dict,score,
                                      intersection_start, intersection_end)
 
-        # normalize the score by the intersection length
-        return score / (intersection_end - intersection_start)
+        # score is not normalized!
+        return score
