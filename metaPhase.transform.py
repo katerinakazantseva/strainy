@@ -22,7 +22,9 @@ stats.close()
 
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
-    seq = str(flye_consensus.flye_consensus(clN, edge, cl)['consensus'])
+    consensus = flye_consensus.flye_consensus(clN, edge, cl)
+    consensus_start = consensus['start']
+    seq = consensus['consensus']
     if len(seq) == 0:
         remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq)>0:
@@ -31,7 +33,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         new_line = i
         new_line.name = str(edge) + "_" + str(clN)
         new_line.sid = str(edge) + "_" + str(clN)
-        new_line.sequence = seq[left:right+1]
+        new_line.sequence = seq[left - consensus_start:right - consensus_start + 1]
         new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
         print("edge added:" + str(new_line.name))
 
