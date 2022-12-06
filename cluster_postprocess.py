@@ -215,8 +215,8 @@ def postprocess (bam,cl,SNP_pos, data, edge, R, I):
         cluster_consensuns(cl, unclustered_group_N2, SNP_pos, data, cons,edge)
         cluster = unclustered_group_N2
         val=cons[cluster]
-        #clSNP = SNP_pos
-        clSNP = val["clSNP2"]
+        clSNP = SNP_pos
+        #clSNP = val["clSNP2"]
         child_clusters = []
         split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I,only_with_common_snip = False)
         for child in set(child_clusters):
