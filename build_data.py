@@ -12,10 +12,10 @@ def read_snp(snp,edge, bam, AF,cluster=None):
     SNP_pos = []
     if snp==None:
         if cluster==None:
-            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >output/vcf/vcf_{}.txt'.format(edge,bam,edge)
+            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt'.format(edge,bam,output,edge)
             subprocess.check_output(snpos, shell=True, capture_output=False)
             #subprocess.call(snpos, shell=True, stderr=subprocess.DEVNULL)
-            with open("output/vcf/vcf_%s.txt" % edge) as f:
+            with open("%s/vcf/vcf_%s.txt" % (output,edge)) as f:
                 lines = f.readlines()
                 for line in lines:
                     try:
@@ -25,9 +25,9 @@ def read_snp(snp,edge, bam, AF,cluster=None):
                     if AlFreq > AF:
                         SNP_pos.append(line.split()[1])
         else:
-            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >output/vcf/vcf_{}_{}.txt'.format(fa,edge,bam,edge,cluster)
+            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt'.format(fa,edge,bam,output,edge,cluster)
             subprocess.check_output(snpos, shell=True, capture_output=False)
-            with open("output/vcf/vcf_%s_%s.txt" % (edge,cluster)) as f:
+            with open("%s/vcf/vcf_%s_%s.txt" % (output,edge,cluster)) as f:
                 lines = f.readlines()
                 for line in lines:
                     try:
@@ -39,13 +39,9 @@ def read_snp(snp,edge, bam, AF,cluster=None):
                     if int(str(line.split()[3]).split(',')[0])==0 and int(str(line.split()[3]).split(',')[1])>min_reads_cluster and len(str(line.split()[2]).split(','))>1:
                         SNP_pos.append(line.split()[1])
 
-    else:
-        vcf = open(snp, "rt")
-        for line in vcf:
-            if line.split()[0] == edge:
-                SNP_pos.append(line.split()[1])
-    #print(str(len(SNP_pos)) + " SNPs found")
-    return(SNP_pos)
+
+
+
 
 
 def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max):
