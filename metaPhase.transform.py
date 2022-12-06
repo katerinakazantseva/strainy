@@ -10,6 +10,8 @@ from build_data  import *
 from params import *
 import numpy as np
 from simplify_links import *
+from flye_consensus import FlyeConsensus
+import pickle
 
 
 
@@ -19,25 +21,11 @@ stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n
 stats.close()
 
 
-
-def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
-    seq=[]
-    cl_consensuns = cluster_consensuns(cl, clN, SNP_pos, data, cons,edge)
-    try:
-        i=g.try_get_segment(edge)
-        seq = i.sequence
-        seq = list(seq)
-        for key, val in cl_consensuns[clN].items():
-            try:
-                seq[int(key)-1] = val
-            except (ValueError, KeyError):
-                continue
-        seq = ''.join(seq)
-        seq = seq[left:righ+1]
-    except(gfapy.NotFoundError):
-        pass
-
-    if len(seq)==0:
+def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
+    consensus = flye_consensus.flye_consensus(clN, edge, cl)
+    consensus_start = consensus['start']
+    seq = consensus['consensus']
+    if len(seq) == 0:
         remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq)>0:
         g.add_line("S\t%s_%s\t*" % (edge, clN))
@@ -45,15 +33,17 @@ def add_child_edge(edge, clN, g, cl, SNP_pos, data, left, righ,cons):
         new_line = i
         new_line.name = str(edge) + "_" + str(clN)
         new_line.sid = str(edge) + "_" + str(clN)
-        new_line.sequence = seq
-        new_line.dp = cons[clN]["Cov"]  # coverage
+        new_line.sequence = seq[left - consensus_start:right - consensus_start + 1]
+        new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
         print("edge added:" + str(new_line.name))
 
 
 
-def build_paths_graph(SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
+def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
 
-    M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+    #M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+    M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
+
     M = change_w(M, 1)
 
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
@@ -133,8 +123,8 @@ def remove_nested(G, cons):
     return (G)
 
 
-def paths_graph_add_vis(edge,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs,full_clusters):
-    M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+def paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs,full_clusters):
+    M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
     M = change_w(M, 1)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
 
@@ -212,7 +202,7 @@ def add_path_links(edge, paths,G):
                     continue
 
 
-def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters  ,cons):
+def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
     path_cl = []
     print("ADD PATH")
     for node in full_clusters:
@@ -288,7 +278,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     r_borders.append(int(cons[i]["Stop"]))
                 if member in paths_leafs:
                     border=cut_r[member]
-                else: border = max(l_borders) + (min(r_borders) - max(l_borders)) // 2
+                else:
+                    border = max(l_borders) + (min(r_borders) - max(l_borders)) // 2
                 L=list(set(L))
                 R = list(set(R))
                 for i in L:
@@ -298,7 +289,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!=cut_r[path_cluster]:
-            add_child_edge(edge, path_cluster, g,  cl, SNP_pos, data, cut_l[path_cluster], cut_r[path_cluster], cons)
+            add_child_edge(edge, path_cluster, g,  cl, cut_l[path_cluster], cut_r[path_cluster], cons, flye_consensus)
         else:
             for i in range(0,len(paths[edge])):
                 if path_cluster in paths[edge][i]:
@@ -324,27 +315,12 @@ def change_cov(g,edge,cons,ln,clusters,othercl):
     i.dp =round(cov)
     return(cov)
 
-def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
-    temp={}
-    other_cl=cl
+def change_sec(g, edge, othercl, cl, flye_consensus):
+    cl_copy = cl.copy()
     for cluster in othercl:
-        other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
-    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp,edge)
-
-    i = g.try_get_segment(edge)
-    seq = i.sequence
-    seq = list(seq)
-    for key, val in cl_consensuns["OTHER_%s" %edge].items():
-        try:
-            seq[int(key) - 1] = val
-        except (ValueError):
-            continue
-
-
-    seq = ''.join(seq)
-    if cut==True:
-        seq = seq[cl_consensuns["OTHER_%s" % edge]["Start"]:cl_consensuns["OTHER_%s" % edge]["Stop"] + 1]
-    i.sequence=seq
+        cl_copy.loc[cl['Cluster'] == cluster, "Cluster"] = "OTHER_%s" % edge
+    consensus = flye_consensus.flye_consensus("OTHER_%s" % edge, edge, cl_copy)
+    g.line(edge).sequence = str(consensus['consensus'])
 
 
 def cut(edge):
@@ -411,7 +387,7 @@ remove_clusters = []
 remove_zeroes = []
 all_data={}
 
-def graph_create_unitigs(i):
+def graph_create_unitigs(i,flye_consensus):
     edge = edges[i]
     print(edge)
     full_paths_roots = []
@@ -446,7 +422,7 @@ def graph_create_unitigs(i):
                     full_paths_roots.append(cluster)
                     full_paths_leafs.append(cluster)
 
-                add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
+                add_child_edge(edge, cluster, g, cl, 0, ln - 1, cons, flye_consensus)
             link_clusters[edge] = list(clusters)
             link_clusters_sink[edge] = list(clusters)
             link_clusters_src[edge] = list(clusters)
@@ -459,7 +435,7 @@ def graph_create_unitigs(i):
                 if clStart < start_end_gap and clStop > ln - start_end_gap:
                     if strong_tail(cluster, cl, ln, data)[0] == True and strong_tail(cluster, cl, ln,
                                                                                          data)[1] == True:
-                        add_child_edge(edge, cluster, g, cl, SNP_pos, data, 0, ln - 1, cons)
+                        add_child_edge(edge, cluster, g, cl, 0, ln - 1, cons, flye_consensus)
                         full_clusters.append(cluster)
 
                     elif strong_tail(cluster, cl, ln, data)[0] != True:
@@ -472,16 +448,16 @@ def graph_create_unitigs(i):
                     full_paths_leafs.append(cluster)
 
 
-            G=build_paths_graph(SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs)
+            G=build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs)
 
             full_cl[edge] = full_clusters
-            cl_removed=paths_graph_add_vis(edge,cons, SNP_pos,cl,full_paths_roots, full_paths_leafs,full_clusters)
+            cl_removed=paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos,cl,full_paths_roots, full_paths_leafs,full_clusters)
             try:
                 full_paths[edge] = find_full_paths(G,full_paths_roots, full_paths_leafs)
             except(ValueError):
                 pass
 
-            add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,full_clusters,cons)
+            add_path_edges(edge,g,cl, data, SNP_pos, ln,full_paths, G,full_paths_roots, full_paths_leafs,full_clusters,cons, flye_consensus)
             add_path_links(edge, full_paths[edge], G)
 
             othercl=list(set(clusters)-set(full_clusters)-set([j for i in full_paths[edge] for j in i])-set(cl_removed))
@@ -489,7 +465,7 @@ def graph_create_unitigs(i):
             close_to_full=[]
             for cluster in othercl.copy():
                 print(cluster)
-                M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
+                M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
                 M = change_w(M, 1)
                 G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
                 neighbors = nx.all_neighbors(G, cluster)
@@ -507,7 +483,7 @@ def graph_create_unitigs(i):
                 remove_clusters.append(edge)
 
             else:
-                change_sec(g, edge, othercl, cl, SNP_pos, data,True)
+                change_sec(g, edge, othercl, cl, flye_consensus)
 
             link_clusters[edge] = list(full_clusters) + list(
                 set(full_paths_roots).intersection(set([j for i in full_paths[edge] for j in i]))) + list(
@@ -517,7 +493,7 @@ def graph_create_unitigs(i):
             link_clusters_sink[edge] = list(full_clusters) + list(
                 set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
         else:
-            change_sec(g, edge, [clusters[0]], cl, SNP_pos, data, False)
+            change_sec(g, edge, [clusters[0]], cl, flye_consensus)
     except(FileNotFoundError, IndexError):
         print("NO CLUSTERS")
         cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
@@ -724,9 +700,25 @@ except(FileNotFoundError):
     pass
 
 
+
+
+try:
+    with open(consensus_cache_path, 'rb') as f:
+        print(os.getcwd())
+        consensus_dict = pickle.load(f)
+except FileNotFoundError:
+    consensus_dict = {}
+
+flye_consensus = FlyeConsensus(bam, gfa, 1, consensus_dict)
+
+
+
 for i in range(0, len(edges)):
+
+
     graph_create_unitigs(i)
     np.save("%s/all_data.npy" % output, all_data)
+
 for i in range(0, len(edges)):
     graph_link_unitigs(i,G)
 
@@ -751,3 +743,4 @@ simplify_links(g)
 gfapy.Gfa.to_file(g,gfa_transformed1)
 gfapy.GraphOperations.merge_linear_paths(g)
 gfapy.Gfa.to_file(g,gfa_transformed2)
+
