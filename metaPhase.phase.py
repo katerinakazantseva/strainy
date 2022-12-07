@@ -12,18 +12,9 @@ from params import *
 
 
 
-dirs = ("output/",
-        "output/vcf/",
-        "output/adj_M/",
-        "output/clusters/",
-        "output/graphs/",
-        "output/bam/",
-        "output/bam/clusters/",
-        "output/flye_inputs",
-        "output/flye_outputs")
 
 
-dirs = ( "%s/vcf/" % output ,"%s/adj_M/" % output,"%s/clusters/" % output,"%s/graphs/" % output,"%s/bam/" % output,"%s/bam/clusters" % output)
+dirs = ( "%s/vcf/" % output ,"%s/adj_M/" % output,"%s/clusters/" % output,"%s/graphs/" % output,"%s/bam/" % output,"%s/bam/clusters" % output,   "%s/flye_inputs" % output,"%s/flye_outputs" % output)
 
 for dir in dirs:
     try:
@@ -73,4 +64,4 @@ if __name__ == "__main__":
     if write_consensus_cache:
         with open(consensus_cache_path, 'wb') as f:
             pickle.dump(consensus_dict, f)
-    col(edges)
+    #col(edges)

@@ -39,9 +39,13 @@ def read_snp(snp,edge, bam, AF,cluster=None):
                     if int(str(line.split()[3]).split(',')[0])==0 and int(str(line.split()[3]).split(',')[1])>min_reads_cluster and len(str(line.split()[2]).split(','))>1:
                         SNP_pos.append(line.split()[1])
 
-
-
-
+    else:
+        vcf = open(snp, "rt")
+        for line in vcf:
+            if line.split()[0] == edge:
+                SNP_pos.append(line.split()[1])
+    # print(str(len(SNP_pos)) + " SNPs found")
+    return (SNP_pos)
 
 
 def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max):

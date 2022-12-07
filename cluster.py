@@ -67,16 +67,7 @@ def cluster(params):
     SNP_pos = read_snp(snp, edge, bam, AF)
 
     print ("### Reading Reads...")
-    all_data={}
-    try:
-        all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
-        data=all_data[edge]
-    except(KeyError,FileNotFoundError):
-        #Gpass
-        data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
-        all_data[edge]=data
-    np.save("%s/all_data.npy" % output, all_data)
-    #data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+    data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
     cl=pd.DataFrame(data={'ReadName': data.keys()})
     print(str(len(cl['ReadName'])) + " reads found")
     cl['Cluster'] = 'NA'

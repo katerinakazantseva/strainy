@@ -716,8 +716,8 @@ flye_consensus = FlyeConsensus(bam, gfa, 1, consensus_dict)
 for i in range(0, len(edges)):
 
 
-    graph_create_unitigs(i)
-    np.save("%s/all_data.npy" % output, all_data)
+    graph_create_unitigs(i,flye_consensus)
+    #np.save("%s/all_data.npy" % output, all_data)
 
 for i in range(0, len(edges)):
     graph_link_unitigs(i,G)
