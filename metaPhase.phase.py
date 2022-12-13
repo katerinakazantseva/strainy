@@ -61,7 +61,7 @@ import numpy as np
 
 if __name__ == "__main__":
     consensus_dict = phase(edges)
-    if write_consensus_cache:
-        with open(consensus_cache_path, 'wb') as f:
-            pickle.dump(consensus_dict, f)
-    #col(edges)
+    #if write_consensus_cache:
+        #with open(consensus_cache_path, 'wb') as f:
+            #pickle.dump(consensus_dict, f)
+    col(edges)

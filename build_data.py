@@ -193,6 +193,7 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
     clStop = 0
     clCov=0
 
+
     for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
         try:
             start = int(data[read]["Start"])
@@ -204,6 +205,7 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
                 clStop = stop
         except(KeyError):
             pass
+
     try:
         if (int(clSNP2[0])-int(clStart))>1.5*I or int(clStop)-int(clSNP2[len(clSNP2)-1])>1.5*I:
             strange2 = 1

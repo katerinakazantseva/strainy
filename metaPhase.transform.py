@@ -22,9 +22,21 @@ stats.close()
 
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
+
     consensus = flye_consensus.flye_consensus(clN, edge, cl)
     consensus_start = consensus['start']
-    seq = consensus['consensus']
+    if consensus_start>left:
+        main_seq=g.try_get_segment(edge)
+        insert=main_seq.sequence[left:consensus_start]
+        seq = str(consensus['consensus'])[0:right - consensus_start + 1]
+        seq=insert+seq
+        print ("CHECKIT "+str(edge))
+    else:
+        seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
+    print(consensus_start)
+    print(left)
+    print(right)
+    print(len(seq))
     if len(seq) == 0:
         remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq)>0:
@@ -33,9 +45,12 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         new_line = i
         new_line.name = str(edge) + "_" + str(clN)
         new_line.sid = str(edge) + "_" + str(clN)
-        new_line.sequence = seq[left - consensus_start:right - consensus_start + 1]
+        new_line.sequence = seq
+
+        #new_line.sequence = seq[left - consensus_start:right - consensus_start + 1]
         new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
-        print("edge added:" + str(new_line.name))
+
+
 
 
 
@@ -237,8 +252,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
         cut_r[i] = cut_r_unsorted[i]
     while None in cut_l.values():
         for member in cut_l.keys():
+
             if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
-                #print(member)
                 Q = deque()
                 L = []
                 R = []
@@ -269,24 +284,28 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                                     Q.append(path[path.index(n) + 1])
 
                             except (ValueError, IndexError):
-                                continue
+                                   continue
+
                 l_borders = []
                 r_borders = []
                 for i in L:
-                    l_borders.append(int(cons[i]["Start"]))
+                    print(i)
+                    consensus = flye_consensus.flye_consensus(i, edge, cl)
+                    #l_borders.append(int(cons[i]["Start"]))
+                    l_borders.append(int(consensus['start']))
+
                 for i in R:
-                    r_borders.append(int(cons[i]["Stop"]))
+                    consensus = flye_consensus.flye_consensus(i, edge, cl)
+                    #r_borders.append(int(cons[i]["Stop"]))
+                    r_borders.append(int(consensus['end']))
                 if member in paths_leafs:
                     border=cut_r[member]
                 else:
                     border = max(l_borders) + (min(r_borders) - max(l_borders)) // 2
-                L=list(set(L))
-                R = list(set(R))
                 for i in L:
                     cut_l[i] = border
                 for i in R:
                     cut_r[i] = border
-
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!=cut_r[path_cluster]:
             add_child_edge(edge, path_cluster, g,  cl, cut_l[path_cluster], cut_r[path_cluster], cons, flye_consensus)
@@ -314,13 +333,28 @@ def change_cov(g,edge,cons,ln,clusters,othercl):
     i = g.try_get_segment(edge)
     i.dp =round(cov)
     return(cov)
-
+'''
 def change_sec(g, edge, othercl, cl, flye_consensus):
     cl_copy = cl.copy()
     for cluster in othercl:
         cl_copy.loc[cl['Cluster'] == cluster, "Cluster"] = "OTHER_%s" % edge
     consensus = flye_consensus.flye_consensus("OTHER_%s" % edge, edge, cl_copy)
-    g.line(edge).sequence = str(consensus['consensus'])
+    #g.line(edge).sequence = str(consensus['consensus'])
+'''
+def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
+    temp={}
+    other_cl=cl
+    for cluster in othercl:
+        other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
+    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp,edge)
+    i = g.try_get_segment(edge)
+    seq = i.sequence
+    seq = list(seq)
+    for key, val in cl_consensuns["OTHER_%s" %edge].items():
+        try:
+            seq[int(key) - 1] = val
+        except (ValueError):
+            continue
 
 
 def cut(edge):
@@ -404,10 +438,10 @@ def graph_create_unitigs(i,flye_consensus):
             all_data[edge]=data
 
         ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
-        if len(cl.loc[cl['Cluster'] == 0]['Cluster'].values)>10:
+        if len(cl.loc[cl['Cluster'] == 0,'Cluster'].values)>10:
             cl.loc[cl['Cluster'] == 0, 'Cluster'] = 1000000
-        clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
-        print(clusters)
+        clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
+
         try:
             clusters.remove(0)
         except:
@@ -483,7 +517,8 @@ def graph_create_unitigs(i,flye_consensus):
                 remove_clusters.append(edge)
 
             else:
-                change_sec(g, edge, othercl, cl, flye_consensus)
+                #change_sec(g, edge, othercl, cl, flye_consensus)
+                change_sec(g, edge, othercl, cl, SNP_pos, data, True)
 
             link_clusters[edge] = list(full_clusters) + list(
                 set(full_paths_roots).intersection(set([j for i in full_paths[edge] for j in i]))) + list(
@@ -493,7 +528,8 @@ def graph_create_unitigs(i,flye_consensus):
             link_clusters_sink[edge] = list(full_clusters) + list(
                 set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
         else:
-            change_sec(g, edge, [clusters[0]], cl, flye_consensus)
+            #change_sec(g, edge, [clusters[0]], cl, flye_consensus)
+            change_sec(g, edge, [clusters[0]], cl, SNP_pos, data, False)
     except(FileNotFoundError, IndexError):
         print("NO CLUSTERS")
         cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]

@@ -108,11 +108,11 @@ class FlyeConsensus:
 
         # check if the output for this cluster-edge pair exists in the cache
         consensus_dict_key = f"{cluster}-{edge}"
-        with self._lock:
-            if consensus_dict_key in self._consensus_dict:
-                self._key_hit += 1
-                return self._consensus_dict[consensus_dict_key]
-            self._key_miss += 1
+        #with self._lock:
+            #if consensus_dict_key in self._consensus_dict:
+                #self._key_hit += 1
+                #return self._consensus_dict[consensus_dict_key]
+            #self._key_miss += 1
 
         # fetch the read names in this cluster and extract those reads to a new bam file to be used by the
         # Flye polisher

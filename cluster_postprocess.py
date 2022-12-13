@@ -231,9 +231,7 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl.to_csv("%s/clusters/clusters_before_joining_%s_%s_%s.csv" % (output,edge, I, 0.1))
 
     cons = build_data_cons(cl, SNP_pos, data, edge)
-
-
-    cl=join_clusters(cons, cl, R, edge, flye_consensus)
+    cl=join_clusters(cons, cl, R, edge, flye_consensus)  
     cons = build_data_cons(cl, SNP_pos, data, edge)
     cl=join_clusters(cons, cl, R, edge, flye_consensus,False)
 
