@@ -40,9 +40,11 @@ def clusters_vis_stats ( G,cl, clN,uncl, SNP_pos,bam, edge, I, AF):
     [G.remove_node(i) for i in set(G.nodes) if i not in set(cl['ReadName'])]
 
 
+    try:
+        nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5,node_color=cl['Color'])
+    except:
+        nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5)
 
-    nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5,
-            node_color=cl['Color'])
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
     plt.suptitle(str(edge) + " coverage:" + str(cov) + " length:" + str(ln) + " clN:" + str(clN))
@@ -69,15 +71,15 @@ def cluster(i):
     print("### Reading SNPs...")
     SNP_pos = read_snp(snp, edge, bam, AF)
     print ("### Reading Reads...")
-    all_data={}
-    try:
-        all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
-        data=all_data[edge]
-    except(KeyError,FileNotFoundError):
+    #all_data={}
+    #try:
+        #all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
+        #data=all_data[edge]
+    #except(KeyError,FileNotFoundError):
         #Gpass
-        data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
-        all_data[edge]=data
-    np.save("%s/all_data.npy" % output, all_data)
+    data=read_bam(bam,edge,SNP_pos,clipp,min_mapping_quality,min_al_len,de_max)
+        #all_data[edge]=data
+    #np.save("%s/all_data.npy" % output, all_data)
     #data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
     cl=pd.DataFrame(data={'ReadName': data.keys()})
     print(str(len(cl['ReadName'])) + " reads found")
