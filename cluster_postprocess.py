@@ -153,9 +153,9 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
     G.remove_edges_from(ebunch=to_remove)
     groups = list(nx.connected_components(G))
     for group in groups:
-        if len(group) > 0:
+        if len(group) > 1:
             for i in range(1, len(group)):
-                cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = list(group)[0]
+                cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = list(group)[0]+10000000
     return cl
 
 

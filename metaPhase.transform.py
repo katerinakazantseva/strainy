@@ -250,9 +250,15 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for i in order_by_stop_pos:
         cut_l[i] = cut_l_unsorted[i]
         cut_r[i] = cut_r_unsorted[i]
+    #print(cut_l)
+    #print(cut_r)
+    loop=0
     while None in cut_l.values():
+        if loop==1:
+            transform graph
         for member in cut_l.keys():
-
+            #print("new")
+            #print(member)
             if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
                 Q = deque()
                 L = []
@@ -285,19 +291,20 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                             except (ValueError, IndexError):
                                    continue
-
+                #print(L)
+                #print(R)
                 l_borders = []
                 r_borders = []
                 for i in L:
                     print(i)
-                    consensus = flye_consensus.flye_consensus(i, edge, cl)
-                    #l_borders.append(int(cons[i]["Start"]))
-                    l_borders.append(int(consensus['start']))
+                    #consensus = flye_consensus.flye_consensus(i, edge, cl)
+                    l_borders.append(int(cons[i]["Start"]))
+                    #l_borders.append(int(consensus['start']))
 
                 for i in R:
-                    consensus = flye_consensus.flye_consensus(i, edge, cl)
-                    #r_borders.append(int(cons[i]["Stop"]))
-                    r_borders.append(int(consensus['end']))
+                    #consensus = flye_consensus.flye_consensus(i, edge, cl)
+                    r_borders.append(int(cons[i]["Stop"]))
+                    #r_borders.append(int(consensus['end']))
                 if member in paths_leafs:
                     border=cut_r[member]
                 else:
@@ -306,6 +313,9 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     cut_l[i] = border
                 for i in R:
                     cut_r[i] = border
+            #print(cut_l)
+            #print(cut_r)
+        loop=1
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!=cut_r[path_cluster]:
             add_child_edge(edge, path_cluster, g,  cl, cut_l[path_cluster], cut_r[path_cluster], cons, flye_consensus)
