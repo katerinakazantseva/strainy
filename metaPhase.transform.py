@@ -248,7 +248,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     while None in cut_l.values():
         for member in cut_l.keys():
             if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
-                #print(member)
+                print("NEW")
+                print(member)
                 Q = deque()
                 L = []
                 R = []
@@ -283,12 +284,19 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                 l_borders = []
                 r_borders = []
                 for i in L:
+                    print(i)
                     l_borders.append(int(cons[i]["Start"]))
+                    print("L " + str(int(cons[i]["Start"])))
                 for i in R:
+                    print(i)
                     r_borders.append(int(cons[i]["Stop"]))
+                    print("L " + str(int(cons[i]["Stop"])))
+                print(l_borders)
+                print(r_borders)
                 if member in paths_leafs:
                     border=cut_r[member]
                 else: border = max(l_borders) + (min(r_borders) - max(l_borders)) // 2
+                print(border)
                 L=list(set(L))
                 R = list(set(R))
                 for i in L:
@@ -296,6 +304,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                 for i in R:
                     cut_r[i] = border
 
+    print(cut_l)
+    print(cut_r)
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!=cut_r[path_cluster]:
             add_child_edge(edge, path_cluster, g,  cl, SNP_pos, data, cut_l[path_cluster], cut_r[path_cluster], cons)
@@ -421,11 +431,11 @@ def graph_create_unitigs(i):
         cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF), keep_default_na=False)
         SNP_pos = read_snp(snp, edge,bam, AF)
         # Save
-        try:
-            data=all_data[edge]
-        except(KeyError, FileNotFoundError):
-            data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
-            all_data[edge]=data
+        #try:
+            #data=all_data[edge]
+        #except(KeyError, FileNotFoundError):
+        data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+        all_data[edge]=data
 
         ln = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
         if len(cl.loc[cl['Cluster'] == 0]['Cluster'].values)>10:
@@ -718,15 +728,15 @@ def graph_link_unitigs(i,G):
 
 
 G=gfa_to_nx(g)
-try:
-    all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
-except(FileNotFoundError):
-    pass
+#try:
+    #all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
+#except(FileNotFoundError):
+    #pass
 
 
 for i in range(0, len(edges)):
     graph_create_unitigs(i)
-    np.save("%s/all_data.npy" % output, all_data)
+    #np.save("%s/all_data.npy" % output, all_data)
 for i in range(0, len(edges)):
     graph_link_unitigs(i,G)
 

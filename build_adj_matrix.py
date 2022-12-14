@@ -135,6 +135,6 @@ def distance_clusters(first_cl,second_cl, cons,SNP_pos, only_with_common_snip=Tr
                 else:
                     continue
     except(IndexError):pass
-    #print("Distance "+str(first_cl)+str(" ")+str(second_cl)+str(": ")+str(d))
+    print("Distance "+str(first_cl)+str(" ")+str(second_cl)+str(": ")+str(d))
     return (d)
 
