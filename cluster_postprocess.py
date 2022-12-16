@@ -87,7 +87,7 @@ def build_adj_matrix_clusters (edge,cons,cl,flye_consensus, only_with_common_sni
     for i in sorted(sort, key=lambda sort: [sort[2], sort[1]]):
         sorted_by_pos.append(i[0])
     clusters=sorted(set(sorted_by_pos) & set(clusters), key=sorted_by_pos.index)
-    print(clusters)
+    #print(clusters)
     m = pd.DataFrame(-1, index=clusters, columns=clusters)
 
     for i in range(0,m.shape[1]):
@@ -161,7 +161,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
     groups = list(nx.connected_components(G))
     for group in groups:
         if len(group) > 1:
-            for i in range(1, len(group)):
+            for i in range(0, len(group)):
                 cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = list(group)[0]+10000000
     return cl
 

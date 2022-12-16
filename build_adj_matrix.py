@@ -103,8 +103,8 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus,only_with
 
 
     try:
-        intersect = set(range(flye_consensus.flye_consensus(first_cl, edge, cl)['start'], flye_consensus.flye_consensus(first_cl, edge, cl)['end'])).intersection(set(range(flye_consensus.flye_consensus(second_cl, edge, cl)['start'],flye_consensus.flye_consensus(second_cl, edge, cl)['end'])))
-        #intersect=set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
+        #intersect = set(range(flye_consensus.flye_consensus(first_cl, edge, cl)['start'], flye_consensus.flye_consensus(first_cl, edge, cl)['end'])).intersection(set(range(flye_consensus.flye_consensus(second_cl, edge, cl)['start'],flye_consensus.flye_consensus(second_cl, edge, cl)['end'])))
+        intersect=set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
         if only_with_common_snip==False and len(commonSNP)==0 and len(intersect)>I:
             d=0
         #elif only_with_common_snip==True and (len(cons[first_cl]["clSNP2"])==0 or len(cons[second_cl]["clSNP2"])==0):

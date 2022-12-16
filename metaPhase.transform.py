@@ -33,10 +33,10 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         print ("CHECKIT "+str(edge))
     else:
         seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
-    print(consensus_start)
-    print(left)
-    print(right)
-    print(len(seq))
+    #print(consensus_start)
+    #print(left)
+    #print(right)
+    #print(len(seq))
     if len(seq) == 0:
         remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq)>0:
@@ -187,11 +187,11 @@ def paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl,full_paths_roots,f
 
 def find_full_paths(G, paths_roots, paths_leafs):
     paths = []
-    print("PATHS")
+    #print("PATHS")
     for root in paths_roots:
         paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs)
         for path in list(paths_nx):
-            print(path)
+            #print(path)
             paths.append(path)
 
     return (paths)
@@ -219,7 +219,7 @@ def add_path_links(edge, paths,G):
 
 def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
     path_cl = []
-    print("ADD PATH")
+    #print("ADD PATH")
     for node in full_clusters:
         try:
             paths_roots.remove(node)
@@ -254,8 +254,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     #print(cut_r)
     loop=0
     while None in cut_l.values():
-        if loop==1:
-            transform graph
+        #if loop==1:
+            #transform graph
         for member in cut_l.keys():
             #print("new")
             #print(member)
@@ -296,7 +296,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                 l_borders = []
                 r_borders = []
                 for i in L:
-                    print(i)
+                    #print(i)
                     #consensus = flye_consensus.flye_consensus(i, edge, cl)
                     l_borders.append(int(cons[i]["Start"]))
                     #l_borders.append(int(consensus['start']))
