@@ -154,7 +154,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
     groups = list(nx.connected_components(G))
     for group in groups:
         if len(group) > 1:
-            for i in range(1, len(group)):
+            for i in range(0, len(group)):
                 cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = list(group)[0]+10000000
     return cl
 
