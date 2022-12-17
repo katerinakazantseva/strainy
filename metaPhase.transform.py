@@ -22,7 +22,6 @@ stats.close()
 
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
-
     consensus = flye_consensus.flye_consensus(clN, edge, cl)
     consensus_start = consensus['start']
     if consensus_start>left:
@@ -465,8 +464,8 @@ def graph_create_unitigs(i,flye_consensus):
                 if clStart < start_end_gap and clStop > ln - start_end_gap:
                     full_paths_roots.append(cluster)
                     full_paths_leafs.append(cluster)
-
-                add_child_edge(edge, cluster, g, cl, 0, ln - 1, cons, flye_consensus)
+                consensus = flye_consensus.flye_consensus(cluster, edge, cl)
+                add_child_edge(edge, cluster, g, cl, consensus['start'], consensus['end'], cons, flye_consensus)
             link_clusters[edge] = list(clusters)
             link_clusters_sink[edge] = list(clusters)
             link_clusters_src[edge] = list(clusters)
@@ -479,7 +478,8 @@ def graph_create_unitigs(i,flye_consensus):
                 if clStart < start_end_gap and clStop > ln - start_end_gap:
                     if strong_tail(cluster, cl, ln, data)[0] == True and strong_tail(cluster, cl, ln,
                                                                                          data)[1] == True:
-                        add_child_edge(edge, cluster, g, cl, 0, ln - 1, cons, flye_consensus)
+                        consensus = flye_consensus.flye_consensus(cluster, edge, cl)
+                        add_child_edge(edge, cluster, g, cl,consensus['start'], consensus['end'], cons, flye_consensus)
                         full_clusters.append(cluster)
 
                     elif strong_tail(cluster, cl, ln, data)[0] != True:
@@ -508,7 +508,6 @@ def graph_create_unitigs(i,flye_consensus):
 
             close_to_full=[]
             for cluster in othercl.copy():
-                print(cluster)
                 M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
                 M = change_w(M, 1)
                 G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
@@ -595,10 +594,13 @@ def graph_link_unitigs(i,G):
 
     for clN in link_unitigs:
         print()
+        link_full = False
         print("%s_%s" % (edge, clN))
         reads = list(cl.loc[cl['Cluster'] == clN, 'ReadName'])
         neighbours={}
         orient={}
+        n_cl_set_src = []
+        n_cl_set_snk = []
 
         data=all_data[edge]
         for read in reads:
@@ -668,28 +670,56 @@ def graph_link_unitigs(i,G):
                     if g.try_get_segment("%s_%s" % (n, i)):
                         link_added=True
                         add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or,w)
+
                 except(gfapy.NotFoundError):
                     continue
 
             if link_added==False:
                 if n in remove_clusters:
                     try:
-                        if clN in link_clusters_sink[edge]:
+                        if clN in link_clusters_sink[edge] and clN in link_clusters_src[edge]:
+                           link_full=True
+                           n_cl_set_src = link_clusters_src[n]
+                           n_cl_set_snk = link_clusters_sink[n]
+                        elif clN in link_clusters_sink[edge]:
                             n_cl_set = link_clusters_src[n]  #
-                        if clN in link_clusters_src[edge]:
+                        elif clN in link_clusters_src[edge]:
                             n_cl_set = link_clusters_sink[n]
                     except(KeyError):
                         pass
                 else:
                     add_link("%s_%s" % (edge, clN), fr_or, n, to_or,w)
                     link_added = True
+
+
+
             for i in n_cl_set:
                 try:
                     if g.try_get_segment("%s_%s" % (n, i)):
                         link_added=True
                         add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or,w)
+
                 except(gfapy.NotFoundError):
                     continue
+
+            if link_full:
+                if to_or=='+':
+                    for i in n_cl_set_src:
+                        try:
+                            if g.try_get_segment("%s_%s" % (n, i)):
+                                link_added = True
+                                add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or, w)
+                        except(gfapy.NotFoundError):
+                            continue
+                if to_or == '-':
+                    for i in n_cl_set_snk:
+                        try:
+                            if g.try_get_segment("%s_%s" % (n, i)):
+                                link_added = True
+                                add_link("%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or, w)
+                        except(gfapy.NotFoundError):
+                            continue
+
 
 
 
@@ -715,6 +745,7 @@ def graph_link_unitigs(i,G):
                     print(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
                     try:
                         g.add_line(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
+
                     except(gfapy.error.NotUniqueError):
                         pass
             if d.to_segment==edge:
@@ -735,6 +766,7 @@ def graph_link_unitigs(i,G):
                     print(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
                     try:
                         g.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
+
                     except(gfapy.error.NotUniqueError):
                         pass
 
