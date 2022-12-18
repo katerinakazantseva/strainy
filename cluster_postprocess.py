@@ -178,8 +178,11 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             split_cluster(cl, cluster, data, clSNP, bam, edge,child_clusters, R, I)
             for child in set(child_clusters):
                 cluster_consensuns(cl,child,SNP_pos, data, cons,edge)
-                if cons[child]["Strange"]==1:
+                if child==cluster+split_id:
+                    split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I, False)
+                elif cons[child]["Strange"]==1:
                     split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I)
+
 
     cl.to_csv("%s/clusters/2.csv" % output)
     cluster=unclustered_group_N
