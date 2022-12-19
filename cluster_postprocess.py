@@ -210,6 +210,8 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
                 split_cluster(cl, cluster, data, clSNP, bam, edge,child_clusters, R, I)
                 for child in set(child_clusters):
                     cluster_consensuns(cl,child,SNP_pos, data, cons,edge)
+                    if child == cluster + split_id:
+                        split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I, False)
                     if cons[child]["Strange2"]==1:
                         split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I)
         except(KeyError):
@@ -239,12 +241,10 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl.to_csv("%s/clusters/6.csv" % output)
     #clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     #clusters = sorted(set(cl.loc[cl['Cluster'] != unclustered_group_N2]['Cluster'].values))
-
     cl = cl[cl['Cluster'] != unclustered_group_N2]
-
+    cl = cl[cl['Cluster'] != unclustered_group_N]
     counts = cl['Cluster'].value_counts(dropna=False)
-    #cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  #change for cov*01.
-
+    cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  #change for cov*01.
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
 
@@ -254,7 +254,6 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl=join_clusters(cons, cl, R, edge, flye_consensus)  
     cons = build_data_cons(cl, SNP_pos, data, edge)
     cl=join_clusters(cons, cl, R, edge, flye_consensus,False)
-
     counts = cl['Cluster'].value_counts(dropna=False)
-    #cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
+    cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
     return(cl)

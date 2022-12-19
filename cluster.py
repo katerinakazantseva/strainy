@@ -116,10 +116,15 @@ def cluster(params):
 
     print(str(clN)+" clusters found")
     cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (output,edge, I, AF))
-    print("### Cluster post-processing...")
-    cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 1000000
+
+
+    cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = unclustered_group_N
     if clN != 0:
+        print("### Cluster post-processing...")
         cl = postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus)
+    else:
+        counts = cl['Cluster'].value_counts(dropna=False)
+        cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]
     clN = len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
     print(str(clN) + " clusters after post-processing")
     cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF))

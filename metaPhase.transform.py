@@ -646,6 +646,7 @@ def graph_link_unitigs(i,G):
         #print(set(neighbours.values()))
 
         for n in set({k for k, v in Counter(neighbours.values()).items() if v > min_reads_neighbour}):
+            link_full = False
             fr_or=orient[n][0]
             to_or=orient[n][1]
             w=1
