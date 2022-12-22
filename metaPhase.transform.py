@@ -219,7 +219,8 @@ def add_path_links(edge, paths,G):
 
 def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
     path_cl = []
-    #print("ADD PATH")
+    print("ADD PATH")
+    print(paths)
     for node in full_clusters:
         try:
             paths_roots.remove(node)
@@ -234,8 +235,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for path_cluster in set(path_cl):
         cut_l_unsorted[path_cluster] = None
         cut_r_unsorted[path_cluster] = None
-        if path_cluster in paths_roots and cons[path_cluster]["Start"]<10 :
-            cut_l_unsorted[path_cluster] = 0
+        if path_cluster in paths_roots and cons[path_cluster]["Start"]<start_end_gap :
+            cut_l_unsorted[path_cluster] = cons[path_cluster]["Start"]
         if path_cluster in paths_leafs:
             cut_r_unsorted[path_cluster] = ln - 1
     stop_pos={}
@@ -250,15 +251,17 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for i in order_by_stop_pos:
         cut_l[i] = cut_l_unsorted[i]
         cut_r[i] = cut_r_unsorted[i]
-    #print(cut_l)
-    #print(cut_r)
+    print(cut_l)
+    print(cut_r)
     loop=0
     while None in cut_l.values():
         #if loop==1:
             #transform graph
         for member in cut_l.keys():
-            #print("new")
-            #print(member)
+            print("new")
+            print(member)
+            print(cut_l)
+            print(cut_r)
             if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
                 Q = deque()
                 L = []
@@ -291,8 +294,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                             except (ValueError, IndexError):
                                    continue
-                #print(L)
-                #print(R)
+                print(L)
+                print(R)
                 l_borders = []
                 r_borders = []
                 for i in L:
