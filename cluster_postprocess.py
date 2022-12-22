@@ -158,11 +158,32 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
         except :
             continue
     G.remove_edges_from(ebunch=to_remove)
+
+
+    nodes = list(G.nodes())
+    for node in nodes:
+        try:
+            neighbors = nx.all_neighbors(G, node)
+            for neighbor in list(neighbors):
+                if cons[node]["Start"] < cons[neighbor]["Start"] and cons[node]["Stop"] > cons[neighbor]["Stop"]:
+                    #G.add_edge(str(node),str(neighbor))
+                    try:
+                        G.remove_edge(node, neighbor)
+                        print("REMOVE NESTED" + str(neighbor))
+                    except:
+                        continue
+        except:
+            continue
+
+
+
+
     groups = list(nx.connected_components(G))
+
     for group in groups:
         if len(group) > 1:
             for i in range(0, len(group)):
-                cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = list(group)[0]+10000000
+                cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = int(list(group)[0])+10000000
     return cl
 
 
