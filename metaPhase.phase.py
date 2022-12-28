@@ -49,7 +49,7 @@ def phase(edges):
 
 
 def col(edges):
-    pool = multiprocessing.Pool(1)
+    pool = multiprocessing.Pool(3)
     pool.map(color, range(0, len(edges)))
     pool.close()
     subprocess.check_output('samtools merge %s/bam/coloredBAM.bam -f `find %s/bam -name "*unitig*.bam"`' % (output,output), shell=True, capture_output=False)
