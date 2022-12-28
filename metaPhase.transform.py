@@ -251,17 +251,16 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for i in order_by_stop_pos:
         cut_l[i] = cut_l_unsorted[i]
         cut_r[i] = cut_r_unsorted[i]
-    print(cut_l)
-    print(cut_r)
-    loop=0
-    while None in cut_l.values():
-        #if loop==1:
-            #transform graph
+    #print(cut_l)
+    #print(cut_r)
+
+    #while None in cut_l.values():
+    if 1==1:
         for member in cut_l.keys():
-            print("new")
-            print(member)
-            print(cut_l)
-            print(cut_r)
+            #print("new")
+            #print(member)
+            #print(cut_l)
+            #print(cut_r)
             if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
                 Q = deque()
                 L = []
@@ -294,8 +293,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                             except (ValueError, IndexError):
                                    continue
-                print(L)
-                print(R)
                 l_borders = []
                 r_borders = []
                 for i in L:
@@ -316,6 +313,16 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     cut_l[i] = border
                 for i in R:
                     cut_r[i] = border
+
+    if None in cut_l.values():
+        for member in cut_l.keys():
+            if cut_l[member] == None:
+                for path in paths[edge]:
+                    try:
+                        cut_l[member]=cut_r[path[path.index(member)-1]]
+                    except:
+                        pass
+
 
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!=cut_r[path_cluster]:
@@ -509,13 +516,14 @@ def graph_create_unitigs(i,flye_consensus):
             othercl=list(set(clusters)-set(full_clusters)-set([j for i in full_paths[edge] for j in i])-set(cl_removed))
 
             close_to_full=[]
-            for cluster in othercl.copy():
-                print(cluster)
+
+            if len(othercl)>0:
                 M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
                 M = change_w(M, 1)
                 G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
+            for cluster in othercl.copy():
+                print(cluster)
                 neighbors = nx.all_neighbors(G, cluster)
-
                 A=set(neighbors)
                 B=set([j for i in full_paths[edge] for j in i])
                 if len(A.intersection(set(full_clusters)))>0 or len(A.intersection(B))>0:

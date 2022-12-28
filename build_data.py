@@ -170,7 +170,7 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
             if len(npos) >2:
                 if int(Counter(npos).most_common()[0][1]) > 2:
                     val[pos] = Counter(npos).most_common()[0][0]
-            if int(Counter(npos).most_common()[1][1]) >= 2:
+            if int(Counter(npos).most_common()[1][1]) >= unseparated_cluster_min_reads:
                 strange = 1
                 clSNP.append(pos)
         except(IndexError):
