@@ -189,7 +189,10 @@ def find_full_paths(G, paths_roots, paths_leafs):
     paths = []
     #print("PATHS")
     for root in paths_roots:
-        paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs)
+        try:
+            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs)
+        except:
+            pass
         for path in list(paths_nx):
             #print(path)
             paths.append(path)
