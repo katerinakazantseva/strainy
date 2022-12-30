@@ -5,8 +5,11 @@ from build_adj_matrix import *
 from build_data import *
 
 
-def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I,only_with_common_snip=True):
-    reads=sorted(set(cl.loc[cl['Cluster'] == cluster]['ReadName'].values))
+def split_cluster(cl,cluster, data,clSNP, bam, edge, R, I,only_with_common_snip=True):
+    print("Split")
+    print(cluster)
+    child_clusters = []
+    reads=sorted(set(cl.loc[cl['Cluster'] == cluster,'ReadName'].values))
     if cluster==unclustered_group_N or cluster==unclustered_group_N2  or only_with_common_snip==False: #NA cluster
     #if cluster == unclustered_group_N and len(clSNP)==0:  # NA cluster
         #print("Build na matrix")
@@ -23,14 +26,20 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I,only_w
     clN=0
     uncl=0
     reads = cl[cl['Cluster'] == cluster]['ReadName'].values
+
+    new_cl_id_na = cluster + split_id
+    while new_cl_id_na in cl_exist:
+        new_cl_id_na = new_cl_id_na + 1
+
+
+
     for value in set(cluster_membership.values()):
         group = [k for k, v in cluster_membership.items() if v == value]
         if len(group) > min_cluster_size:
             clN = clN + 1
-            new_cl_id=cluster+split_id+clN
+            new_cl_id=new_cl_id_na+clN
             while new_cl_id in cl_exist:
                 new_cl_id=new_cl_id+1
-                clN = clN + 1
             child_clusters.append(new_cl_id)
             cl_exist.append(new_cl_id)
             for i in group:
@@ -40,15 +49,15 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, child_clusters, R, I,only_w
             uncl = uncl + 1
             for i in group:
                 #cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N2
-                cl.loc[cl['ReadName'] == reads[i], "Cluster"]=cluster+split_id
-                child_clusters.append(cluster+split_id)
-    print(clN)
+                cl.loc[cl['ReadName'] == reads[i], "Cluster"]=new_cl_id_na
+                child_clusters.append(new_cl_id_na)
+
 
 
 
 
 def build_adj_matrix_clusters_atab (cons, cl, edge, flye_consensus, only_with_common_snip=True):
-    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
     sort=[]
     for k,v in cons.items():
         sort.append([k, int(v["Start"]), int(v["Stop"])])
@@ -68,7 +77,7 @@ def build_adj_matrix_clusters_atab (cons, cl, edge, flye_consensus, only_with_co
 
 
 def build_adj_matrix_clusters (edge,cons,cl,flye_consensus, only_with_common_snip=True):
-    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
     try:
         clusters.remove(0)
     except:
@@ -192,7 +201,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
 def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cons=build_data_cons(cl, SNP_pos, data,edge)
     cl.to_csv("%s/clusters/1.csv" % output)
-    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
     #for key, val in cons.copy().items():
     for cluster in clusters:
         if cons[cluster]["Strange"]==1 and cluster!=unclustered_group_N:
@@ -201,63 +210,61 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             #cluster=key
             clSNP=cons[cluster]["clSNP"]
             #print(clSNP)
-            child_clusters=[]
-            split_cluster(cl, cluster, data, clSNP, bam, edge,child_clusters, R, I)
+            child_clusters=split_cluster(cl, cluster, data, clSNP, bam, edge, R, I)
             for child in set(child_clusters):
                 #print("child")
                 #print(child)
-
                 cluster_consensuns(cl,child,SNP_pos, data, cons,edge)
 
-
                 if child==cluster+split_id:
-                    split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I, False)
+                    split_cluster(cl, child, data, clSNP, bam, edge, R, I, False)
                 elif cons[child]["Strange"]==1:
-                    split_cluster(cl, child, data, cons[child]["clSNP"], bam, edge, child_clusters, R, I)
+                    split_cluster(cl, child, data, cons[child]["clSNP"], bam, edge, R, I, False
 
     cl.to_csv("%s/clusters/2.csv" % output)
     cluster=unclustered_group_N
     cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge)
-    child_clusters = []
     clSNP = cons[cluster]["clSNP"]
-    split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I)
+    child_clusters=split_cluster(cl, cluster, data, clSNP, bam, edge,  R, I, False)
     cl.to_csv("%s/clusters/3.csv" % output)
     for child in set(child_clusters):
         cluster_consensuns(cl, child, SNP_pos, data, cons, edge)
         if cons[child]["Strange"] == 1:
-            split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I)
+            split_cluster(cl, child, data, clSNP, bam, edge,  R, I, False)
 
     cl.to_csv("%s/clusters/4.csv" % output)
 
-    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
 
+    cl = cl[cl['Cluster'] != unclustered_group_N+split_id]
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
     print("Split2")
     for cluster in clusters:
         try:
             if cons[cluster]["Strange2"]==1 and cluster!=unclustered_group_N2:
                 clSNP=cons[cluster]["clSNP2"]
                 #cluster = key
-                child_clusters=[]
-                split_cluster(cl, cluster, data, clSNP, bam, edge,child_clusters, R, I)
+
+                child_clusters=split_cluster(cl, cluster, data, clSNP, bam, edge, R, I)
                 for child in set(child_clusters):
                     cluster_consensuns(cl,child,SNP_pos, data, cons,edge)
                     if child == cluster + split_id: #or child == cluster + split_id+split_id:
-                        split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I, False)
+                        split_cluster(cl, child, data, clSNP, bam, edge,  R, I, False)
                     elif cons[child]["Strange2"]==1:
-                        split_cluster(cl, child, data, clSNP, bam, edge, child_clusters, R, I)
+                        split_cluster(cl, child, data, clSNP, bam, edge, R, I, False)
+
         except(KeyError):
             continue
 
     cl.to_csv("%s/clusters/5.csv" % output)
 
-    if len(cl.loc[cl['Cluster'] == unclustered_group_N2]['ReadName'].values) != 0:
-        cluster_consensuns(cl, unclustered_group_N2, SNP_pos, data, cons,edge)
+    if len(cl.loc[cl['Cluster'] == unclustered_group_N2,'ReadName'].values) != 0:
+        cluster_consensuns(cl, unclustered_group_N2, SNP_pos, data, cons,edge, False)
         cluster = unclustered_group_N2
         val=cons[cluster]
         clSNP = SNP_pos
         #clSNP = val["clSNP2"]
-        child_clusters = []
-        split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I,only_with_common_snip = False)
+
+        child_clusters =split_cluster(cl, cluster, data, clSNP, bam, edge, R, I,only_with_common_snip = False)
         cl.to_csv("%s/clusters/56.csv" % output)
 
         for child in set(child_clusters):
@@ -265,8 +272,8 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             cluster_consensuns(cl, cluster, SNP_pos, data, cons,edge)
             if cons[child]["Strange"] == 1:
                 clSNP = val["clSNP"]
-                split_cluster(cl, cluster, data, clSNP, bam, edge, child_clusters, R, I,only_with_common_snip = True)
-
+                split_cluster(cl, cluster, data, clSNP, bam, edge, R, I,only_with_common_snip = True)
+    cl = cl[cl['Cluster'] != unclustered_group_N2 + split_id]
     cl.to_csv("%s/clusters/6.csv" % output)
     #clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     #clusters = sorted(set(cl.loc[cl['Cluster'] != unclustered_group_N2]['Cluster'].values))
@@ -274,7 +281,8 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl = cl[cl['Cluster'] != unclustered_group_N]
     counts = cl['Cluster'].value_counts(dropna=False)
     cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  #change for cov*01.
-    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
+
 
 
     cl.to_csv("%s/clusters/clusters_before_joining_%s_%s_%s.csv" % (output,edge, I, 0.1))
