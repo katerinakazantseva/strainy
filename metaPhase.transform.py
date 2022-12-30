@@ -224,8 +224,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     path_cl = []
     print("ADD PATH")
     print(paths)
-    print(paths_roots)
-    print(paths_leafs)
     for node in full_clusters:
         try:
             paths_roots.remove(node)
