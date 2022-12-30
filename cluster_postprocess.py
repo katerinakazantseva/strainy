@@ -279,7 +279,7 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
                 if cons[child]["Strange"] == 1:
                     clSNP = val["clSNP"]
                     split_cluster(cl, cluster, data, clSNP, bam, edge, R, I,only_with_common_snip = True)
-         except (TypeError): pass           
+        except (TypeError): pass           
     cl = cl[cl['Cluster'] != unclustered_group_N2 + split_id]
     cl.to_csv("%s/clusters/6.csv" % output)
     #clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
