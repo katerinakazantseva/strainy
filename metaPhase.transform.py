@@ -293,6 +293,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
 
                             except (ValueError, IndexError):
                                    continue
+
                 l_borders = []
                 r_borders = []
                 for i in L:
