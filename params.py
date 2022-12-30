@@ -7,9 +7,6 @@ import os
 import subprocess
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 
-
-
-
 # Parse command line arguments
 parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
 requiredNamed = parser.add_argument_group('required named arguments')
@@ -29,36 +26,23 @@ fa = args["fa"]
 snp = args["snp"]
 
 
-
 bam_index=re.sub(".bam",".bam.bai", bam)
 bam_index_exist = os.path.exists(bam_index)
 if bam_index_exist == False:
     raise Exception("No index file found (%s) Please create index using \"samtools index\"." % bam_index)
-
-
-
-
-
-
 
 #transformed gfa file path
 gfa_transformed = "%s/transformed_before_simplification.gfa" % output
 gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % output
 gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % output
 
-
-
-
-
 minigraph=False
 
-
+unseparated_cluster_min_reads=2
 
 # Path to the installed Flye executable
 # Should be Flye/bin/flye
-flye = "/Users/ataberk/Documents/metagenomic-phasing/software/Flye/bin/flye"
-
-fa = "/Users/ataberk/Documents/metagenomic-phasing/metaphase_data/results/3ecoli.fa"
+flye = "../Flye/bin/flye"
 
 # Path to store and read the consensus dictionary
 # If one already exists and write_consensus_cache is true, it may be overwritten
