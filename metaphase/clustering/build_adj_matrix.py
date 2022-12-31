@@ -1,6 +1,7 @@
 import pandas as pd
 import pysam
-from params import *
+
+from metaphase.params import *
 
 
 def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):

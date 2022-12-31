@@ -4,11 +4,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mt
-from params import *
 import gfapy
 import os
 
-
+from metaphase.params import *
 
 
 def write_bam(edge, I, AF):

@@ -1,24 +1,34 @@
 import csv
 import networkx as nx
-from build_adj_matrix import *
-from cluster_postprocess import *
 import pygraphviz as gv
 import re
 import gfapy
 from collections import Counter, deque
-from build_data  import *
-from params import *
 import numpy as np
-from simplify_links import *
-from flye_consensus import FlyeConsensus
 import pickle
 
+from metaphase.clustering.build_adj_matrix import *
+from metaphase.clustering.cluster_postprocess import *
+from metaphase.simplification.simplify_links import *
+from metaphase.flye_consensus import FlyeConsensus
+from metaphase.clustering.build_data  import *
+from metaphase.params import *
 
 
 g = gfapy.Gfa.from_file(gfa)
-stats = open('%s/stats_clusters.txt' % output, 'a')
-stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
-stats.close()
+full_cl = {}
+full_paths = {}
+#full_paths_leafs_roots = {}
+paths = {}
+#full_path_clusters = {}
+#subunits_borderline = {}
+#connected_subunits = {}
+link_clusters = {}
+link_clusters_src = {}
+link_clusters_sink = {}
+remove_clusters = []
+remove_zeroes = []
+all_data={}
 
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
@@ -49,9 +59,6 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
 
         #new_line.sequence = seq[left - consensus_start:right - consensus_start + 1]
         new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
-
-
-
 
 
 def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
@@ -143,8 +150,6 @@ def paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl,full_paths_roots,f
     M = change_w(M, 1)
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
 
-
-
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
     cl_removed = []
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
@@ -184,6 +189,7 @@ def paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl,full_paths_roots,f
     G_vis.remove_node("Src")
     G_vis.remove_node("Sink")
     return(cl_removed)
+
 
 def find_full_paths(G, paths_roots, paths_leafs):
     paths = []
@@ -327,7 +333,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     except:
                         pass
 
-
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!=cut_r[path_cluster]:
             add_child_edge(edge, path_cluster, g,  cl, cut_l[path_cluster], cut_r[path_cluster], cons, flye_consensus)
@@ -338,8 +343,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     upd_path.remove(path_cluster)
                     paths[edge][i]=upd_path
             G.remove_node(path_cluster)
-    return(path_cl)
 
+    return(path_cl)
 
 
 def change_cov(g,edge,cons,ln,clusters,othercl):
@@ -355,6 +360,8 @@ def change_cov(g,edge,cons,ln,clusters,othercl):
     i = g.try_get_segment(edge)
     i.dp =round(cov)
     return(cov)
+
+
 '''
 def change_sec(g, edge, othercl, cl, flye_consensus):
     cl_copy = cl.copy()
@@ -363,6 +370,8 @@ def change_sec(g, edge, othercl, cl, flye_consensus):
     consensus = flye_consensus.flye_consensus("OTHER_%s" % edge, edge, cl_copy)
     #g.line(edge).sequence = str(consensus['consensus'])
 '''
+
+
 def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
     temp={}
     other_cl=cl
@@ -429,19 +438,6 @@ def gfa_to_nx(g):
         G.add_edge(i.from_segment.name, i.to_segment.name)
     return(G)
 
-full_cl = {}
-full_paths = {}
-full_paths_leafs_roots = {}
-paths = {}
-full_path_clusters = {}
-subunits_borderline = {}
-connected_subunits = {}
-link_clusters = {}
-link_clusters_src = {}
-link_clusters_sink = {}
-remove_clusters = []
-remove_zeroes = []
-all_data={}
 
 def graph_create_unitigs(i,flye_consensus):
     edge = edges[i]
@@ -638,6 +634,7 @@ def graph_link_unitigs(i,G):
 
                 for n, v in data[read]["Lclip"].items():
                     try:
+                        print(n, edge)
                         if len(nx.shortest_path(G, n, edge)) <= max_hops:
                             neighbours[read]=n
                             if v[0]=='+' and v[1]=='+':
@@ -776,51 +773,49 @@ def graph_link_unitigs(i,G):
                     except(gfapy.error.NotUniqueError):
                         pass
 
+def transform_main():
+    stats = open('%s/stats_clusters.txt' % output, 'a')
+    stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
+    stats.close()
 
-G=gfa_to_nx(g)
-#try:
-    #all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
-#except(FileNotFoundError):
-    #pass
+    G=gfa_to_nx(g)
+    #try:
+        #all_data = np.load("%s/all_data.npy" % output , allow_pickle='TRUE').item()
+    #except(FileNotFoundError):
+        #pass
+
+    try:
+        with open(consensus_cache_path, 'rb') as f:
+            print(os.getcwd())
+            consensus_dict = pickle.load(f)
+    except FileNotFoundError:
+        consensus_dict = {}
+
+    flye_consensus = FlyeConsensus(bam, gfa, 1, consensus_dict)
+
+    for i in range(0, len(edges)):
+        graph_create_unitigs(i,flye_consensus)
+    for i in range(0, len(edges)):
+        graph_link_unitigs(i,G)
+
+    gfapy.Gfa.to_file(g,gfa_transformed)
+
+    for ed in g.segments:
+        if ed.name in remove_clusters:
+            g.rm(ed)
+            print(ed.name)
+    for link in g.dovetails:
+        if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
+            g.rm(link)
+
+    gfapy.Gfa.to_file(g,gfa_transformed)
+
+    simplify_links(g)
+
+    gfapy.Gfa.to_file(g,gfa_transformed1)
+    gfapy.GraphOperations.merge_linear_paths(g)
+    gfapy.Gfa.to_file(g,gfa_transformed2)
 
 
-
-
-try:
-    with open(consensus_cache_path, 'rb') as f:
-        print(os.getcwd())
-        consensus_dict = pickle.load(f)
-except FileNotFoundError:
-    consensus_dict = {}
-
-flye_consensus = FlyeConsensus(bam, gfa, 1, consensus_dict)
-
-
-
-for i in range(0, len(edges)):
-    graph_create_unitigs(i,flye_consensus)
-for i in range(0, len(edges)):
-    graph_link_unitigs(i,G)
-
-gfapy.Gfa.to_file(g,gfa_transformed)
-
-
-for ed in g.segments:
-    if ed.name in remove_clusters:
-        g.rm(ed)
-        print(ed.name)
-for link in g.dovetails:
-    if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
-        g.rm(link)
-
-gfapy.Gfa.to_file(g,gfa_transformed)
-
-
-
-simplify_links(g)
-
-
-gfapy.Gfa.to_file(g,gfa_transformed1)
-gfapy.GraphOperations.merge_linear_paths(g)
-gfapy.Gfa.to_file(g,gfa_transformed2)
-
+if __name__ == "__main__":
+    main_transform()

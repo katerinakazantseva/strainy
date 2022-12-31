@@ -1,5 +1,5 @@
 import gfapy
-from params import *
+from metaphase.params import *
 
 def to_neighbours(g,edge,orient):
     if orient =="+":

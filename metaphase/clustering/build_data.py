@@ -3,7 +3,8 @@ import pysam
 import os
 import re
 from collections import Counter
-from params import *
+
+from metaphase.params import *
 
 os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 

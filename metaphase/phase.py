@@ -5,24 +5,10 @@ import os
 import subprocess
 from multiprocessing.managers import BaseManager
 
-from cluster import cluster
-from color_bam import color
-from flye_consensus import FlyeConsensus
-from params import *
-
-
-
-
-
-dirs = ( "%s/vcf/" % output ,"%s/adj_M/" % output,"%s/clusters/" % output,"%s/graphs/" % output,"%s/bam/" % output,"%s/bam/clusters" % output,   "%s/flye_inputs" % output,"%s/flye_outputs" % output)
-
-for dir in dirs:
-    try:
-        os.stat(dir)
-    except:
-
-        os.makedirs(dir)
-
+from metaphase.clustering.cluster import cluster
+from metaphase.color_bam import color
+from metaphase.flye_consensus import FlyeConsensus
+from metaphase.params import *
 
 
 class CustomManager(BaseManager):
@@ -46,8 +32,6 @@ def phase(edges):
         return shared_flye_consensus.get_consensus_dict()
 
 
-
-
 def col(edges):
     pool = multiprocessing.Pool(3)
     pool.map(color, range(0, len(edges)))
@@ -56,12 +40,23 @@ def col(edges):
     subprocess.check_output('rm `find %s/bam -name "*unitig*.bam"`' % output, shell=True,capture_output=False)
     pysam.samtools.index("%s/bam/coloredBAM.bam" % output, "%s/bam/coloredBAM.bai" % output)
 
-import numpy as np
 
+def phase_main():
+    dirs = ( "%s/vcf/" % output ,"%s/adj_M/" % output,"%s/clusters/" % output,"%s/graphs/" % output,"%s/bam/" % output,
+            "%s/bam/clusters" % output,   "%s/flye_inputs" % output,"%s/flye_outputs" % output)
 
-if __name__ == "__main__":
+    for dir in dirs:
+        try:
+            os.stat(dir)
+        except:
+            os.makedirs(dir)
+
     consensus_dict = phase(edges)
     if write_consensus_cache:
         with open(consensus_cache_path, 'wb') as f:
             pickle.dump(consensus_dict, f)
     col(edges)
+
+
+if __name__ == "__main__":
+    phase_main()

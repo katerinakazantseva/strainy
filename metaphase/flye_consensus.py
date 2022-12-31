@@ -10,7 +10,7 @@ from Bio import SeqIO, Align
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from params import *
+from metaphase.params import *
 
 
 def calculate_coverage(position, read_limits):

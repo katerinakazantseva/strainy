@@ -1,8 +1,8 @@
 import networkx as nx
-from community_detection import find_communities
 
-from build_adj_matrix import *
-from build_data import *
+from metaphase.clustering.community_detection import find_communities
+from metaphase.clustering.build_adj_matrix import *
+from metaphase.clustering.build_data import *
 
 
 def split_cluster(cl,cluster, data,clSNP, bam, edge, R, I,only_with_common_snip=True):

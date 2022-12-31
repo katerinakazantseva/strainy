@@ -3,11 +3,11 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mt
 
-from community_detection import find_communities
-from cluster_postprocess import postprocess
-from build_adj_matrix import *
-from build_data import *
-from params import *
+from metaphase.clustering.community_detection import find_communities
+from metaphase.clustering.cluster_postprocess import postprocess
+from metaphase.clustering.build_adj_matrix import *
+from metaphase.clustering.build_data import *
+from metaphase.params import *
 
 
 def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
