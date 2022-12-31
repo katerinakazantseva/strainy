@@ -1,7 +1,3 @@
-output
-README.md
-requirements.txt
-params.py
 *.pyc
 *.swp
 *.pkl
