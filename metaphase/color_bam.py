@@ -11,9 +11,9 @@ from metaphase.params import *
 
 
 def write_bam(edge, I, AF):
-    infile = pysam.AlignmentFile(bam, "rb")
-    outfile = pysam.AlignmentFile("%s/bam/coloredBAM_unitig_%s.bam" % (output,edge), "wb", template=infile)
-    cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF),keep_default_na=False)
+    infile = pysam.AlignmentFile(MetaPhaseArgs.bam, "rb")
+    outfile = pysam.AlignmentFile("%s/bam/coloredBAM_unitig_%s.bam" % (MetaPhaseArgs.output, edge), "wb", template=infile)
+    cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF),keep_default_na=False)
     iter = infile.fetch(edge,until_eof=True)
     cmap = plt.get_cmap('viridis')
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 0
@@ -41,7 +41,7 @@ def write_bam(edge, I, AF):
 
 
 def color(i):
-    edge=edges[i]
+    edge=MetaPhaseArgs.edges[i]
 
     try:
         write_bam(edge, I, AF)

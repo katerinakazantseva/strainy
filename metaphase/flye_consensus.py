@@ -118,7 +118,7 @@ class FlyeConsensus:
         # Flye polisher
         reads_from_curr_cluster = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
         salt = random.randint(1000, 10000)
-        fprefix = "%s/flye_inputs/" % output
+        fprefix = "%s/flye_inputs/" % MetaPhaseArgs.output
         cluster_start, cluster_end, read_limits = self.extract_reads(reads_from_curr_cluster,
                                                         f"{fprefix}cluster_{cluster}_reads_{salt}.bam", edge)
 
@@ -144,7 +144,7 @@ class FlyeConsensus:
         pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
         polish_cmd = f"{flye} --polish-target {fname}.fa " \
                      f"--pacbio-hifi {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
-                     f"-o {output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
+                     f"-o {MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             subprocess.check_output(polish_cmd, shell=True, capture_output=False)
         except subprocess.CalledProcessError as e:
@@ -160,7 +160,7 @@ class FlyeConsensus:
 
         try:
             # read back the output of the Flye polisher
-            consensus = SeqIO.read(f"{output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/polished_1.fasta",
+            consensus = SeqIO.read(f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/polished_1.fasta",
                                    "fasta")
         except (ImportError, ValueError) as e:
             # If there is an error, the sequence string is set to empty by default
@@ -176,7 +176,7 @@ class FlyeConsensus:
             os.remove(f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
             os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
             os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
-            shutil.rmtree(f"{output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
+            shutil.rmtree(f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
 
         with self._lock:
             self._consensus_dict[consensus_dict_key] = {
@@ -240,7 +240,7 @@ class FlyeConsensus:
             pid = 0
         else:
             pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
-        fname = f"{output}/distance_inconsistency-{pid}.log"
+        fname = f"{MetaPhaseArgs.output}/distance_inconsistency-{pid}.log"
         with open(fname, 'a+') as f:
             """
             Things to write to the file:

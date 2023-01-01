@@ -18,12 +18,13 @@ class CustomManager(BaseManager):
 def phase(edges):
     CustomManager.register('FlyeConsensus', FlyeConsensus)
 
+    print(MetaPhaseArgs, MetaPhaseArgs.bam)
     with CustomManager() as manager:
         default_manager = multiprocessing.Manager()
         lock = default_manager.Lock()
         empty_consensus_dict = {}
-        num_processes = multiprocessing.cpu_count() if processes == -1 else processes
-        shared_flye_consensus = manager.FlyeConsensus(bam, gfa, num_processes, empty_consensus_dict, lock)
+        num_processes = multiprocessing.cpu_count() if MetaPhaseArgs.threads == -1 else MetaPhaseArgs.threads
+        shared_flye_consensus = manager.FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.gfa, num_processes, empty_consensus_dict, lock)
         pool = multiprocessing.Pool(num_processes)
         init_args = [(i, shared_flye_consensus) for i in range(len(edges))]
         pool.map(cluster, init_args)
@@ -32,18 +33,26 @@ def phase(edges):
         return shared_flye_consensus.get_consensus_dict()
 
 
-def col(edges):
+def color_bam(edges):
     pool = multiprocessing.Pool(3)
     pool.map(color, range(0, len(edges)))
     pool.close()
-    subprocess.check_output('samtools merge %s/bam/coloredBAM.bam -f `find %s/bam -name "*unitig*.bam"`' % (output,output), shell=True, capture_output=False)
-    subprocess.check_output('rm `find %s/bam -name "*unitig*.bam"`' % output, shell=True,capture_output=False)
-    pysam.samtools.index("%s/bam/coloredBAM.bam" % output, "%s/bam/coloredBAM.bai" % output)
+    subprocess.check_output('samtools merge %s/bam/coloredBAM.bam -f `find %s/bam -name "*unitig*.bam"`' % (MetaPhaseArgs.output, MetaPhaseArgs.output), 
+                            shell=True, capture_output=False)
+    subprocess.check_output('rm `find %s/bam -name "*unitig*.bam"`' % MetaPhaseArgs.output, shell=True, capture_output=False)
+    pysam.samtools.index("%s/bam/coloredBAM.bam" % MetaPhaseArgs.output, "%s/bam/coloredBAM.bai" % MetaPhaseArgs.output)
 
 
 def phase_main():
-    dirs = ( "%s/vcf/" % output ,"%s/adj_M/" % output,"%s/clusters/" % output,"%s/graphs/" % output,"%s/bam/" % output,
-            "%s/bam/clusters" % output,   "%s/flye_inputs" % output,"%s/flye_outputs" % output)
+    print(MetaPhaseArgs)
+    dirs = ("%s/vcf/" % MetaPhaseArgs.output,
+            "%s/adj_M/" % MetaPhaseArgs.output,
+            "%s/clusters/" % MetaPhaseArgs.output,
+            "%s/graphs/" % MetaPhaseArgs.output,
+            "%s/bam/" % MetaPhaseArgs.output,
+            "%s/bam/clusters" % MetaPhaseArgs.output,
+            "%s/flye_inputs" % MetaPhaseArgs.output,
+            "%s/flye_outputs" % MetaPhaseArgs.output)
 
     for dir in dirs:
         try:
@@ -51,11 +60,11 @@ def phase_main():
         except:
             os.makedirs(dir)
 
-    consensus_dict = phase(edges)
+    consensus_dict = phase(MetaPhaseArgs.edges)
     if write_consensus_cache:
         with open(consensus_cache_path, 'wb') as f:
             pickle.dump(consensus_dict, f)
-    col(edges)
+    color_bam(MetaPhaseArgs.edges)
 
 
 if __name__ == "__main__":

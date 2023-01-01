@@ -13,10 +13,10 @@ def read_snp(snp,edge, bam, AF,cluster=None):
     SNP_pos = []
     if snp==None:
         if cluster==None:
-            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt'.format(edge,bam,output,edge)
+            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt'.format(edge, bam, MetaPhaseArgs.output, edge)
             subprocess.check_output(snpos, shell=True, capture_output=False)
             #subprocess.call(snpos, shell=True, stderr=subprocess.DEVNULL)
-            with open("%s/vcf/vcf_%s.txt" % (output,edge)) as f:
+            with open("%s/vcf/vcf_%s.txt" % (MetaPhaseArgs.output, edge)) as f:
                 lines = f.readlines()
                 for line in lines:
                     try:
@@ -26,9 +26,9 @@ def read_snp(snp,edge, bam, AF,cluster=None):
                     if AlFreq > AF:
                         SNP_pos.append(line.split()[1])
         else:
-            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt'.format(fa,edge,bam,output,edge,cluster)
+            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt'.format(MetaPhaseArgs.fa,edge, bam, MetaPhaseArgs.output, edge, cluster)
             subprocess.check_output(snpos, shell=True, capture_output=False)
-            with open("%s/vcf/vcf_%s_%s.txt" % (output,edge,cluster)) as f:
+            with open("%s/vcf/vcf_%s_%s.txt" % (MetaPhaseArgs.output, edge, cluster)) as f:
                 lines = f.readlines()
                 for line in lines:
                     try:
@@ -141,16 +141,17 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
     clSNP2 = []
 
     reads = list(cl.loc[cl['Cluster'] == cluster, 'ReadName'])
-    with open('%s/clusters/reads_%s_%s.txt' % (output,edge,cluster), 'w') as fp:
+    with open('%s/clusters/reads_%s_%s.txt' % (MetaPhaseArgs.output, edge, cluster), 'w') as fp:
         for line in reads:
             fp.write(str(line))
             fp.write("\n")
     #Create bam for cluster
-    pysam.samtools.view("-N", '%s/clusters/reads_%s_%s.txt' % (output,edge,cluster), "-o", '%s/bam/clusters/%s_%s.bam' % (output,edge,cluster), bam, edge,catch_stdout=False)
-    pysam.samtools.index('%s/bam/clusters/%s_%s.bam' % (output,edge,cluster))
+    pysam.samtools.view("-N", '%s/clusters/reads_%s_%s.txt' % (MetaPhaseArgs.output, edge, cluster), 
+                        "-o", '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), MetaPhaseArgs.bam, edge,catch_stdout=False)
+    pysam.samtools.index('%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output,edge,cluster))
 
 
-    clSNP2=read_snp(snp,edge, '%s/bam/clusters/%s_%s.bam' % (output,edge,cluster), AF,cluster)
+    clSNP2=read_snp(MetaPhaseArgs.snp, edge, '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), AF,cluster)
 
 
     try:

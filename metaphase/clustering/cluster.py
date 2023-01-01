@@ -43,7 +43,7 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
     plt.suptitle(str(edge) + " coverage:" + str(cov) + " length:" + str(ln) + " clN:" + str(clN))
-    plt.savefig("%s/graphs/graph_%s_%s_%s.png" % (output,edge, I, AF), format="PNG", dpi=300)
+    plt.savefig("%s/graphs/graph_%s_%s_%s.png" % (MetaPhaseArgs.output, edge, I, AF), format="PNG", dpi=300)
     plt.close()
 
     # Calculate statistics
@@ -62,12 +62,14 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
 def cluster(params):
     # params = #i, consensus_dict)
     i, flye_consensus = params
-    edge=edges[i]
+    print(MetaPhaseArgs, MetaPhaseArgs.bam)
+
+    edge = MetaPhaseArgs.edges[i]
     print("### Reading SNPs...")
-    SNP_pos = read_snp(snp, edge, bam, AF)
+    SNP_pos = read_snp(MetaPhaseArgs.snp, edge, MetaPhaseArgs.bam, AF)
 
     print ("### Reading Reads...")
-    data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+    data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
     cl=pd.DataFrame(data={'ReadName': data.keys()})
     print(str(len(cl['ReadName'])) + " reads found")
     cl['Cluster'] = 'NA'
@@ -75,10 +77,10 @@ def cluster(params):
         return
 
     if len(SNP_pos)==0:
-        data = read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+        data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
         cl = pd.DataFrame(data={'ReadName': data.keys()})
         cl['Cluster'] = 1
-        cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output, edge, I, AF))
+        cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
         return
 
 
@@ -86,10 +88,10 @@ def cluster(params):
     #CALCULATE DISTANCE and ADJ MATRIX
     print ("### Calculatind distances/Building adj matrix...")
     try:
-        m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (output, edge, I, AF), index_col='ReadName')
+        m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF), index_col='ReadName')
     except FileNotFoundError:
-        m=build_adj_matrix(cl, data, SNP_pos, I, bam, edge, R)
-        m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (output,edge, I, AF))
+        m=build_adj_matrix(cl, data, SNP_pos, I, MetaPhaseArgs.bam, edge, R)
+        m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
 
 
     print("### Removing overweighed egdes...")
@@ -115,46 +117,20 @@ def cluster(params):
             uncl = uncl + 1
 
     print(str(clN)+" clusters found")
-    cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (output,edge, I, AF))
+    cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
 
 
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = unclustered_group_N
     if clN != 0:
         print("### Cluster post-processing...")
-        cl = postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus)
+        cl = postprocess(MetaPhaseArgs.bam, cl, SNP_pos, data, edge, R, I, flye_consensus)
     else:
         counts = cl['Cluster'].value_counts(dropna=False)
         cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]
     clN = len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
     print(str(clN) + " clusters after post-processing")
-    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF))
+    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
     print("### Graph viz...")
 
-    clusters_vis_stats (G,cl, clN,uncl,SNP_pos, bam, edge, I, AF)
-    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (output,edge, I, AF))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    #clusters_vis_stats (G,cl, clN,uncl,SNP_pos, MetaPhaseArgs.bam, edge, I, AF)
+    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
