@@ -303,6 +303,7 @@ class FlyeConsensus:
 
             f.write("**********-------************\n\n")
 
+
     def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, debug=False):
         """
         Computes the distance between two clusters consensus'. The distance is based on the global alignment between the

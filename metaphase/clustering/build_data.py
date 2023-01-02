@@ -9,11 +9,12 @@ from metaphase.params import *
 os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 
 
-def read_snp(snp,edge, bam, AF,cluster=None):
+def read_snp(snp, edge, bam, AF,cluster=None):
     SNP_pos = []
     if snp==None:
         if cluster==None:
-            snpos = 'bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt'.format(edge, bam, MetaPhaseArgs.output, edge)
+            snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
+                     '| bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt').format(edge, bam, MetaPhaseArgs.output, edge)
             subprocess.check_output(snpos, shell=True, capture_output=False)
             #subprocess.call(snpos, shell=True, stderr=subprocess.DEVNULL)
             with open("%s/vcf/vcf_%s.txt" % (MetaPhaseArgs.output, edge)) as f:
@@ -26,7 +27,8 @@ def read_snp(snp,edge, bam, AF,cluster=None):
                     if AlFreq > AF:
                         SNP_pos.append(line.split()[1])
         else:
-            snpos = 'bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null | bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt'.format(MetaPhaseArgs.fa,edge, bam, MetaPhaseArgs.output, edge, cluster)
+            snpos = ('bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
+                     '| bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt').format(MetaPhaseArgs.fa,edge, bam, MetaPhaseArgs.output, edge, cluster)
             subprocess.check_output(snpos, shell=True, capture_output=False)
             with open("%s/vcf/vcf_%s_%s.txt" % (MetaPhaseArgs.output, edge, cluster)) as f:
                 lines = f.readlines()
@@ -39,13 +41,14 @@ def read_snp(snp,edge, bam, AF,cluster=None):
                         SNP_pos.append(line.split()[1])
                     if int(str(line.split()[3]).split(',')[0])==0 and int(str(line.split()[3]).split(',')[1])>min_reads_cluster and len(str(line.split()[2]).split(','))>1:
                         SNP_pos.append(line.split()[1])
+
     else:
         vcf = open(snp, "rt")
         for line in vcf:
             if line.split()[0] == edge:
                 SNP_pos.append(line.split()[1])
     # print(str(len(SNP_pos)) + " SNPs found")
-    return (SNP_pos)
+    return SNP_pos
 
 
 def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max):
@@ -124,18 +127,17 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
 
 
 
-def build_data_cons(cl,SNP_pos, data,edge):
+def build_data_cons(cl, SNP_pos, data,edge):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     cons = {}
     for cluster in clusters:
-        cons=cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge)
-    return(cons)
+        cons = cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge)
+    return cons
 
 
-def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
-
+def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge):
     strange = 0
-    strange2=0
+    strange2 = 0
     val = {}
     clSNP = []
     clSNP2 = []
@@ -145,78 +147,74 @@ def cluster_consensuns(cl,cluster,SNP_pos, data, cons,edge):
         for line in reads:
             fp.write(str(line))
             fp.write("\n")
+
     #Create bam for cluster
-    pysam.samtools.view("-N", '%s/clusters/reads_%s_%s.txt' % (MetaPhaseArgs.output, edge, cluster), 
+    pysam.samtools.view("-N", '%s/clusters/reads_%s_%s.txt' % (MetaPhaseArgs.output, edge, cluster),
                         "-o", '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), MetaPhaseArgs.bam, edge,catch_stdout=False)
-    pysam.samtools.index('%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output,edge,cluster))
+    pysam.samtools.index('%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster))
 
-
-    clSNP2=read_snp(MetaPhaseArgs.snp, edge, '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), AF,cluster)
-
+    clSNP2 = read_snp(MetaPhaseArgs.snp, edge, '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), AF, cluster)
 
     try:
-        if len(clSNP2)>0 and max([int(clSNP2[i+1])-int(clSNP2[i]) for i in range(0,len(clSNP2)-1)])>1.5*1000:
+        if len(clSNP2) > 0 and max([int(clSNP2[i + 1]) - int(clSNP2[i])
+                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * 1000:
             strange2 = 1
+
     except(ValueError):
         pass
+
     for pos in SNP_pos:
-
         npos = []
-
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
             try:
                 npos.append(data[read][pos])
             except(KeyError):
                 continue
+
         try:
-            if len(npos) >2:
+            if len(npos) > 2:
                 if int(Counter(npos).most_common()[0][1]) > 2:
                     val[pos] = Counter(npos).most_common()[0][0]
             if int(Counter(npos).most_common()[1][1]) >= unseparated_cluster_min_reads:
                 strange = 1
                 clSNP.append(pos)
+
         except(IndexError):
             continue
-
 
     val["clSNP"] = clSNP
     val["clSNP2"] = clSNP2
 
     clStart = 1000000000000  # change fo ln
     clStop = 0
-    clCov=0
-
+    clCov = 0
 
     for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
         try:
             start = int(data[read]["Start"])
             stop = int(data[read]["Stop"])
-            clCov=clCov+(stop-start)
+            clCov = clCov + (stop - start)
             if start < clStart:
                 clStart = start
             if stop > clStop:
                 clStop = stop
+
         except(KeyError):
             pass
 
     try:
-        if (int(clSNP2[0])-int(clStart))>1.5*I or int(clStop)-int(clSNP2[len(clSNP2)-1])>1.5*I:
+        if (int(clSNP2[0]) - int(clStart)) > 1.5 * I or \
+                int(clStop) - int(clSNP2[len(clSNP2) - 1]) > 1.5 * I:
             strange2 = 1
     except(IndexError):
         pass
-    if strange == 1:
-        val["Strange"] = 1
-    else:
-        val["Strange"] = 0
 
-    if strange2 == 1:
-        val["Strange2"] = 1
-    else:
-        val["Strange2"] = 0
-
-    clCov=clCov/(clStop-clStart)
+    val["Strange"] = int(strange == 1)
+    val["Strange2"] = int(strange2 == 1)
+    clCov = clCov / (clStop - clStart)
     val["Stop"] = clStop
     val["Start"] = clStart
-    val["Cov"]=clCov
+    val["Cov"] = clCov
     cons[cluster] = val
-    return (cons)
+
+    return cons
