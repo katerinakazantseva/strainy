@@ -23,15 +23,16 @@ class GlobalArgumentStorage(object):
 
 MetaPhaseArgs = GlobalArgumentStorage()
 
-
 #TODO: constant storage
 
+#TODO: link Flye as submodule
 
-minigraph=False
-unseparated_cluster_min_reads=2
 # Path to the installed Flye executable
 # Should be Flye/bin/flye
 flye = "/Users/kolmogorovma/Work/projects/Flye/bin/flye"
+
+minigraph=False
+unseparated_cluster_min_reads=2
 
 # Path to store and read the consensus dictionary
 # If one already exists and write_consensus_cache is true, it may be overwritten

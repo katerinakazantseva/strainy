@@ -45,7 +45,7 @@ def color(i):
 
     try:
         write_bam(edge, I, AF)
-        print("color")
+        #print("color")
     except (FileNotFoundError):
         pass
 

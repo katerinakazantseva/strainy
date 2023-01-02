@@ -2,12 +2,16 @@ import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib as mt
+import multiprocessing
 
 from metaphase.clustering.community_detection import find_communities
 from metaphase.clustering.cluster_postprocess import postprocess
 from metaphase.clustering.build_adj_matrix import *
 from metaphase.clustering.build_data import *
 from metaphase.params import *
+
+
+logger = logging.getLogger()
 
 
 def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
@@ -28,30 +32,31 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
         i = i + 1
 
     for index in cl.index:
-
         cl.loc[index, 'Color'] = colors[int(cl.loc[index, 'Cluster'])]
-
         G.remove_edges_from(list(nx.selfloop_edges(G)))
 
     [G.remove_node(i) for i in set(G.nodes) if i not in set(cl['ReadName'])]
 
-
+    #This is currently disabled because it was throwing an error with fork multiprocessing mode in MacOS
+    """
     try:
         nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5,node_color=cl['Color'])
     except:
         nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5)
+
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
     plt.suptitle(str(edge) + " coverage:" + str(cov) + " length:" + str(ln) + " clN:" + str(clN))
     plt.savefig("%s/graphs/graph_%s_%s_%s.png" % (MetaPhaseArgs.output, edge, I, AF), format="PNG", dpi=300)
     plt.close()
+    """
 
     # Calculate statistics
-    print("Summary for: " + edge)
-    print("Clusters found: " + str(clN))
-    print("Reads unclassified: " + str(uncl))
-    print("Number of reads in each cluster: ")
-    print(cl['Cluster'].value_counts(dropna=False))
+    logger.debug("Summary for: " + edge)
+    logger.debug("Clusters found: " + str(clN))
+    logger.debug("Reads unclassified: " + str(uncl))
+    logger.debug("Number of reads in each cluster: ")
+    logger.debug(cl['Cluster'].value_counts(dropna=False))
 
     #stats = open('%s/stats.txt' % output, 'a')
     #stats.write(edge + "\t" + str(ln) + "\t" + str(cov) + "\t" + str(len(cl['ReadName'])) + "\t" + str(
@@ -62,16 +67,16 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
 def cluster(params):
     # params = #i, consensus_dict)
     i, flye_consensus = params
-    print(MetaPhaseArgs, MetaPhaseArgs.bam)
+    #print(MetaPhaseArgs, MetaPhaseArgs.bam)
 
     edge = MetaPhaseArgs.edges[i]
-    print("### Reading SNPs...")
+    logger.info("### Reading SNPs...")
     SNP_pos = read_snp(MetaPhaseArgs.snp, edge, MetaPhaseArgs.bam, AF)
 
-    print ("### Reading Reads...")
+    logger.info("### Reading Reads...")
     data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
     cl=pd.DataFrame(data={'ReadName': data.keys()})
-    print(str(len(cl['ReadName'])) + " reads found")
+    logger.debug(str(len(cl['ReadName'])) + " reads found")
     cl['Cluster'] = 'NA'
     if len(cl['ReadName'])==0:
         return
@@ -83,27 +88,24 @@ def cluster(params):
         cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
         return
 
-
-
     #CALCULATE DISTANCE and ADJ MATRIX
-    print ("### Calculatind distances/Building adj matrix...")
+    logger.info("### Calculatind distances/Building adj matrix...")
     try:
         m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF), index_col='ReadName')
     except FileNotFoundError:
         m=build_adj_matrix(cl, data, SNP_pos, I, MetaPhaseArgs.bam, edge, R)
         m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
 
-
-    print("### Removing overweighed egdes...")
+    logger.info("### Removing overweighed egdes...")
     m = remove_edges(m, R)
 
     # BUILD graph and find clusters
-    print("### Creating graph...")
+    logger.info("### Creating graph...")
     m1 = m
     m1.columns = range(0,len(cl['ReadName']))
     m1.index=range(0,len(cl['ReadName']))
     G = nx.from_pandas_adjacency(change_w(m.transpose(), R))
-    print("### Searching clusters...")
+    logger.info("### Searching clusters...")
     cluster_membership = find_communities(G)
     clN = 0
     uncl = 0
@@ -116,21 +118,20 @@ def cluster(params):
         else:
             uncl = uncl + 1
 
-    print(str(clN)+" clusters found")
+    logger.info(str(clN)+" clusters found")
     cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
-
 
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = unclustered_group_N
     if clN != 0:
-        print("### Cluster post-processing...")
+        logger.info("### Cluster post-processing...")
         cl = postprocess(MetaPhaseArgs.bam, cl, SNP_pos, data, edge, R, I, flye_consensus)
     else:
         counts = cl['Cluster'].value_counts(dropna=False)
         cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]
     clN = len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
-    print(str(clN) + " clusters after post-processing")
+    logger.info(str(clN) + " clusters after post-processing")
     cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
-    print("### Graph viz...")
+    logger.info("### Graph viz...")
 
-    #clusters_vis_stats (G,cl, clN,uncl,SNP_pos, MetaPhaseArgs.bam, edge, I, AF)
+    clusters_vis_stats (G,cl, clN,uncl,SNP_pos, MetaPhaseArgs.bam, edge, I, AF)
     cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))

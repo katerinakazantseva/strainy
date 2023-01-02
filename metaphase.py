@@ -6,10 +6,15 @@ import re
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 import gfapy
 import multiprocessing
+import logging
+import shutil
 
 from metaphase.phase import phase_main
 from metaphase.transform import transform_main
 from metaphase.params import MetaPhaseArgs
+
+
+logger = logging.getLogger()
 
 
 def main():
@@ -48,10 +53,23 @@ def main():
     MetaPhaseArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
     MetaPhaseArgs.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
     MetaPhaseArgs.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
+    MetaPhaseArgs.log_phase = os.path.join(args.output, "log_phase")
+    MetaPhaseArgs.log_transform = os.path.join(args.output, "log_transform")
 
     input_graph = gfapy.Gfa.from_file(args.gfa)
     MetaPhaseArgs.edges = input_graph.segment_names
     ###
+
+    if os.path.isdir(MetaPhaseArgs.log_phase):
+        shutil.rmtree(MetaPhaseArgs.log_phase)
+    os.mkdir(MetaPhaseArgs.log_phase)
+
+    if os.path.isdir(MetaPhaseArgs.log_transform):
+        shutil.rmtree(MetaPhaseArgs.log_transform)
+    os.mkdir(MetaPhaseArgs.log_transform)
+
+    #main_log = os.path.join(MetaPhaseArgs.log_dir, "root.log")
+    #_enable_logging(main_log, debug=True)
 
     if args.stage == "phase":
         sys.exit(phase_main())

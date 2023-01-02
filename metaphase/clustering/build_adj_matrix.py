@@ -1,12 +1,15 @@
 import pandas as pd
 pd.options.mode.chained_assignment = None
 import pysam
+import logging
 
 from metaphase.params import *
 
+logger = logging.getLogger()
 
 def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):
     m = pd.DataFrame(-1, index=cl['ReadName'], columns=cl['ReadName'])
+    logger.debug("Building adjacency matrix with " + str(m.shape[1]) + " reads")
     if only_with_common_snip==False:
         for i in range(1, m.shape[1]):
             first_read = m.index[i]
@@ -15,7 +18,7 @@ def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=
                 m[second_read][first_read] = distance(first_read, second_read, data, SNP_pos, R, only_with_common_snip=False)
     else:
         for i in range(1, m.shape[1]):
-            print(str(i) + "/" + str(m.shape[1]) + " Reads processed \r", end="")
+            #logger.debug(str(i) + "/" + str(m.shape[1]) + " Reads processed \r")
             first_read = m.index[i]
             bamfile = pysam.AlignmentFile(file, "rb")
             border1 = data[first_read]["Start"] + I

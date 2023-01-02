@@ -6,6 +6,8 @@ import gfapy
 from collections import Counter, deque
 import numpy as np
 import pickle
+import logging
+import multiprocessing
 
 from metaphase.clustering.build_adj_matrix import *
 from metaphase.clustering.cluster_postprocess import *
@@ -13,6 +15,9 @@ from metaphase.simplification.simplify_links import *
 from metaphase.flye_consensus import FlyeConsensus
 from metaphase.clustering.build_data  import *
 from metaphase.params import *
+
+
+logger = logging.getLogger()
 
 
 #g = gfapy.Gfa.from_file(gfa)
@@ -44,7 +49,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         insert=main_seq.sequence[left:consensus_start]
         seq = str(consensus['consensus'])[0:right - consensus_start + 1]
         seq=insert+seq
-        print ("CHECKIT "+str(edge))
+        logger.debug("CHECKIT " + str(edge))
     else:
         seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
     #print(consensus_start)
@@ -101,7 +106,7 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
     for node in node_remove:
         try:
             G.remove_node(node)
-            print("REMOVE "+str(node))
+            logger.debug("REMOVE " + str(node))
             full_paths_roots.remove(node)
             full_paths_leafs.remove(node)
         except:
@@ -135,13 +140,13 @@ def remove_nested(G, cons):
                     try:
 
                         G.remove_node(neighbor)
-                        print("REMOVE NESTED"+str(neighbor))
-                        print(node)
-                        print(cons[node]["Start"])
-                        print(cons[node]["Stop"])
-                        print(neighbor)
-                        print(cons[neighbor]["Start"])
-                        print(cons[neighbor]["Stop"])
+                        logger.debug("REMOVE NESTED" + str(neighbor))
+                        logger.debug(node)
+                        logger.debug(cons[node]["Start"])
+                        logger.debug(cons[node]["Stop"])
+                        logger.debug(neighbor)
+                        logger.debug(cons[neighbor]["Start"])
+                        logger.debug(cons[neighbor]["Stop"])
                     except:
                         continue
         except:
@@ -214,7 +219,7 @@ def add_link(graph, fr, fr_or, to, to_or,w):
     link = 'L	%s	%s	%s	%s	0M	ex:i:%s' % (fr, fr_or, to, to_or, w)
     try:
         graph.add_line(link)
-        print("link added from %s %s to %s %s" % (fr, fr_or, to, to_or))
+        logger.debug("link added from %s %s to %s %s" % (fr, fr_or, to, to_or))
     except(gfapy.NotUniqueError): pass
 
 
@@ -232,8 +237,8 @@ def add_path_links(graph, edge, paths,G):
 
 def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
     path_cl = []
-    print("ADD PATH")
-    print(paths)
+    logger.debug("ADD PATH")
+    logger.debug(paths)
     for node in full_clusters:
         try:
             paths_roots.remove(node)
@@ -447,7 +452,7 @@ def gfa_to_nx(g):
 
 def graph_create_unitigs(i, graph, flye_consensus):
     edge = MetaPhaseArgs.edges[i]
-    print(edge)
+    logger.debug(edge)
     full_paths_roots = []
     full_paths_leafs = []
     full_clusters = []
@@ -528,14 +533,14 @@ def graph_create_unitigs(i, graph, flye_consensus):
                 M = change_w(M, 1)
                 G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
             for cluster in othercl.copy():
-                print(cluster)
+                logger.debug(cluster)
                 neighbors = nx.all_neighbors(G, cluster)
                 A=set(neighbors)
                 B=set([j for i in full_paths[edge] for j in i])
                 if len(A.intersection(set(full_clusters)))>0 or len(A.intersection(B))>0:
                     othercl.remove(cluster)
                     close_to_full.append(cluster)
-                    print("REMOVE "+str(cluster))
+                    logger.debug("REMOVE " + str(cluster))
 
 
             new_cov=change_cov(graph, edge,cons,ln,clusters,othercl)
@@ -557,10 +562,10 @@ def graph_create_unitigs(i, graph, flye_consensus):
             #change_sec(graph, edge, [clusters[0]], cl, flye_consensus)
             change_sec(graph, edge, [clusters[0]], cl, SNP_pos, data, False)
     except(FileNotFoundError, IndexError):
-        print("NO CLUSTERS")
+        logger.debug("NO CLUSTERS")
         cov = pysam.samtools.coverage("-r", edge, MetaPhaseArgs.bam, "--no-header").split()[6]
         i = graph.try_get_segment(edge)
-        print(cov)
+        logger.debug(cov)
         i.dp = round(float(cov))
         pass
         clusters = []
@@ -585,9 +590,9 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
 
 def graph_link_unitigs(i, graph, G):
-    print("CREATING NEW LINKS")
+    logger.debug("CREATING NEW LINKS")
     edge = MetaPhaseArgs.edges[i]
-    print(edge)
+    logger.debug(edge)
     link_added = False
 
     clusters=[]
@@ -610,8 +615,8 @@ def graph_link_unitigs(i, graph, G):
             continue
 
     for clN in link_unitigs:
-        print()
-        print("%s_%s" % (edge, clN))
+        logger.debug("")
+        logger.debug("%s_%s" % (edge, clN))
         reads = list(cl.loc[cl['Cluster'] == clN, 'ReadName'])
         neighbours={}
         orient={}
@@ -640,7 +645,7 @@ def graph_link_unitigs(i, graph, G):
 
                 for n, v in data[read]["Lclip"].items():
                     try:
-                        print(n, edge)
+                        logger.debug(str(n) + " " + str(edge))
                         if len(nx.shortest_path(G, n, edge)) <= max_hops:
                             neighbours[read]=n
                             if v[0]=='+' and v[1]=='+':
@@ -734,7 +739,7 @@ def graph_link_unitigs(i, graph, G):
                             continue
 
     if link_added==False or edge not in remove_clusters:
-        print("restore links")
+        logger.debug("restore links")
         for d in graph.dovetails:
             repl=[]
             if d.from_segment==edge:
@@ -751,13 +756,13 @@ def graph_link_unitigs(i, graph, G):
                     except(KeyError):
                         pass
                 for i in repl:
-                    print(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
+                    logger.debug(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
                     try:
                         graph.add_line(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
                     except(gfapy.error.NotUniqueError):
                         pass
             if d.to_segment==edge:
-                print(d.from_segment.name)
+                logger.debug(d.from_segment.name)
                 if d.from_orient == '+':
                     try:
                         for i in link_clusters_sink[d.from_segment.name]:
@@ -771,14 +776,39 @@ def graph_link_unitigs(i, graph, G):
                     except(KeyError):
                         pass
                 for i in repl:
-                    print(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
+                    logger.debug(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
                     try:
                         graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
                     except(gfapy.error.NotUniqueError):
                         pass
 
 
+def _set_thread_logging(log_dir):
+    """
+    Turns on logging, sets debug levels and assigns a log file
+    """
+    logger.handlers.clear()
+
+    thread_id = str(multiprocessing.current_process().name).split("-")[-1]
+    log_file = os.path.join(log_dir, "transform-{0}.log".format(thread_id))
+
+    log_formatter = logging.Formatter("[%(asctime)s] %(name)s: %(levelname)s: "
+                                      "%(message)s", "%Y-%m-%d %H:%M:%S")
+    console_formatter = logging.Formatter("[%(asctime)s] [Tread " + thread_id + "] %(levelname)s: "
+                                          " %(message)s", "%Y-%m-%d %H:%M:%S")
+    console_log = logging.StreamHandler()
+    console_log.setFormatter(console_formatter)
+
+    file_handler = logging.FileHandler(log_file, mode="a")
+    file_handler.setFormatter(log_formatter)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(console_log)
+    logger.addHandler(file_handler)
+
+
 def transform_main():
+    _set_thread_logging(MetaPhaseArgs.log_transform)
+
     stats = open('%s/stats_clusters.txt' % MetaPhaseArgs.output, 'a')
     stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
     stats.close()
@@ -794,7 +824,7 @@ def transform_main():
 
     try:
         with open(consensus_cache_path, 'rb') as f:
-            print(os.getcwd())
+            logger.debug(os.getcwd())
             consensus_dict = pickle.load(f)
     except FileNotFoundError:
         consensus_dict = {}
@@ -802,6 +832,7 @@ def transform_main():
     flye_consensus = FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.gfa, 1, consensus_dict)
 
     for i in range(0, len(MetaPhaseArgs.edges)):
+        #TODO: this can run in parallel (and probably takes the most time)
         graph_create_unitigs(i, initial_graph, flye_consensus)
     for i in range(0, len(MetaPhaseArgs.edges)):
         graph_link_unitigs(i, initial_graph, G)
@@ -811,7 +842,7 @@ def transform_main():
     for ed in initial_graph.segments:
         if ed.name in remove_clusters:
             initial_graph.rm(ed)
-            print(ed.name)
+            logger.debug(ed.name)
     for link in initial_graph.dovetails:
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
