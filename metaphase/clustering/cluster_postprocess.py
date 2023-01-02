@@ -31,8 +31,6 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, R, I,only_with_common_snip=
     while new_cl_id_na in cl_exist:
         new_cl_id_na = new_cl_id_na + 1
 
-
-
     for value in set(cluster_membership.values()):
         group = [k for k, v in cluster_membership.items() if v == value]
         if len(group) > min_cluster_size:
@@ -43,17 +41,16 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, R, I,only_with_common_snip=
             child_clusters.append(new_cl_id)
             cl_exist.append(new_cl_id)
             for i in group:
-                cl.loc[cl['ReadName'] == reads[i], "Cluster"] = new_cl_id
+                mask = cl['ReadName'] == str(reads[i])
+                cl.loc[mask, "Cluster"] = new_cl_id
 
         else:
             uncl = uncl + 1
             for i in group:
+                mask = cl['ReadName'] == str(reads[i])
                 #cl.loc[cl['ReadName'] == reads[i], "Cluster"] = unclustered_group_N2
-                cl.loc[cl['ReadName'] == reads[i], "Cluster"]=new_cl_id_na
+                cl.loc[mask, "Cluster"] = new_cl_id_na
                 child_clusters.append(new_cl_id_na)
-
-
-
 
 
 def build_adj_matrix_clusters_atab (cons, cl, edge, flye_consensus, only_with_common_snip=True):
@@ -111,7 +108,6 @@ def build_adj_matrix_clusters (edge,cons,cl,flye_consensus, only_with_common_sni
                 else:
                     m[second_cl][first_cl] = distance_clusters(edge,first_cl, second_cl, cons,cl,flye_consensus,False)
     return (m)
-
 
 
 def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
@@ -185,9 +181,6 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
         except:
             continue
 
-
-
-
     groups = list(nx.connected_components(G))
 
     for group in groups:
@@ -197,8 +190,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
     return cl
 
 
-
-def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
+def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cons=build_data_cons(cl, SNP_pos, data,edge)
     cl.to_csv("%s/clusters/1.csv" % MetaPhaseArgs.output)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
@@ -241,6 +233,7 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
 
     cl = cl[cl['Cluster'] != unclustered_group_N+split_id]
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
+
     print("Split2")
     for cluster in clusters:
         try:
@@ -248,7 +241,7 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
                 clSNP=cons[cluster]["clSNP2"]
                 #cluster = key
 
-                child_clusters=split_cluster(cl, cluster, data, clSNP, bam, edge, R, I)
+                child_clusters = split_cluster(cl, cluster, data, clSNP, bam, edge, R, I)
                 try:
                     for child in set(child_clusters):
                         cluster_consensuns(cl,child,SNP_pos, data, cons,edge)
@@ -298,4 +291,5 @@ def postprocess (bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl=join_clusters(cons, cl, R, edge, flye_consensus,False)
     counts = cl['Cluster'].value_counts(dropna=False)
     cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
+
     return(cl)
