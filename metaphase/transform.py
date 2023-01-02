@@ -8,6 +8,7 @@ import numpy as np
 import pickle
 import logging
 import multiprocessing
+import shutil
 
 from metaphase.clustering.build_adj_matrix import *
 from metaphase.clustering.cluster_postprocess import *
@@ -807,6 +808,9 @@ def _set_thread_logging(log_dir):
 
 
 def transform_main():
+    if os.path.isdir(MetaPhaseArgs.log_transform):
+        shutil.rmtree(MetaPhaseArgs.log_transform)
+    os.mkdir(MetaPhaseArgs.log_transform)
     _set_thread_logging(MetaPhaseArgs.log_transform)
 
     stats = open('%s/stats_clusters.txt' % MetaPhaseArgs.output, 'a')

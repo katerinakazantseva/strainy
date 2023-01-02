@@ -60,14 +60,6 @@ def main():
     MetaPhaseArgs.edges = input_graph.segment_names
     ###
 
-    if os.path.isdir(MetaPhaseArgs.log_phase):
-        shutil.rmtree(MetaPhaseArgs.log_phase)
-    os.mkdir(MetaPhaseArgs.log_phase)
-
-    if os.path.isdir(MetaPhaseArgs.log_transform):
-        shutil.rmtree(MetaPhaseArgs.log_transform)
-    os.mkdir(MetaPhaseArgs.log_transform)
-
     #main_log = os.path.join(MetaPhaseArgs.log_dir, "root.log")
     #_enable_logging(main_log, debug=True)
 

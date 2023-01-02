@@ -5,6 +5,7 @@ import os
 import subprocess
 from multiprocessing.managers import BaseManager
 import logging
+import shutil
 
 from metaphase.clustering.cluster import cluster
 from metaphase.color_bam import color
@@ -49,6 +50,10 @@ def _set_thread_logging(log_dir):
 
 
 def phase(edges):
+    if os.path.isdir(MetaPhaseArgs.log_phase):
+        shutil.rmtree(MetaPhaseArgs.log_phase)
+    os.mkdir(MetaPhaseArgs.log_phase)
+
     CustomManager.register('FlyeConsensus', FlyeConsensus)
 
     with CustomManager() as manager:
