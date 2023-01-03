@@ -209,23 +209,26 @@ class FlyeConsensus:
         """
         score = 0
         indel_length = 0
-        aligment_list = list(alignment_string)
-        for i in range(len(aligment_list)):
+        alignment_list = list(alignment_string)
+        for i in range(len(alignment_list)):
+            if alignment_list[i] not in "-.|":
+                raise Exception("Unknown alignment sybmol!")
+
             reference_position = i + intersection_start
 
             # ignore variants with coverage less than 3
-            if ((aligment_list[i] == '-' or aligment_list[i] == '.')
+            if ((alignment_list[i] == '-' or alignment_list[i] == '.')
                     and (calculate_coverage(reference_position, cl1_reads) < 3
                     or calculate_coverage(reference_position, cl2_reads) < 3)):
-                aligment_list[i] = '|'
+                alignment_list[i] = '|'
 
-            if aligment_list[i] == '-':
+            if alignment_list[i] == '-':
                 # igonre the indels at the first or last position
-                if (i == 0) or (i == len(aligment_list) - 1):
+                if (i == 0) or (i == len(alignment_list) - 1):
                     continue
                 else:
                     # start of an indel block
-                    if aligment_list[i-1] != '-':
+                    if alignment_list[i-1] != '-':
                         # an indel block can't start from position 0.
                         indel_length = 1
                     # continuing indel block
@@ -233,13 +236,13 @@ class FlyeConsensus:
                         indel_length += 1
 
             # a contiguous block ends
-            elif aligment_list[i-1] == '-':
+            elif alignment_list[i-1] == '-':
                 if indel_length >= self._indel_block_length_leniency:
                     score += indel_length
                 indel_length = 0
 
             # mismatch
-            if aligment_list[i] == '.':
+            if alignment_list[i] == '.':
                 score += 1
         return score
 
@@ -350,7 +353,8 @@ class FlyeConsensus:
         aligner.gap_score = -1
         alignments = aligner.align(first_consensus_clipped, second_consensus_clipped)
         # get the alignment string consisting of (- . |)
-        alignment_string = alignments[0].format().split('\n')[1]
+        alignment_string = str(alignments[0]).format().split('\n')[1]
+        alignment_string = alignment_string.replace("X", ".")
         score = self._custom_scoring_function(alignment_string, intersection_start,
                                               first_cl_dict['read_limits'], second_cl_dict['read_limits'])
 
