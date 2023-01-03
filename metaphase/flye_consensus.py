@@ -32,10 +32,13 @@ class FlyeConsensus:
                  indel_block_length_leniency = 5):
         self._bam_file = pysam.AlignmentFile(bam_file_name, "rb")
 
-        self._name_indexed_list = []
-        for i in range(num_processes):
-            self._name_indexed_list.append(pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb")))
-            self._name_indexed_list[i].build()
+        self._read_index = pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb"))
+        self._read_index.build()
+
+        #self._name_indexed_list = []
+        #for i in range(num_processes):
+        #    self._name_indexed_list.append(pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb")))
+        #    self._name_indexed_list[i].build()
 
         self._num_processes = num_processes
         self._bam_header = self._bam_file.header.copy()
@@ -67,28 +70,30 @@ class FlyeConsensus:
         cluster_start = -1
         cluster_end = -1
         read_limits = []
-        if self._num_processes == 1:
-            pid = 0
-        else:
-            pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
+
+        #if self._num_processes == 1:
+        #    pid = 0
+        #else:
+        #    pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
 
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
         for name in read_names:
-            try:
-                self._name_indexed_list[pid].find(name)
-            except KeyError:
-                pass
-            else:
-                iterator = self._name_indexed_list[pid].find(name)
-                with self._lock:
-                    for x in iterator:
-                        if x.reference_name == edge:
-                            if x.reference_start < cluster_start or cluster_start == -1:
-                                cluster_start = x.reference_start
-                            if x.reference_end > cluster_end or cluster_end == -1:
-                                cluster_end = x.reference_end
-                            read_list.append(x)
-                            read_limits.append((x.reference_start, x.reference_end))
+            #try:
+            #    self._name_indexed_list[pid].find(name)
+            #except KeyError:
+            #    pass
+            #else:
+            #iterator = self._name_indexed_list[pid].find(name)
+            #with self._lock:
+            iterator = self._read_index.find(name)
+            for x in iterator:
+                if x.reference_name == edge:
+                    if x.reference_start < cluster_start or cluster_start == -1:
+                        cluster_start = x.reference_start
+                    if x.reference_end > cluster_end or cluster_end == -1:
+                        cluster_end = x.reference_end
+                    read_list.append(x)
+                    read_limits.append((x.reference_start, x.reference_end))
 
         out = pysam.Samfile(output_file, "wb", header=self._bam_header)
         for x in read_list:
@@ -98,6 +103,7 @@ class FlyeConsensus:
             out.write(y)
 
         out.close()
+
         return cluster_start, cluster_end, read_limits
 
     def flye_consensus(self, cluster, edge, cl, debug=False):
@@ -239,10 +245,11 @@ class FlyeConsensus:
 
     def _log_alignment_info(self, alignment_string, first_cl_dict, second_cl_dict,
                             score, intersection_start, intersection_end):
-        if self._num_processes == 1:
-            pid = 0
-        else:
-            pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
+        #if self._num_processes == 1:
+        #    pid = 0
+        #else:
+        #    pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
+        pid = int(multiprocessing.current_process().pid)
         fname = f"{MetaPhaseArgs.output}/distance_inconsistency-{pid}.log"
         with open(fname, 'a+') as f:
             """

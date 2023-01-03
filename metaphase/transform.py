@@ -792,7 +792,8 @@ def _set_thread_logging(log_dir):
     """
     logger.handlers.clear()
 
-    thread_id = str(multiprocessing.current_process().name).split("-")[-1]
+    #thread_id = str(multiprocessing.current_process().name).split("-")[-1]
+    thread_id = str(multiprocessing.current_process().pid)
     log_file = os.path.join(log_dir, "transform-{0}.log".format(thread_id))
 
     log_formatter = logging.Formatter("[%(asctime)s] %(name)s: %(levelname)s: "
