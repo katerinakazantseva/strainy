@@ -102,7 +102,7 @@ def phase_main():
 
     consensus_dict = phase(MetaPhaseArgs.edges)
     if write_consensus_cache:
-        with open(consensus_cache_path, 'wb') as f:
+        with open(os.path.join(MetaPhaseArgs.output, consensus_cache_path), 'wb') as f:
             pickle.dump(consensus_dict, f)
     color_bam(MetaPhaseArgs.edges)
 

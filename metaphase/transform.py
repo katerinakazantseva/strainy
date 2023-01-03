@@ -828,7 +828,7 @@ def transform_main():
         #pass
 
     try:
-        with open(consensus_cache_path, 'rb') as f:
+        with open(os.path.join(MetaPhaseArgs.output, consensus_cache_path), 'rb') as f:
             logger.debug(os.getcwd())
             consensus_dict = pickle.load(f)
     except FileNotFoundError:
