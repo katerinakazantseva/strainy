@@ -84,16 +84,16 @@ class FlyeConsensus:
             #    pass
             #else:
             #iterator = self._name_indexed_list[pid].find(name)
-            #with self._lock:
-            iterator = self._read_index.find(name)
-            for x in iterator:
-                if x.reference_name == edge:
-                    if x.reference_start < cluster_start or cluster_start == -1:
-                        cluster_start = x.reference_start
-                    if x.reference_end > cluster_end or cluster_end == -1:
-                        cluster_end = x.reference_end
-                    read_list.append(x)
-                    read_limits.append((x.reference_start, x.reference_end))
+            with self._lock:
+                iterator = self._read_index.find(name)
+                for x in iterator:
+                    if x.reference_name == edge:
+                        if x.reference_start < cluster_start or cluster_start == -1:
+                            cluster_start = x.reference_start
+                        if x.reference_end > cluster_end or cluster_end == -1:
+                            cluster_end = x.reference_end
+                        read_list.append(x)
+                        read_limits.append((x.reference_start, x.reference_end))
 
         out = pysam.Samfile(output_file, "wb", header=self._bam_header)
         for x in read_list:
