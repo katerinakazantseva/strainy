@@ -98,38 +98,39 @@ def change_w(m, R):
 
 
 def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus,only_with_common_snip=True):
-    d=-1
-    firstSNPs=list(cons[first_cl].keys())
+    d = -1
+    firstSNPs = list(cons[first_cl].keys())
     secondSNPs = list(cons[second_cl].keys())
     keys=('clSNP','clSNP2', 'Strange', 'Strange2','Stop','Start','Cov')
     firstSNPs = [key for key in firstSNPs if key not in keys]
-    secondSNPs= [key for key in secondSNPs if key not in keys]
-    commonSNP=sorted(set(firstSNPs).intersection(secondSNPs))
+    secondSNPs = [key for key in secondSNPs if key not in keys]
+    commonSNP = sorted(set(firstSNPs).intersection(secondSNPs))
     #print(commonSNP)
 
+    #try:
+    #intersect = set(range(flye_consensus.flye_consensus(first_cl, edge, cl)['start'], 
+    #                        flye_consensus.flye_consensus(first_cl, edge, cl)['end'])).intersection(set(range(flye_consensus.flye_consensus(second_cl, edge, cl)['start'],
+    #                                                                                                    flye_consensus.flye_consensus(second_cl, edge, cl)['end'])))
+    intersect = set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
+    if only_with_common_snip == False and len(commonSNP) == 0 and len(intersect) > I:
+        d = 0
+    #elif only_with_common_snip==True and (len(cons[first_cl]["clSNP2"])==0 or len(cons[second_cl]["clSNP2"])==0):
+    elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
+        d = 1
+    elif len(intersect) > I:
+        d = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
+        # following lines are for debugging
+        # print(f"flye distance:{fd}, old distance:{d}"
 
-    try:
-        #intersect = set(range(flye_consensus.flye_consensus(first_cl, edge, cl)['start'], flye_consensus.flye_consensus(first_cl, edge, cl)['end'])).intersection(set(range(flye_consensus.flye_consensus(second_cl, edge, cl)['start'],flye_consensus.flye_consensus(second_cl, edge, cl)['end'])))
-        intersect=set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
-        if only_with_common_snip==False and len(commonSNP)==0 and len(intersect)>I:
-            d=0
-        #elif only_with_common_snip==True and (len(cons[first_cl]["clSNP2"])==0 or len(cons[second_cl]["clSNP2"])==0):
-        elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
-            d = 1
-        elif len(intersect)>I:
-            d=flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
-            # following lines are for debugging
-            # print(f"flye distance:{fd}, old distance:{d}"
+        # if fd != 0 and d == 0:
+        #     print("flye_consensus is not 0")
+        #     fd = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, debug=True)
+        # d = fd
+    else:
+        d = 1
 
-            # if fd != 0 and d == 0:
-            #     print("flye_consensus is not 0")
-            #     fd = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, debug=True)
-            # d = fd
-        else:
-            d=1
-
-    except(IndexError):
-        pass
+    #except IndexError:
+    #    pass
 
     #print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
     return d
