@@ -82,7 +82,7 @@ def cluster(params):
         return
 
     if len(SNP_pos)==0:
-        data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+        #data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
         cl = pd.DataFrame(data={'ReadName': data.keys()})
         cl['Cluster'] = 1
         cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))

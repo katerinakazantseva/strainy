@@ -3,16 +3,17 @@ import pysam
 import os
 import re
 from collections import Counter
+from Bio import SeqIO
 
 from metaphase.params import *
 
 os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 
 
-def read_snp(snp, edge, bam, AF,cluster=None):
+def read_snp(vcf_file, edge, bam, AF, cluster=None):
     SNP_pos = []
-    if snp==None:
-        if cluster==None:
+    if vcf_file == None:
+        if cluster == None:
             snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
                      '| bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt').format(edge, bam, MetaPhaseArgs.output, edge)
             subprocess.check_output(snpos, shell=True, capture_output=False)
@@ -28,7 +29,7 @@ def read_snp(snp, edge, bam, AF,cluster=None):
                         SNP_pos.append(line.split()[1])
         else:
             snpos = ('bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
-                     '| bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt').format(MetaPhaseArgs.fa,edge, bam, MetaPhaseArgs.output, edge, cluster)
+                     '| bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt').format(MetaPhaseArgs.fa, edge, bam, MetaPhaseArgs.output, edge, cluster)
             subprocess.check_output(snpos, shell=True, capture_output=False)
             with open("%s/vcf/vcf_%s_%s.txt" % (MetaPhaseArgs.output, edge, cluster)) as f:
                 lines = f.readlines()
@@ -43,7 +44,7 @@ def read_snp(snp, edge, bam, AF,cluster=None):
                         SNP_pos.append(line.split()[1])
 
     else:
-        vcf = open(snp, "rt")
+        vcf = open(vcf_file, "rt")
         for line in vcf:
             if line.split()[0] == edge:
                 SNP_pos.append(line.split()[1])
@@ -68,7 +69,7 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                 int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) < 5  or int(stop) > int(ln) - 5):
 
             data[read.query_name] = {}
-            data[read.query_name]["Start"]=start
+            data[read.query_name]["Start"] = start
             data[read.query_name]["Stop"] = stop
             try:
                 tags = read.get_tags()[9]
@@ -110,7 +111,6 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
         else:
             continue
 
-
     for pos in SNP_pos:
         for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=0,
                                            ignore_overlaps=False, min_mapping_quality=min_mapping_quality,
@@ -123,46 +123,50 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                     except (KeyError):
                         continue
     bamfile.close()
-    return (data)
+
+    return data
 
 
+def read_fasta_seq(filename, seq_name):
+    reference_seq = None
+    for seq in SeqIO.parse(filename, "fasta"):
+        if seq.id == seq_name:
+            reference_seq = str(seq.seq)
+            break
+    if reference_seq is None:
+        raise Exception("Reference sequence not found")
 
-def build_data_cons(cl, SNP_pos, data,edge):
+    return reference_seq
+
+
+def build_data_cons(cl, SNP_pos, data, edge, reference_seq):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     cons = {}
     for cluster in clusters:
-        cons = cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge)
+        cons = cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
     return cons
 
 
-def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge):
+def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     strange = 0
     strange2 = 0
     val = {}
-    clSNP = []
-    clSNP2 = []
 
-    reads = list(cl.loc[cl['Cluster'] == cluster, 'ReadName'])
-    with open('%s/clusters/reads_%s_%s.txt' % (MetaPhaseArgs.output, edge, cluster), 'w') as fp:
-        for line in reads:
-            fp.write(str(line))
-            fp.write("\n")
+    #reads = list(cl.loc[cl['Cluster'] == cluster, 'ReadName'])
+    #with open('%s/clusters/reads_%s_%s.txt' % (MetaPhaseArgs.output, edge, cluster), 'w') as fp:
+    #    for line in reads:
+    #        fp.write(str(line))
+    #        fp.write("\n")
 
     #Create bam for cluster
-    pysam.samtools.view("-N", '%s/clusters/reads_%s_%s.txt' % (MetaPhaseArgs.output, edge, cluster),
-                        "-o", '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), MetaPhaseArgs.bam, edge,catch_stdout=False)
-    pysam.samtools.index('%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster))
+    #pysam.samtools.view("-N", '%s/clusters/reads_%s_%s.txt' % (MetaPhaseArgs.output, edge, cluster),
+    #                    "-o", '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), MetaPhaseArgs.bam, edge,catch_stdout=False)
+    #pysam.samtools.index('%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster))
 
-    clSNP2 = read_snp(MetaPhaseArgs.snp, edge, '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), AF, cluster)
+    #clSNP2 = read_snp(MetaPhaseArgs.snp, edge, '%s/bam/clusters/%s_%s.bam' % (MetaPhaseArgs.output, edge, cluster), AF, cluster)
 
-    try:
-        if len(clSNP2) > 0 and max([int(clSNP2[i + 1]) - int(clSNP2[i])
-                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * 1000:
-            strange2 = 1
-
-    except(ValueError):
-        pass
-
+    clSNP = []
+    mpileup_snps = []
     for pos in SNP_pos:
         npos = []
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
@@ -171,17 +175,28 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge):
             except(KeyError):
                 continue
 
+        min_snp_freq = max(1, AF * len(npos))
         try:
             if len(npos) > 2:
+                #store most frequent symbol as consensus
                 if int(Counter(npos).most_common()[0][1]) > 2:
                     val[pos] = Counter(npos).most_common()[0][0]
+
+                #mimicking bcftools mpileup
+                for elem, freq in Counter(npos).most_common():
+                    if elem != reference_seq[int(pos) - 1] and freq >= min_snp_freq:
+                        mpileup_snps.append(pos)
+                        break
+
+            #2nd most frequent, indicating a variant
             if int(Counter(npos).most_common()[1][1]) >= unseparated_cluster_min_reads:
                 strange = 1
                 clSNP.append(pos)
 
-        except(IndexError):
+        except IndexError:
             continue
 
+    clSNP2 = mpileup_snps
     val["clSNP"] = clSNP
     val["clSNP2"] = clSNP2
 
@@ -203,10 +218,15 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge):
             pass
 
     try:
+        if len(clSNP2) > 0 and max([int(clSNP2[i + 1]) - int(clSNP2[i])
+                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * 1000:
+            strange2 = 1
+
         if (int(clSNP2[0]) - int(clStart)) > 1.5 * I or \
                 int(clStop) - int(clSNP2[len(clSNP2) - 1]) > 1.5 * I:
             strange2 = 1
-    except(IndexError):
+
+    except (ValueError, IndexError):
         pass
 
     val["Strange"] = int(strange == 1)

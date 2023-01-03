@@ -379,12 +379,14 @@ def change_sec(g, edge, othercl, cl, flye_consensus):
 '''
 
 
-def change_sec(g,edge, othercl, cl,SNP_pos, data, cut=True):
+def change_sec(g, edge, othercl, cl,SNP_pos, data, cut=True):
     temp={}
     other_cl=cl
     for cluster in othercl:
         other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
-    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp,edge)
+
+    reference_seq = read_fasta_seq(MetaPhaseArgs.fa, edge)
+    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp, edge, reference_seq)
     i = g.try_get_segment(edge)
     seq = i.sequence
     seq = list(seq)
@@ -474,7 +476,9 @@ def graph_create_unitigs(i, graph, flye_consensus):
             clusters.remove(0)
         except:
             pass
-        cons = build_data_cons(cl, SNP_pos, data,edge)
+
+        reference_seq = read_fasta_seq(MetaPhaseArgs.fa, edge)
+        cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
 
         if len(clusters) == 1:
             for cluster in clusters:

@@ -194,7 +194,9 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
 
 
 def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
-    cons = build_data_cons(cl, SNP_pos, data, edge)
+    reference_seq = read_fasta_seq(MetaPhaseArgs.fa, edge)
+
+    cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
     cl.to_csv("%s/clusters/1.csv" % MetaPhaseArgs.output)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
 
@@ -211,7 +213,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
                 for child in set(child_clusters):
                     #print("child")
                     #print(child)
-                    cluster_consensuns(cl, child, SNP_pos, data, cons, edge)
+                    cluster_consensuns(cl, child, SNP_pos, data, cons, edge, reference_seq)
 
                     if chil == cluster+split_id:
                         split_cluster(cl, child, data, clSNP, bam, edge, R, I, False)
@@ -221,14 +223,14 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
 
     cl.to_csv("%s/clusters/2.csv" % MetaPhaseArgs.output)
     cluster = unclustered_group_N
-    cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge)
+    cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
     clSNP = cons[cluster]["clSNP"]
     child_clusters = split_cluster(cl, cluster, data, clSNP, bam, edge,  R, I, False)
 
     cl.to_csv("%s/clusters/3.csv" % MetaPhaseArgs.output)
     try:
         for child in set(child_clusters):
-            cluster_consensuns(cl, child, SNP_pos, data, cons, edge)
+            cluster_consensuns(cl, child, SNP_pos, data, cons, edge, reference_seq)
             if cons[child]["Strange"] == 1:
                 split_cluster(cl, child, data, clSNP, bam, edge,  R, I, False)
     except (TypeError): pass
@@ -248,7 +250,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
                 child_clusters = split_cluster(cl, cluster, data, clSNP, bam, edge, R, I)
                 try:
                     for child in set(child_clusters):
-                        cluster_consensuns(cl,child,SNP_pos, data, cons,edge)
+                        cluster_consensuns(cl,child,SNP_pos, data, cons, edge, reference_seq)
                         if child == cluster + split_id: #or child == cluster + split_id+split_id:
                             split_cluster(cl, child, data, clSNP, bam, edge,  R, I, False)
                         elif cons[child]["Strange2"] == 1:
@@ -261,7 +263,9 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl.to_csv("%s/clusters/5.csv" % MetaPhaseArgs.output)
 
     if len(cl.loc[cl['Cluster'] == unclustered_group_N2,'ReadName'].values) != 0:
-        cluster_consensuns(cl, unclustered_group_N2, SNP_pos, data, cons,edge, False)
+        #FIXME: there was originally an extra function argument (False) here, but it should normally lead to an error
+        #seems that this part of the code was never executed
+        cluster_consensuns(cl, unclustered_group_N2, SNP_pos, data, cons, edge, reference_seq)
         cluster = unclustered_group_N2
         val=cons[cluster]
         clSNP = SNP_pos
@@ -272,7 +276,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
         try:
             for child in set(child_clusters):
                 cluster = child
-                cluster_consensuns(cl, cluster, SNP_pos, data, cons,edge)
+                cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
                 if cons[child]["Strange"] == 1:
                     clSNP = val["clSNP"]
                     split_cluster(cl, cluster, data, clSNP, bam, edge, R, I,only_with_common_snip = True)
@@ -290,9 +294,9 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
 
     cl.to_csv("%s/clusters/clusters_before_joining_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, 0.1))
 
-    cons = build_data_cons(cl, SNP_pos, data, edge)
+    cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
     cl = join_clusters(cons, cl, R, edge, flye_consensus)
-    cons = build_data_cons(cl, SNP_pos, data, edge)
+    cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
     cl = join_clusters(cons, cl, R, edge, flye_consensus, False)
     counts = cl['Cluster'].value_counts(dropna=False)
     cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)] #change for cov*01.
