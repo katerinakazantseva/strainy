@@ -11,6 +11,7 @@ from metaphase.clustering.cluster import cluster
 from metaphase.color_bam import color
 from metaphase.flye_consensus import FlyeConsensus
 from metaphase.params import *
+from metaphase.logging import set_thread_logging
 
 
 logger = logging.getLogger()
@@ -21,33 +22,9 @@ class CustomManager(BaseManager):
 
 
 def _thread_fun(args):
-    _set_thread_logging(MetaPhaseArgs.log_phase)
+    set_thread_logging(MetaPhaseArgs.log_phase, "phase", multiprocessing.current_process().pid)
     logger.info("\n\n\t==== Processing uniting " + str(MetaPhaseArgs.edges[args[0]]) + " ====")
     cluster(args)
-
-
-def _set_thread_logging(log_dir):
-    """
-    Turns on logging, sets debug levels and assigns a log file
-    """
-    logger.handlers.clear()
-
-    #thread_id = str(multiprocessing.current_process().name).split("-")[-1]
-    thread_id = str(multiprocessing.current_process().pid)
-    log_file = os.path.join(log_dir, "phase-{0}.log".format(thread_id))
-
-    log_formatter = logging.Formatter("[%(asctime)s] %(name)s: %(levelname)s: "
-                                      "%(message)s", "%Y-%m-%d %H:%M:%S")
-    console_formatter = logging.Formatter("[%(asctime)s] [Tread " + thread_id + "] %(levelname)s: "
-                                          " %(message)s", "%Y-%m-%d %H:%M:%S")
-    console_log = logging.StreamHandler()
-    console_log.setFormatter(console_formatter)
-
-    file_handler = logging.FileHandler(log_file, mode="a")
-    file_handler.setFormatter(log_formatter)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(console_log)
-    logger.addHandler(file_handler)
 
 
 def phase(edges):
@@ -84,7 +61,7 @@ def color_bam(edges):
 
 def phase_main():
     #logging.info(MetaPhaseArgs)
-    logging.info("Starting phasing")
+    logger.info("Starting phasing")
     dirs = ("%s/vcf/" % MetaPhaseArgs.output,
             "%s/adj_M/" % MetaPhaseArgs.output,
             "%s/clusters/" % MetaPhaseArgs.output,

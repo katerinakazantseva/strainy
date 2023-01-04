@@ -58,8 +58,8 @@ class FlyeConsensus:
         return self._consensus_dict.copy()
 
     def print_cache_statistics(self):
-        logging.info(f"Total number of key hits and misses for consensus computation:")
-        logging.info(f" H:{self._key_hit}, M:{self._key_miss}")
+        logger.info(f"Total number of key hits and misses for consensus computation:")
+        logger.info(f" H:{self._key_hit}, M:{self._key_miss}")
 
 
     def extract_reads(self, read_names, output_file, edge=""):
@@ -130,7 +130,7 @@ class FlyeConsensus:
         cluster_start, cluster_end, read_limits = self.extract_reads(reads_from_curr_cluster,
                                                         f"{fprefix}cluster_{cluster}_reads_{salt}.bam", edge)
 
-        logging.debug((f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}, CLUSTER_END:{cluster_end}, EDGE:{edge},"
+        logger.debug((f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}, CLUSTER_END:{cluster_end}, EDGE:{edge},"
                f"# OF READS:{len(reads_from_curr_cluster)}"))
 
         # access the edge in the graph and cut its sequence according to the cluster start and end positions
@@ -154,11 +154,11 @@ class FlyeConsensus:
                      f"--pacbio-hifi {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
                      f"-o {MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
-            logging.debug("Running Flye polisher")
+            logger.debug("Running Flye polisher")
             subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
         except subprocess.CalledProcessError as e:
-            logging.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")
-            logging.error(e)
+            logger.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")
+            logger.error(e)
             with self._lock:
                 self._consensus_dict[consensus_dict_key] = {
                     'consensus': Seq(''),
@@ -173,9 +173,9 @@ class FlyeConsensus:
                                    "fasta")
         except (ImportError, ValueError) as e:
             # If there is an error, the sequence string is set to empty by default
-            logging.warning("WARNING: error reading back the flye output, defaulting to empty sequence for consensus")
+            logger.warning("WARNING: error reading back the flye output, defaulting to empty sequence for consensus")
             if type(e).__name__ == 'ImportError':
-                logging.warning('found ImportError')
+                logger.warning('found ImportError')
             consensus = SeqRecord(
                 seq=''
             )
@@ -327,7 +327,7 @@ class FlyeConsensus:
         if debug:
             self._debug_count += 1
         if self._debug_count > 0:
-            logging.debug(f"{self._debug_count}/{self._call_count} disagreements")
+            logger.debug(f"{self._debug_count}/{self._call_count} disagreements")
         first_cl_dict = self.flye_consensus(first_cl, edge, cl, debug)
         second_cl_dict = self.flye_consensus(second_cl, edge, cl, debug)
 
@@ -343,7 +343,7 @@ class FlyeConsensus:
         if (intersection_end - intersection_start < 1
                 or len(first_consensus_clipped) == 0
                 or len(second_consensus_clipped) == 0):
-            logging.debug(f'Intersection length for clusters is less than 1 for clusters {first_cl}, {second_cl} in {edge}')
+            logger.debug(f'Intersection length for clusters is less than 1 for clusters {first_cl}, {second_cl} in {edge}')
             return 1
 
         aligner = Align.PairwiseAligner()

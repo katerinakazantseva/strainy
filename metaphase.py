@@ -12,6 +12,7 @@ import shutil
 from metaphase.phase import phase_main
 from metaphase.transform import transform_main
 from metaphase.params import MetaPhaseArgs
+from metaphase.logging import set_thread_logging
 
 
 logger = logging.getLogger()
@@ -56,12 +57,14 @@ def main():
     MetaPhaseArgs.log_phase = os.path.join(args.output, "log_phase")
     MetaPhaseArgs.log_transform = os.path.join(args.output, "log_transform")
 
+    if not os.path.isdir(MetaPhaseArgs.output):
+        os.mkdir(MetaPhaseArgs.output)
+
     input_graph = gfapy.Gfa.from_file(args.gfa)
     MetaPhaseArgs.edges = input_graph.segment_names
     ###
 
-    #main_log = os.path.join(MetaPhaseArgs.log_dir, "root.log")
-    #_enable_logging(main_log, debug=True)
+    set_thread_logging(MetaPhaseArgs.output, "root", None)
 
     if args.stage == "phase":
         sys.exit(phase_main())

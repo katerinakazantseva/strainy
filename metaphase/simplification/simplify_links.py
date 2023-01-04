@@ -104,7 +104,7 @@ def remove_link(fr,fr_or, to, to_or,g):
         if (i.from_segment == fr and i.to_segment == to) or (i.from_segment == to and i.to_segment == fr):
             g.rm(i)
             res=True
-            logging.debug("remove line: " + str(i.from_segment) + str(i.from_orient) + " to " + str(i.to_segment) + str(i.to_orient))
+            logger.debug("remove line: " + str(i.from_segment) + str(i.from_orient) + " to " + str(i.to_segment) + str(i.to_orient))
     return (res)
 
 
@@ -120,7 +120,7 @@ def remove_zero_cov(g):
         if cov==0:
             g.rm(unitig)
             to_remove.append(unitig)
-            logging.debug("REMOVE " + unitig)
+            logger.debug("REMOVE " + unitig)
     for d in g.dovetails:
         if d.from_segment in to_remove or d.to_segment in to_remove:
             g.rm(d)

@@ -10,7 +10,7 @@ logger = logging.getLogger()
 
 
 def split_cluster(cl,cluster, data,clSNP, bam, edge, R, I,only_with_common_snip=True):
-    logging.info("Split cluster: " + str(cluster))
+    logger.info("Split cluster: " + str(cluster))
     child_clusters = []
     reads=sorted(set(cl.loc[cl['Cluster'] == cluster,'ReadName'].values))
     if cluster==unclustered_group_N or cluster==unclustered_group_N2  or only_with_common_snip==False: #NA cluster
@@ -178,7 +178,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):
                     #G.add_edge(str(node),str(neighbor))
                     try:
                         G.remove_edge(node, neighbor)
-                        logging.debug("REMOVE NESTED" + str(neighbor))
+                        logger.debug("REMOVE NESTED" + str(neighbor))
                     except:
                         continue
         except:
@@ -240,7 +240,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl = cl[cl['Cluster'] != unclustered_group_N+split_id]
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
 
-    logging.info("Split2")
+    logger.info("Split2")
     for cluster in clusters:
         try:
             if cons[cluster]["Strange2"] == 1 and cluster != unclustered_group_N2:

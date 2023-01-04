@@ -16,6 +16,7 @@ from metaphase.simplification.simplify_links import *
 from metaphase.flye_consensus import FlyeConsensus
 from metaphase.clustering.build_data  import *
 from metaphase.params import *
+from metaphase.logging import set_thread_logging
 
 
 logger = logging.getLogger()
@@ -786,35 +787,11 @@ def graph_link_unitigs(i, graph, G):
                         pass
 
 
-def _set_thread_logging(log_dir):
-    """
-    Turns on logging, sets debug levels and assigns a log file
-    """
-    logger.handlers.clear()
-
-    #thread_id = str(multiprocessing.current_process().name).split("-")[-1]
-    thread_id = str(multiprocessing.current_process().pid)
-    log_file = os.path.join(log_dir, "transform-{0}.log".format(thread_id))
-
-    log_formatter = logging.Formatter("[%(asctime)s] %(name)s: %(levelname)s: "
-                                      "%(message)s", "%Y-%m-%d %H:%M:%S")
-    console_formatter = logging.Formatter("[%(asctime)s] [Tread " + thread_id + "] %(levelname)s: "
-                                          " %(message)s", "%Y-%m-%d %H:%M:%S")
-    console_log = logging.StreamHandler()
-    console_log.setFormatter(console_formatter)
-
-    file_handler = logging.FileHandler(log_file, mode="a")
-    file_handler.setFormatter(log_formatter)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(console_log)
-    logger.addHandler(file_handler)
-
-
 def transform_main():
     if os.path.isdir(MetaPhaseArgs.log_transform):
         shutil.rmtree(MetaPhaseArgs.log_transform)
     os.mkdir(MetaPhaseArgs.log_transform)
-    _set_thread_logging(MetaPhaseArgs.log_transform)
+    set_thread_logging(MetaPhaseArgs.log_transform, "transform", None)
 
     stats = open('%s/stats_clusters.txt' % MetaPhaseArgs.output, 'a')
     stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")

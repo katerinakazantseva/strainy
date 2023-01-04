@@ -29,7 +29,7 @@ MetaPhaseArgs = GlobalArgumentStorage()
 
 # Path to the installed Flye executable
 # Should be Flye/bin/flye
-flye = "/Users/kolmogorovma/Work/projects/Flye/bin/flye"
+flye = "/home/mkolmogo/projects/Flye/bin/flye"
 
 minigraph=False
 unseparated_cluster_min_reads=2
