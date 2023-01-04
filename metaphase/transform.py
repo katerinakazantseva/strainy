@@ -288,6 +288,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     except (ValueError, IndexError):
                         continue
                 visited = []
+                Q=list(set(Q))
                 while Q:
                     n = Q.pop()
                     visited.append(n)
@@ -297,7 +298,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                                 if path.index(n)>0:
                                     if path[path.index(n) - 1] not in visited:
                                         R.append(path[path.index(n) - 1])
-                                        Q.append(path[path.index(n) - 1])
+                                        if path[path.index(n) - 1] not in Q:
+                                            Q.append(path[path.index(n) - 1])
                             except (ValueError, IndexError):
                                 continue
                     else:
@@ -305,7 +307,8 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                             try:
                                 if path[path.index(n) + 1] not in visited:
                                     L.append(path[path.index(n) + 1])
-                                    Q.append(path[path.index(n) + 1])
+                                    if path[path.index(n) + 1] not in Q:
+                                        Q.append(path[path.index(n) + 1])
 
                             except (ValueError, IndexError):
                                    continue
