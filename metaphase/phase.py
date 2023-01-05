@@ -17,8 +17,8 @@ from metaphase.logging import set_thread_logging
 logger = logging.getLogger()
 
 
-class CustomManager(BaseManager):
-    pass
+#class CustomManager(BaseManager):
+#    pass
 
 
 def _thread_fun(args):
@@ -32,21 +32,22 @@ def phase(edges):
         shutil.rmtree(MetaPhaseArgs.log_phase)
     os.mkdir(MetaPhaseArgs.log_phase)
 
-    CustomManager.register('FlyeConsensus', FlyeConsensus)
+    #CustomManager.register('FlyeConsensus', FlyeConsensus)
 
-    with CustomManager() as manager:
-        default_manager = multiprocessing.Manager()
-        lock = default_manager.Lock()
-        empty_consensus_dict = {}
-        num_processes = multiprocessing.cpu_count() if MetaPhaseArgs.threads == -1 else MetaPhaseArgs.threads
-        shared_flye_consensus = manager.FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.gfa, num_processes, empty_consensus_dict, lock)
-        pool = multiprocessing.Pool(num_processes)
-        #with multiprocessing.get_context("spawn").Pool() as pool:
-        init_args = [(i, shared_flye_consensus) for i in range(len(edges))]
-        pool.map(_thread_fun, init_args)
-        pool.close()
-        shared_flye_consensus.print_cache_statistics()
-        return shared_flye_consensus.get_consensus_dict()
+    #with CustomManager() as manager:
+    default_manager = multiprocessing.Manager()
+    #lock = default_manager.Lock()
+    empty_consensus_dict = {}
+    num_processes = multiprocessing.cpu_count() if MetaPhaseArgs.threads == -1 else MetaPhaseArgs.threads
+    #shared_flye_consensus = manager.FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.gfa, num_processes, empty_consensus_dict, lock)
+    shared_flye_consensus = FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.fa, num_processes, empty_consensus_dict, default_manager)
+    pool = multiprocessing.Pool(num_processes)
+    #with multiprocessing.get_context("spawn").Pool() as pool:
+    init_args = [(i, shared_flye_consensus) for i in range(len(edges))]
+    pool.map(_thread_fun, init_args)
+    pool.close()
+    shared_flye_consensus.print_cache_statistics()
+    return shared_flye_consensus.get_consensus_dict()
 
 
 def color_bam(edges):
