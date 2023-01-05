@@ -24,7 +24,13 @@ logger = logging.getLogger()
 def _thread_fun(args):
     set_thread_logging(MetaPhaseArgs.log_phase, "phase", multiprocessing.current_process().pid)
     logger.info("\n\n\t==== Processing uniting " + str(MetaPhaseArgs.edges[args[0]]) + " ====")
-    cluster(args)
+    cluster(*args)
+
+
+def _error_callback(pool, e):
+    logger.error("Worker thread exception! " + str(e))
+    pool.terminate()
+    raise e
 
 
 def phase(edges):
@@ -41,11 +47,13 @@ def phase(edges):
     num_processes = multiprocessing.cpu_count() if MetaPhaseArgs.threads == -1 else MetaPhaseArgs.threads
     #shared_flye_consensus = manager.FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.gfa, num_processes, empty_consensus_dict, lock)
     shared_flye_consensus = FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.fa, num_processes, empty_consensus_dict, default_manager)
+
     pool = multiprocessing.Pool(num_processes)
-    #with multiprocessing.get_context("spawn").Pool() as pool:
     init_args = [(i, shared_flye_consensus) for i in range(len(edges))]
-    pool.map(_thread_fun, init_args)
+    pool.map_async(_thread_fun, init_args, error_callback=lambda e: _error_callback(pool, e))
     pool.close()
+    pool.join()
+
     shared_flye_consensus.print_cache_statistics()
     return shared_flye_consensus.get_consensus_dict()
 
