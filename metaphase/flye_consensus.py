@@ -51,18 +51,18 @@ class FlyeConsensus:
         self._indel_block_length_leniency = indel_block_length_leniency
         self._coverage_limit = 3
 
-        self._key_hit = 0
-        self._key_miss = 0
+        self._key_hit = multiproc_manager.Value("i", 0)
+        self._key_miss = multiproc_manager.Value("i", 0)
 
-        self._debug_count = 0
-        self._call_count = 0
+        self._debug_count = multiproc_manager.Value("i", 0)
+        self._call_count = multiproc_manager.Value("i", 0)
 
     def get_consensus_dict(self):
         return self._consensus_dict.copy()
 
     def print_cache_statistics(self):
         logger.info(f"Total number of key hits and misses for consensus computation:")
-        logger.info(f" H:{self._key_hit}, M:{self._key_miss}")
+        logger.info(f" H:{self._key_hit.value}, M:{self._key_miss.value}")
 
 
     def extract_reads(self, read_names, output_file, edge=""):
@@ -118,9 +118,9 @@ class FlyeConsensus:
         consensus_dict_key = f"{cluster}-{edge}"
         with self._lock:
             if consensus_dict_key in self._consensus_dict:
-                self._key_hit += 1
+                self._key_hit.value = 1
                 return self._consensus_dict[consensus_dict_key]
-            self._key_miss += 1
+            self._key_miss.value += 1
 
         # fetch the read names in this cluster and extract those reads to a new bam file to be used by the
         # Flye polisher
@@ -323,11 +323,11 @@ class FlyeConsensus:
         cl: dataframe with columns read_name and cluster(id)
         edge: edge name (str)
         """
-        self._call_count += 1
+        self._call_count.value += 1
         if debug:
-            self._debug_count += 1
-        if self._debug_count > 0:
-            logger.debug(f"{self._debug_count}/{self._call_count} disagreements")
+            self._debug_count.value += 1
+        if self._debug_count.value > 0:
+            logger.debug(f"{self._debug_count.value}/{self._call_count.value} disagreements")
         first_cl_dict = self.flye_consensus(first_cl, edge, cl, debug)
         second_cl_dict = self.flye_consensus(second_cl, edge, cl, debug)
 
