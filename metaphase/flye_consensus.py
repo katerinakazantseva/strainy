@@ -353,7 +353,7 @@ class FlyeConsensus:
         aligner.gap_score = -1
         alignments = aligner.align(first_consensus_clipped, second_consensus_clipped)
         # get the alignment string consisting of (- . |)
-        alignment_string = str(alignments[0]).format().split('\n')[1]
+        alignment_string = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[1]
         alignment_string = alignment_string.replace("X", ".")
         score = self._custom_scoring_function(alignment_string, intersection_start,
                                               first_cl_dict['read_limits'], second_cl_dict['read_limits'])
