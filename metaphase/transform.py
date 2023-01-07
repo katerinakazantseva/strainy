@@ -814,7 +814,7 @@ def transform_main():
     except FileNotFoundError:
         consensus_dict = {}
 
-    flye_consensus = FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.gfa, 1, consensus_dict)
+    flye_consensus = FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.fa, 1, consensus_dict, multiprocessing.Manager())
 
     for i in range(0, len(MetaPhaseArgs.edges)):
         #TODO: this can run in parallel (and probably takes the most time)

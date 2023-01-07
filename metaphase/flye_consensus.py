@@ -5,6 +5,7 @@ import shutil
 import random
 import re
 import logging
+import time
 
 import pysam
 from Bio import SeqIO, Align
@@ -29,38 +30,40 @@ def calculate_coverage(position, read_limits):
 
 
 class FlyeConsensus:
-    def __init__(self, bam_file_name, gfa_file_name, num_processes=1, consensus_dict={}, lock=None,
+    def __init__(self, bam_file_name, graph_fasta_name, num_processes, consensus_dict, multiproc_manager,
                  indel_block_length_leniency = 5):
-        self._bam_file = pysam.AlignmentFile(bam_file_name, "rb")
 
-        self._read_index = pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb"))
-        self._read_index.build()
+        self._consensus_dict = multiproc_manager.dict(consensus_dict)
+        self._lock = multiproc_manager.Lock()
 
-        #self._name_indexed_list = []
-        #for i in range(num_processes):
-        #    self._name_indexed_list.append(pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb")))
-        #    self._name_indexed_list[i].build()
+        #Can't pickle this...
+        #self._bam_file = pysam.AlignmentFile(bam_file_name, "rb")
+        #self._bam_header = self._bam_file.header.copy()
+        #self._gfa_file = gfapy.Gfa.from_file(gfa_file_name)
+        #self._read_index = pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb"))
+        #self._read_index.build()
+
+        self._bam_path = bam_file_name
+        self._unitig_seqs = {}
+        for seq in SeqIO.parse(graph_fasta_name, "fasta"):
+            self._unitig_seqs[str(seq.id)] = str(seq.seq)
 
         self._num_processes = num_processes
-        self._bam_header = self._bam_file.header.copy()
-        self._gfa_file = gfapy.Gfa.from_file(gfa_file_name)
-        self._consensus_dict = consensus_dict
-        self._lock = multiprocessing.Lock() if lock is None else lock
         self._indel_block_length_leniency = indel_block_length_leniency
         self._coverage_limit = 3
 
-        self._key_hit = 0
-        self._key_miss = 0
+        self._key_hit = multiproc_manager.Value("i", 0)
+        self._key_miss = multiproc_manager.Value("i", 0)
 
-        self._debug_count = 0
-        self._call_count = 0
+        self._debug_count = multiproc_manager.Value("i", 0)
+        self._call_count = multiproc_manager.Value("i", 0)
 
     def get_consensus_dict(self):
         return self._consensus_dict.copy()
 
     def print_cache_statistics(self):
         logger.info(f"Total number of key hits and misses for consensus computation:")
-        logger.info(f" H:{self._key_hit}, M:{self._key_miss}")
+        logger.info(f" H:{self._key_hit.value}, M:{self._key_miss.value}")
 
 
     def extract_reads(self, read_names, output_file, edge=""):
@@ -72,31 +75,28 @@ class FlyeConsensus:
         cluster_end = -1
         read_limits = []
 
-        #if self._num_processes == 1:
-        #    pid = 0
-        #else:
-        #    pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
-
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
-        for name in read_names:
-            #try:
-            #    self._name_indexed_list[pid].find(name)
-            #except KeyError:
-            #    pass
-            #else:
-            #iterator = self._name_indexed_list[pid].find(name)
-            with self._lock:
-                iterator = self._read_index.find(name)
-                for x in iterator:
-                    if x.reference_name == edge:
-                        if x.reference_start < cluster_start or cluster_start == -1:
-                            cluster_start = x.reference_start
-                        if x.reference_end > cluster_end or cluster_end == -1:
-                            cluster_end = x.reference_end
-                        read_list.append(x)
-                        read_limits.append((x.reference_start, x.reference_end))
 
-        out = pysam.Samfile(output_file, "wb", header=self._bam_header)
+        ts = time.time()
+        read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
+        read_index.build()
+        te = time.time()
+        logger.debug("Index building time %f", te - ts)
+
+        for name in read_names:
+            #with self._lock:
+            iterator = read_index.find(name)
+            for x in iterator:
+                if x.reference_name == edge:
+                    if x.reference_start < cluster_start or cluster_start == -1:
+                        cluster_start = x.reference_start
+                    if x.reference_end > cluster_end or cluster_end == -1:
+                        cluster_end = x.reference_end
+                    read_list.append(x)
+                    read_limits.append((x.reference_start, x.reference_end))
+
+        #out = pysam.Samfile(output_file, "wb", header=self._bam_header)
+        out = pysam.Samfile(output_file, "wb", template=pysam.AlignmentFile(self._bam_path, "rb"))
         for x in read_list:
             temp_dict = x.to_dict()
             temp_dict["ref_pos"] = str(int(temp_dict["ref_pos"]) - cluster_start)
@@ -119,9 +119,9 @@ class FlyeConsensus:
         consensus_dict_key = f"{cluster}-{edge}"
         with self._lock:
             if consensus_dict_key in self._consensus_dict:
-                self._key_hit += 1
+                self._key_hit.value = 1
                 return self._consensus_dict[consensus_dict_key]
-            self._key_miss += 1
+            self._key_miss.value += 1
 
         # fetch the read names in this cluster and extract those reads to a new bam file to be used by the
         # Flye polisher
@@ -136,7 +136,7 @@ class FlyeConsensus:
 
         # access the edge in the graph and cut its sequence according to the cluster start and end positions
         # this sequence is written to a fasta file to be used by the Flye polisher
-        edge_seq_cut = (self._gfa_file.line(edge)).sequence[cluster_start:cluster_end]
+        edge_seq_cut = self._unitig_seqs[edge][cluster_start:cluster_end]
         fname = f"{fprefix}{edge}-cluster{cluster}-{salt}"
         record = SeqRecord(
             Seq(edge_seq_cut),
@@ -166,7 +166,7 @@ class FlyeConsensus:
                     'start': cluster_start,
                     'end': cluster_end
                 }
-            return self._consensus_dict[consensus_dict_key]
+                return self._consensus_dict[consensus_dict_key]
 
         try:
             # read back the output of the Flye polisher
@@ -197,7 +197,7 @@ class FlyeConsensus:
                 'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
                 'reference_path': f"{fname}.fa"
             }
-        return self._consensus_dict[consensus_dict_key]
+            return self._consensus_dict[consensus_dict_key]
 
     def _custom_scoring_function(self, alignment_string, intersection_start, cl1_reads, cl2_reads):
         """
@@ -324,11 +324,11 @@ class FlyeConsensus:
         cl: dataframe with columns read_name and cluster(id)
         edge: edge name (str)
         """
-        self._call_count += 1
+        self._call_count.value += 1
         if debug:
-            self._debug_count += 1
-        if self._debug_count > 0:
-            logger.debug(f"{self._debug_count}/{self._call_count} disagreements")
+            self._debug_count.value += 1
+        if self._debug_count.value > 0:
+            logger.debug(f"{self._debug_count.value}/{self._call_count.value} disagreements")
         first_cl_dict = self.flye_consensus(first_cl, edge, cl, debug)
         second_cl_dict = self.flye_consensus(second_cl, edge, cl, debug)
 
@@ -354,7 +354,10 @@ class FlyeConsensus:
         aligner.gap_score = -1
         alignments = aligner.align(first_consensus_clipped, second_consensus_clipped)
         # get the alignment string consisting of (- . |)
-        alignment_string = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[1]
+        try:
+            alignment_string = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[1]
+        except AttributeError:
+            alignment_string = str(alignments[0]).format().split('\n')[1]
         alignment_string = alignment_string.replace("X", ".")
         score = self._custom_scoring_function(alignment_string, intersection_start,
                                               first_cl_dict['read_limits'], second_cl_dict['read_limits'])

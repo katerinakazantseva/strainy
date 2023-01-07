@@ -64,9 +64,9 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     #stats.close()
 
 
-def cluster(params):
+def cluster(i, flye_consensus):
     # params = #i, consensus_dict)
-    i, flye_consensus = params
+    #i, flye_consensus = params
     #print(MetaPhaseArgs, MetaPhaseArgs.bam)
 
     edge = MetaPhaseArgs.edges[i]
