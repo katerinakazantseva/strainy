@@ -98,7 +98,7 @@ def change_w(m, R):
     return m_transformed
 
 
-def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus,only_with_common_snip=True):
+def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_with_common_snip):
     d = -1
     firstSNPs = list(cons[first_cl].keys())
     secondSNPs = list(cons[second_cl].keys())

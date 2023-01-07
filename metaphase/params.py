@@ -1,12 +1,3 @@
-import pandas as pd
-import gfapy
-
-import pysam
-import re
-import os
-import subprocess
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
-
 
 class GlobalArgumentStorage(object):
     def __init__(self):

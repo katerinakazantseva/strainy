@@ -56,6 +56,7 @@ def split_cluster(cl,cluster, data,clSNP, bam, edge, R, I,only_with_common_snip=
                 child_clusters.append(new_cl_id_na)
 
 
+"""
 def build_adj_matrix_clusters_atab (cons, cl, edge, flye_consensus, only_with_common_snip=True):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
     sort=[]
@@ -73,7 +74,7 @@ def build_adj_matrix_clusters_atab (cons, cl, edge, flye_consensus, only_with_co
             if m[second_cl][first_cl] == -1:
                 m[second_cl][first_cl] = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
     return m
-
+"""
 
 
 def build_adj_matrix_clusters (edge,cons,cl,flye_consensus, only_with_common_snip=True):
@@ -100,17 +101,14 @@ def build_adj_matrix_clusters (edge,cons,cl,flye_consensus, only_with_common_sni
     #print(clusters)
     m = pd.DataFrame(-1, index=clusters, columns=clusters)
 
-    for i in range(0,m.shape[1]):
+    for i in range(0, m.shape[1]):
         first_cl=m.index[i]
-        for k in range(i+1,m.shape[1]):
+        for k in range(i + 1, m.shape[1]):
             second_cl=m.index[k]
 
-            if m[second_cl][first_cl]==-1:
-                if only_with_common_snip==True:
-                    m[second_cl][first_cl] = distance_clusters(edge,first_cl,second_cl, cons, cl,flye_consensus)
-                else:
-                    m[second_cl][first_cl] = distance_clusters(edge,first_cl, second_cl, cons,cl,flye_consensus,False)
-    return (m)
+            if m[second_cl][first_cl] == -1:
+                m[second_cl][first_cl] = distance_clusters(edge, first_cl, second_cl, cons, cl,flye_consensus, only_with_common_snip)
+    return m
 
 
 def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True):

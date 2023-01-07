@@ -72,11 +72,11 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
 
 
-def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs):
+def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs, cluster_distances):
     #M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
-    M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
-
-    M = change_w(M, 1)
+    #M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
+    #M = change_w(M, 1)
+    M = cluster_distances
 
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
@@ -153,9 +153,11 @@ def remove_nested(G, cons):
     return (G)
 
 
-def paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl,full_paths_roots,full_paths_leafs,full_clusters):
-    M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
-    M = change_w(M, 1)
+def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots, full_paths_leafs, full_clusters, cluster_distances):
+    #M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
+    #M = change_w(M, 1)
+    M = cluster_distances
+
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
 
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
@@ -518,10 +520,15 @@ def graph_create_unitigs(i, graph, flye_consensus):
                 if clStop > ln - start_end_gap and strong_tail(cluster, cl, ln, data)[1] == True:
                     full_paths_leafs.append(cluster)
 
-            G = build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters, data, ln, full_paths_roots, full_paths_leafs)
+            cluster_distances = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
+            cluster_distances = change_w(cluster_distances, 1)
+
+            G = build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters,
+                                  data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
             full_cl[edge] = full_clusters
-            cl_removed = paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos,cl,full_paths_roots, full_paths_leafs,full_clusters)
+            cl_removed = paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos,cl,full_paths_roots,
+                                             full_paths_leafs, full_clusters, cluster_distances.copy())
 
             try:
                 full_paths[edge] = find_full_paths(G,full_paths_roots, full_paths_leafs)
@@ -534,9 +541,9 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
             othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths[edge] for j in i]) - set(cl_removed))
             if len(othercl) > 0:
-                M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
-                M = change_w(M, 1)
-                G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
+                #M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
+                #M = change_w(M, 1)
+                G = nx.from_pandas_adjacency(cluster_distances.copy(), create_using=nx.DiGraph)
 
             close_to_full = []
             for cluster in othercl.copy():
