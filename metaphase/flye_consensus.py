@@ -210,6 +210,7 @@ class FlyeConsensus:
         """
         score = 0
         indel_length = 0
+        indel_block_start = -1
         alignment_list = list(alignment_string)
         for i in range(len(alignment_list)):
             if alignment_list[i] not in "-.|":
@@ -225,20 +226,25 @@ class FlyeConsensus:
 
             if alignment_list[i] == '-':
                 # igonre the indels at the first or last position
-                if (i == 0) or (i == len(alignment_list) - 1):
+                if i == 0:
+                    indel_length = 1
+                    indel_block_start = i
+                    continue
+                elif i == (len(alignment_list) - 1):
                     continue
                 else:
                     # start of an indel block
-                    if alignment_list[i-1] != '-':
-                        # an indel block can't start from position 0.
+                    if alignment_list[i - 1] != '-':
+                        # an indel blocks starting at position 0 will be ignored
+                        indel_block_start = i
                         indel_length = 1
                     # continuing indel block
                     else:
                         indel_length += 1
 
-            # a contiguous block ends
-            elif alignment_list[i-1] == '-':
-                if indel_length >= self._indel_block_length_leniency:
+            # a contiguous gap ends
+            elif alignment_list[i - 1] == '-':
+                if indel_length >= self._indel_block_length_leniency and indel_block_start != 0:
                     score += indel_length
                 indel_length = 0
 
