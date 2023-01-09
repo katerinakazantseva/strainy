@@ -24,7 +24,7 @@ def calculate_coverage(position, read_limits):
     """
     coverage = 0
     for read in read_limits:
-        if read[0] < position < read[1]:
+        if read[0] <= position <= read[1]:
             coverage += 1
     return coverage
 
