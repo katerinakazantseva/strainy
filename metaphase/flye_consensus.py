@@ -1,3 +1,4 @@
+import gzip
 import multiprocessing
 import subprocess
 import os
@@ -17,16 +18,17 @@ from metaphase.params import *
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
 
-def calculate_coverage(position, read_limits):
+def calculate_coverage(position, bed_file_content):
     """
     Calculates and returns the coverage for a given position that is relative to the reference seq, not the aligment
     string
     """
-    coverage = 0
-    for read in read_limits:
-        if read[0] <= position <= read[1]:
-            coverage += 1
-    return coverage
+    for row in bed_file_content:  # ignoring the first row (column names)
+        # row = [interval_start, interval_end, coverage]
+        if row[0] <= position < row[1]:
+            return row[2]
+    logger.warning("Coordinate not found in .bed file, assuming coverage is 0")
+    return 0
 
 
 class FlyeConsensus:
@@ -195,11 +197,13 @@ class FlyeConsensus:
                 'end': cluster_end,
                 'read_limits': read_limits,
                 'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
-                'reference_path': f"{fname}.fa"
+                'reference_path': f"{fname}.fa",
+                'bed_path': f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
+                            f"base_coverage.bed.gz"
             }
             return self._consensus_dict[consensus_dict_key]
 
-    def _custom_scoring_function(self, alignment_string, intersection_start, cl1_reads, cl2_reads):
+    def _custom_scoring_function(self, target, alignment_string, query, intersection_start, cl1_bed_path, cl2_bed_path):
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
         alignment_string: a string consisting of '-', '.', '|' characters which correspond to indel, mismatch, match,
@@ -212,16 +216,38 @@ class FlyeConsensus:
         indel_length = 0
         indel_block_start = -1
         alignment_list = list(alignment_string)
+
+        # read the contents of the bed.gz files that contain coverage information for each coordinate
+        cl1_bed_contents = []  # list containing lists with (start, end, coverage) for each coordinate interval
+        cl2_bed_contents = []
+        with gzip.open(cl1_bed_path, 'r') as f:
+            for line in f:
+                try:
+                    cl1_bed_contents.append(list(map(int, line.strip().split()[1:])))
+                except ValueError:
+                    pass
+
+        with gzip.open(cl2_bed_path, 'r') as f:
+            for line in f:
+                try:
+                    cl2_bed_contents.append(list(map(int, line.strip().split()[1:])))
+                except ValueError:
+                    pass
+
         for i in range(len(alignment_list)):
             if alignment_list[i] not in "-.|":
                 raise Exception("Unknown alignment sybmol!")
 
-            reference_position = i + intersection_start
+            # true coordinate = current coordinate on the alignment_string
+            # + start of the intersection
+            # - gaps in the target (or query) sequence thus far
+            cl1_true_coor = i + intersection_start - target[:i].count('-')
+            cl2_true_coor = i + intersection_start - query[:i].count('-')
 
             # ignore variants with coverage less than 3
             if ((alignment_list[i] == '-' or alignment_list[i] == '.')
-                    and (calculate_coverage(reference_position, cl1_reads) < 3
-                    or calculate_coverage(reference_position, cl2_reads) < 3)):
+                    and (calculate_coverage(cl1_true_coor, cl1_bed_contents) < self._coverage_limit
+                    or calculate_coverage(cl2_true_coor, cl2_bed_contents) < self._coverage_limit)):
                 alignment_list[i] = '|'
 
             if alignment_list[i] == '-':
@@ -361,12 +387,12 @@ class FlyeConsensus:
         alignments = aligner.align(first_consensus_clipped, second_consensus_clipped)
         # get the alignment string consisting of (- . |)
         try:
-            alignment_string = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[1]
+            target, alignment_string, query = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[:3]
         except AttributeError:
-            alignment_string = str(alignments[0]).format().split('\n')[1]
+            target, alignment_string, query = str(alignments[0]).format().split('\n')[:3]
         alignment_string = alignment_string.replace("X", ".")
-        score = self._custom_scoring_function(alignment_string, intersection_start,
-                                              first_cl_dict['read_limits'], second_cl_dict['read_limits'])
+        score = self._custom_scoring_function(target, alignment_string, query, intersection_start,
+                                              first_cl_dict['bed_path'], second_cl_dict['bed_path'])
 
         if debug:
             self._log_alignment_info(alignment_string, first_cl_dict, second_cl_dict,score,
