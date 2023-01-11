@@ -53,6 +53,7 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
     firstSNPs = [key for key in firstSNPs if key not in keys]
     secondSNPs= [key for key in secondSNPs if key not in keys]
     commonSNP = sorted(set(firstSNPs).intersection(secondSNPs).intersection(SNP_pos))
+    #if len(commonSNP)>2 or (len(commonSNP) > 0 and only_with_common_snip == False) or len(SNP_pos)<=10: #???
     if 1==1:
         for snp in commonSNP:
             try:
@@ -133,5 +134,5 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     #except IndexError:
     #    pass
 
-    #print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
+    print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
     return d
