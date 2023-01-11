@@ -1,3 +1,4 @@
+import gzip
 import multiprocessing
 import subprocess
 import os
@@ -17,21 +18,22 @@ from metaphase.params import *
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
 
-def calculate_coverage(position, read_limits):
+def calculate_coverage(position, bed_file_content):
     """
     Calculates and returns the coverage for a given position that is relative to the reference seq, not the aligment
     string
     """
-    coverage = 0
-    for read in read_limits:
-        if read[0] < position < read[1]:
-            coverage += 1
-    return coverage
+    for row in bed_file_content:
+        # row = [interval_start, interval_end, coverage]
+        if row[0] <= position <= row[1]:
+            return row[2]
+    logger.warning("Coordinate not found in .bed file, assuming coverage is 0")
+    return 0
 
 
 class FlyeConsensus:
     def __init__(self, bam_file_name, graph_fasta_name, num_processes, consensus_dict, multiproc_manager,
-                 indel_block_length_leniency = 5):
+                indel_block_length_leniency=5):
 
         self._consensus_dict = multiproc_manager.dict(consensus_dict)
         self._lock = multiproc_manager.Lock()
@@ -50,7 +52,12 @@ class FlyeConsensus:
 
         self._num_processes = num_processes
         self._indel_block_length_leniency = indel_block_length_leniency
-        self._coverage_limit = 3
+        if MetaPhaseArgs.mode == "hifi":
+            self._coverage_limit = 3
+            self._flye_mode = "--pacbio-hifi"
+        elif MetaPhaseArgs.mode == "nano":
+            self._coverage_limit = 5
+            self._flye_mode = "--nano-raw"
 
         self._key_hit = multiproc_manager.Value("i", 0)
         self._key_miss = multiproc_manager.Value("i", 0)
@@ -152,7 +159,7 @@ class FlyeConsensus:
         # index the bam file
         pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
         polish_cmd = f"{flye} --polish-target {fname}.fa " \
-                     f"--pacbio-hifi {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
+                     f"{self._flye_mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
                      f"-o {MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             logger.debug("Running Flye polisher")
@@ -195,11 +202,13 @@ class FlyeConsensus:
                 'end': cluster_end,
                 'read_limits': read_limits,
                 'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
-                'reference_path': f"{fname}.fa"
+                'reference_path': f"{fname}.fa",
+                'bed_path': f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
+                            f"base_coverage.bed.gz"
             }
             return self._consensus_dict[consensus_dict_key]
 
-    def _custom_scoring_function(self, alignment_string, intersection_start, cl1_reads, cl2_reads):
+    def _custom_scoring_function(self, target, alignment_string, query, intersection_start, cl1_bed_path, cl2_bed_path):
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
         alignment_string: a string consisting of '-', '.', '|' characters which correspond to indel, mismatch, match,
@@ -210,35 +219,63 @@ class FlyeConsensus:
         """
         score = 0
         indel_length = 0
+        indel_block_start = -1
         alignment_list = list(alignment_string)
+
+        # read the contents of the bed.gz files that contain coverage information for each coordinate
+        cl1_bed_contents = []  # list containing lists with (start, end, coverage) for each coordinate interval
+        cl2_bed_contents = []
+        with gzip.open(cl1_bed_path, 'r') as f:
+            for line in f:
+                try:
+                    cl1_bed_contents.append(list(map(int, line.strip().split()[1:])))
+                except ValueError:
+                    pass
+
+        with gzip.open(cl2_bed_path, 'r') as f:
+            for line in f:
+                try:
+                    cl2_bed_contents.append(list(map(int, line.strip().split()[1:])))
+                except ValueError:
+                    pass
+
         for i in range(len(alignment_list)):
             if alignment_list[i] not in "-.|":
                 raise Exception("Unknown alignment sybmol!")
 
-            reference_position = i + intersection_start
+            # true coordinate = current coordinate on the alignment_string
+            # + start of the intersection
+            # - gaps in the target (or query) sequence thus far
+            cl1_true_coor = i - target[:i].count('-')
+            cl2_true_coor = i - query[:i].count('-')
 
-            # ignore variants with coverage less than 3
+            # ignore variants with low coverage
             if ((alignment_list[i] == '-' or alignment_list[i] == '.')
-                    and (calculate_coverage(reference_position, cl1_reads) < 3
-                    or calculate_coverage(reference_position, cl2_reads) < 3)):
+                    and (calculate_coverage(cl1_true_coor, cl1_bed_contents) < self._coverage_limit
+                    or calculate_coverage(cl2_true_coor, cl2_bed_contents) < self._coverage_limit)):
                 alignment_list[i] = '|'
 
             if alignment_list[i] == '-':
                 # igonre the indels at the first or last position
-                if (i == 0) or (i == len(alignment_list) - 1):
+                if i == 0:
+                    indel_length = 1
+                    indel_block_start = i
+                    continue
+                elif i == (len(alignment_list) - 1):
                     continue
                 else:
                     # start of an indel block
-                    if alignment_list[i-1] != '-':
-                        # an indel block can't start from position 0.
+                    if alignment_list[i - 1] != '-':
+                        # an indel blocks starting at position 0 will be ignored
+                        indel_block_start = i
                         indel_length = 1
                     # continuing indel block
                     else:
                         indel_length += 1
 
-            # a contiguous block ends
-            elif alignment_list[i-1] == '-':
-                if indel_length >= self._indel_block_length_leniency:
+            # a contiguous gap ends
+            elif alignment_list[i - 1] == '-':
+                if indel_length >= self._indel_block_length_leniency and indel_block_start != 0:
                     score += indel_length
                 indel_length = 0
 
@@ -355,12 +392,12 @@ class FlyeConsensus:
         alignments = aligner.align(first_consensus_clipped, second_consensus_clipped)
         # get the alignment string consisting of (- . |)
         try:
-            alignment_string = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[1]
+            target, alignment_string, query = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[:3]
         except AttributeError:
-            alignment_string = str(alignments[0]).format().split('\n')[1]
+            target, alignment_string, query = str(alignments[0]).format().split('\n')[:3]
         alignment_string = alignment_string.replace("X", ".")
-        score = self._custom_scoring_function(alignment_string, intersection_start,
-                                              first_cl_dict['read_limits'], second_cl_dict['read_limits'])
+        score = self._custom_scoring_function(target, alignment_string, query, intersection_start,
+                                              first_cl_dict['bed_path'], second_cl_dict['bed_path'])
 
         if debug:
             self._log_alignment_info(alignment_string, first_cl_dict, second_cl_dict,score,

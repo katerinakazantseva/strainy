@@ -13,6 +13,7 @@ from metaphase.phase import phase_main
 from metaphase.transform import transform_main
 from metaphase.params import MetaPhaseArgs
 from metaphase.logging import set_thread_logging
+import metaphase.params as params
 
 
 logger = logging.getLogger()
@@ -22,6 +23,12 @@ def main():
     #Setting executable paths
     metaphase_root = os.path.dirname(os.path.realpath(__file__))
     sys.path.insert(0, metaphase_root)
+
+    BIN_TOOLS = ["samtools", "bcftools", params.flye]
+    for tool in BIN_TOOLS:
+        if not shutil.which(tool):
+            print("{} not installed".format(tool), file=sys.stderr)
+            return 1
 
     parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument("stage", help="stage to run: either phase or transform")
@@ -33,6 +40,7 @@ def main():
     requiredNamed.add_argument("-b", "--bam", help="bam file",required=True)
     requiredNamed.add_argument("-g", "--gfa", help="gfa file",required=True)
     requiredNamed.add_argument("-f", "--fa", help="fa file",required=True)
+    requiredNamed.add_argument("-m", "--mode", help="", choices=["hifi", "nano"], required=True)
 
     args = parser.parse_args()
 
@@ -49,6 +57,7 @@ def main():
     MetaPhaseArgs.bam = args.bam
     MetaPhaseArgs.gfa = args.gfa
     MetaPhaseArgs.fa = args.fa
+    MetaPhaseArgs.mode = args.mode
     MetaPhaseArgs.snp = args.snp
     MetaPhaseArgs.threads = args.threads
     MetaPhaseArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
