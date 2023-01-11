@@ -33,7 +33,7 @@ def calculate_coverage(position, bed_file_content):
 
 class FlyeConsensus:
     def __init__(self, bam_file_name, graph_fasta_name, num_processes, consensus_dict, multiproc_manager,
-                 indel_block_length_leniency = 5):
+                indel_block_length_leniency=5):
 
         self._consensus_dict = multiproc_manager.dict(consensus_dict)
         self._lock = multiproc_manager.Lock()
@@ -52,7 +52,12 @@ class FlyeConsensus:
 
         self._num_processes = num_processes
         self._indel_block_length_leniency = indel_block_length_leniency
-        self._coverage_limit = 3
+        if MetaPhaseArgs.mode == "hifi":
+            self._coverage_limit = 3
+            self._flye_mode = "--pacbio-hifi"
+        elif MetaPhaseArgs.mode == "nano":
+            self._coverage_limit = 5
+            self._flye_mode = "--nano-raw"
 
         self._key_hit = multiproc_manager.Value("i", 0)
         self._key_miss = multiproc_manager.Value("i", 0)
@@ -154,7 +159,7 @@ class FlyeConsensus:
         # index the bam file
         pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
         polish_cmd = f"{flye} --polish-target {fname}.fa " \
-                     f"--pacbio-hifi {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
+                     f"{self._flye_mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
                      f"-o {MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             logger.debug("Running Flye polisher")
@@ -244,7 +249,7 @@ class FlyeConsensus:
             cl1_true_coor = i - target[:i].count('-')
             cl2_true_coor = i - query[:i].count('-')
 
-            # ignore variants with coverage less than 3
+            # ignore variants with low coverage
             if ((alignment_list[i] == '-' or alignment_list[i] == '.')
                     and (calculate_coverage(cl1_true_coor, cl1_bed_contents) < self._coverage_limit
                     or calculate_coverage(cl2_true_coor, cl2_bed_contents) < self._coverage_limit)):

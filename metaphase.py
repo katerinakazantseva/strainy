@@ -40,6 +40,7 @@ def main():
     requiredNamed.add_argument("-b", "--bam", help="bam file",required=True)
     requiredNamed.add_argument("-g", "--gfa", help="gfa file",required=True)
     requiredNamed.add_argument("-f", "--fa", help="fa file",required=True)
+    requiredNamed.add_argument("-m", "--mode", help="", choices=["hifi", "nano"], required=True)
 
     args = parser.parse_args()
 
@@ -56,6 +57,7 @@ def main():
     MetaPhaseArgs.bam = args.bam
     MetaPhaseArgs.gfa = args.gfa
     MetaPhaseArgs.fa = args.fa
+    MetaPhaseArgs.mode = args.mode
     MetaPhaseArgs.snp = args.snp
     MetaPhaseArgs.threads = args.threads
     MetaPhaseArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
