@@ -23,9 +23,9 @@ def calculate_coverage(position, bed_file_content):
     Calculates and returns the coverage for a given position that is relative to the reference seq, not the aligment
     string
     """
-    for row in bed_file_content:  # ignoring the first row (column names)
+    for row in bed_file_content:
         # row = [interval_start, interval_end, coverage]
-        if row[0] <= position < row[1]:
+        if row[0] <= position <= row[1]:
             return row[2]
     logger.warning("Coordinate not found in .bed file, assuming coverage is 0")
     return 0
@@ -241,8 +241,8 @@ class FlyeConsensus:
             # true coordinate = current coordinate on the alignment_string
             # + start of the intersection
             # - gaps in the target (or query) sequence thus far
-            cl1_true_coor = i + intersection_start - target[:i].count('-')
-            cl2_true_coor = i + intersection_start - query[:i].count('-')
+            cl1_true_coor = i - target[:i].count('-')
+            cl2_true_coor = i - query[:i].count('-')
 
             # ignore variants with coverage less than 3
             if ((alignment_list[i] == '-' or alignment_list[i] == '.')
