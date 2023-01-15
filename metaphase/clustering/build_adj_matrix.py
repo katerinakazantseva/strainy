@@ -99,7 +99,7 @@ def change_w(m, R):
     return m_transformed
 
 
-def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_with_common_snip):
+def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_with_common_snip=True):
     d = -1
     firstSNPs = list(cons[first_cl].keys())
     secondSNPs = list(cons[second_cl].keys())
@@ -117,10 +117,13 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     if only_with_common_snip == False and len(commonSNP) == 0 and len(intersect) > I:
         d = 0
     #elif only_with_common_snip==True and (len(cons[first_cl]["clSNP2"])==0 or len(cons[second_cl]["clSNP2"])==0):
-    elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
+    #elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
+    elif only_with_common_snip == True and len(commonSNP) == 0:
         d = 1
+
     elif len(intersect) > I:
         d = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
+
         # following lines are for debugging
         # print(f"flye distance:{fd}, old distance:{d}"
 
@@ -136,3 +139,43 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
 
     print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
     return d
+
+
+def distance_clusters_old(first_cl, second_cl, cons, SNP_pos, only_with_common_snip=True):
+    d = -1
+    firstSNPs = list(cons[first_cl].keys())
+    secondSNPs = list(cons[second_cl].keys())
+    keys = ('clSNP', 'Strange', 'Stop', 'Start', 'Cov','clSNP2','Strange2')
+    firstSNPs = [key for key in firstSNPs if key not in keys]
+    secondSNPs = [key for key in secondSNPs if key not in keys]
+    commonSNP = sorted(set(firstSNPs).intersection(secondSNPs))
+    try:
+        intersect = set(range(cons[first_cl]["Start"], cons[first_cl]["Stop"])).intersection(
+            set(range(cons[second_cl]["Start"], cons[second_cl]["Stop"])))
+        if only_with_common_snip == False and len(commonSNP) == 0 and len(intersect) > 0:
+            d = 0
+        else:
+            for snp in commonSNP:
+                try:
+                    b1 = cons[first_cl][snp]
+                    b2 = cons[second_cl][snp]
+                    if b1 != b2 and len(b1) != 0 and len(b2) != 0:
+                        if d == -1:
+                            d = 0
+                        d = d + 1
+                    elif b1 == b2:
+                        if d == -1:
+                            d = 0
+                        d = d
+                except:
+                    continue
+                if d >= 1:
+                    d = 1
+                    break
+
+                else:
+                    continue
+    except(IndexError):
+        pass
+    print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
+    return (d)
