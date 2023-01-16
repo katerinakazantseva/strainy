@@ -189,7 +189,7 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
                         break
 
             #2nd most frequent, indicating a variant
-            if int(Counter(npos).most_common()[1][1]) >= unseparated_cluster_min_reads:
+            if int(Counter(npos).most_common()[1][1]) > unseparated_cluster_min_reads:
                 strange = 1
                 clSNP.append(pos)
 
