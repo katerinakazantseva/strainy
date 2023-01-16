@@ -92,14 +92,14 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
     for node in full_paths_leafs:
         neighbors = list(full_paths_leafs)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor):
+            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=5):
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
 
     for node in full_paths_roots:
         neighbors = list(full_paths_roots)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node):
+            for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node, cutoff=5):
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
     G = remove_nested(G, cons)
@@ -116,7 +116,7 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
     for node in G.nodes():
         neighbors = nx.all_neighbors(G, node)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor):
+            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=5):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
 
@@ -172,7 +172,7 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots,
         neighbors = nx.all_neighbors(G_vis, node)
         for neighbor in list(neighbors):
 
-            for n_path in nx.algorithms.all_simple_paths(G_vis, node, neighbor):
+            for n_path in nx.algorithms.all_simple_paths(G_vis, node, neighbor, cutoff=5):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
 
@@ -206,7 +206,7 @@ def find_full_paths(G, paths_roots, paths_leafs):
     #print("PATHS")
     for root in paths_roots:
         try:
-            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs)
+            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs, cutoff=10)
         except:
             pass
         for path in list(paths_nx):

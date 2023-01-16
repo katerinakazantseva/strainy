@@ -225,7 +225,17 @@ class FlyeConsensus:
         #note that target and query are swapped because the definition is edlib.align(query, target)
         return nice["query_aligned"], nice["target_aligned"], nice["matched_aligned"]
 
-    def _custom_scoring_function(self, target, alignment_string, query, intersection_start, cl1_bed_path, cl2_bed_path):
+    def _parse_bed_coverage(self, filename):
+        contents = []
+        with gzip.open(filename, 'r') as f:
+            for line in f:
+                try:
+                    contents.append(list(map(int, line.strip().split()[1:])))
+                except ValueError:
+                    pass
+        return contents
+
+    def _custom_scoring_function(self, aligned_first, alignment_string, aligned_second, intersection_start, first_cl_dict, second_cl_dict):
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
         alignment_string: a string consisting of '-', '.', '|' characters which correspond to indel, mismatch, match,
@@ -239,22 +249,13 @@ class FlyeConsensus:
         indel_block_start = -1
         alignment_list = list(alignment_string)
 
-        # read the contents of the bed.gz files that contain coverage information for each coordinate
-        cl1_bed_contents = []  # list containing lists with (start, end, coverage) for each coordinate interval
-        cl2_bed_contents = []
-        with gzip.open(cl1_bed_path, 'r') as f:
-            for line in f:
-                try:
-                    cl1_bed_contents.append(list(map(int, line.strip().split()[1:])))
-                except ValueError:
-                    pass
+        first_shift = intersection_start - first_cl_dict['start']
+        second_shift = intersection_start - second_cl_dict['start']
 
-        with gzip.open(cl2_bed_path, 'r') as f:
-            for line in f:
-                try:
-                    cl2_bed_contents.append(list(map(int, line.strip().split()[1:])))
-                except ValueError:
-                    pass
+        # read the contents of the bed.gz files that contain coverage information for each coordinate
+        # list containing lists with (start, end, coverage) for each coordinate interval
+        cl1_bed_contents = self._parse_bed_coverage(first_cl_dict['bed_path'])
+        cl2_bed_contents = self._parse_bed_coverage(second_cl_dict['bed_path'])
 
         for i in range(len(alignment_list)):
             if alignment_list[i] not in "-.|":
@@ -263,8 +264,8 @@ class FlyeConsensus:
             # true coordinate = current coordinate on the alignment_string
             # + start of the intersection
             # - gaps in the target (or query) sequence thus far
-            cl1_true_coor = i - target[:i].count('-')
-            cl2_true_coor = i - query[:i].count('-')
+            cl1_true_coor = first_shift + i - aligned_first[:i].count('-')
+            cl2_true_coor = second_shift + i - aligned_second[:i].count('-')
 
             # ignore variants with low coverage
             if ((alignment_list[i] == '-' or alignment_list[i] == '.')
@@ -301,7 +302,7 @@ class FlyeConsensus:
                 score += 1
         return score
 
-    def _log_alignment_info(self, alignment_string, first_cl_dict, second_cl_dict,
+    def _log_alignment_info(self, aligned_first, alignment_string, aligned_second, first_cl_dict, second_cl_dict,
                             score, intersection_start, intersection_end):
         #if self._num_processes == 1:
         #    pid = 0
@@ -309,6 +310,12 @@ class FlyeConsensus:
         #    pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
         pid = int(multiprocessing.current_process().pid)
         fname = f"{MetaPhaseArgs.output}/distance_inconsistency-{pid}.log"
+
+        first_shift = intersection_start - first_cl_dict['start']
+        second_shift = intersection_start - second_cl_dict['start']
+        cl1_bed_contents = self._parse_bed_coverage(first_cl_dict['bed_path'])
+        cl2_bed_contents = self._parse_bed_coverage(second_cl_dict['bed_path'])
+
         with open(fname, 'a+') as f:
             """
             Things to write to the file:
@@ -323,8 +330,10 @@ class FlyeConsensus:
             f.write("ALIGNMENT:\n")
             f.write(alignment_string + '\n')
             mismatch_positions = [i for i in range(len(alignment_string)) if alignment_string.startswith('.', i)]
+            ref_mismatch = [i + intersection_start for i in mismatch_positions]
             f.write(f"# OF MISMATCHES: {len(mismatch_positions)}\n")
             f.write(f"MISMATCH POSITIONS: {mismatch_positions}\n")
+            f.write(f"MISMATCH POSITIONS IN REF (APPROXIMATE): {ref_mismatch}\n")
             f.write(f"SCORE:{score}\n")
             length = intersection_end - intersection_start
             f.write(f"INTERSECTION AREA:({intersection_start}, {intersection_end}),"
@@ -335,11 +344,14 @@ class FlyeConsensus:
             second_cl_mismatch_coverages = []
             for i in mismatch_positions:
                 # i is relative to the alignment string
+                cl1_true_coor = first_shift + i - aligned_first[:i].count('-')
+                cl2_true_coor = second_shift + i - aligned_second[:i].count('-')
+
                 first_cl_mismatch_coverages.append(
-                    calculate_coverage(i + intersection_start, first_cl_dict['read_limits'])
+                    calculate_coverage(cl1_true_coor, cl1_bed_contents)
                 )
                 second_cl_mismatch_coverages.append(
-                    calculate_coverage(i + intersection_start, second_cl_dict['read_limits'])
+                    calculate_coverage(cl2_true_coor, cl2_bed_contents)
                 )
 
             f.write("FIRST CLUSTER:\n")
@@ -410,17 +422,17 @@ class FlyeConsensus:
         alignments = aligner.align(first_consensus_clipped, second_consensus_clipped)
         # get the alignment string consisting of (- . |)
         try:
-            target, alignment_string, query = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[:3]
+            aligned_first, alignment_string, aligned_second = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[:3]
         except AttributeError:
-            target, alignment_string, query = str(alignments[0]).format().split('\n')[:3]
+            aligned_first, alignment_string, aligned_second = str(alignments[0]).format().split('\n')[:3]
         alignment_string = alignment_string.replace("X", ".")
-        score = self._custom_scoring_function(target, alignment_string, query, intersection_start,
-                                              first_cl_dict['bed_path'], second_cl_dict['bed_path'])
+        score = self._custom_scoring_function(aligned_first, alignment_string, aligned_second, intersection_start,
+                                              first_cl_dict, second_cl_dict)
         """
 
-        target, query, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
-        edlib_score = self._custom_scoring_function(target, edlib_aln, query, intersection_start,
-                                              first_cl_dict['bed_path'], second_cl_dict['bed_path'])
+        aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
+        edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, intersection_start,
+                                                    first_cl_dict, second_cl_dict)
 
         """
         print("Alignment scores", score, edlib_score)
@@ -431,7 +443,7 @@ class FlyeConsensus:
         """
 
         if debug:
-            self._log_alignment_info(alignment_string, first_cl_dict, second_cl_dict,score,
+            self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict,score,
                                      intersection_start, intersection_end)
 
         # score is not normalized!
