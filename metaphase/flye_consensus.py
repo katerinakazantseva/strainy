@@ -8,6 +8,7 @@ import re
 import logging
 import time
 
+import edlib
 import pysam
 from Bio import SeqIO, Align
 from Bio.Seq import Seq
@@ -208,6 +209,22 @@ class FlyeConsensus:
             }
             return self._consensus_dict[consensus_dict_key]
 
+    def _edlib_align(self, seq_a, seq_b):
+        band_size = 32
+        aln = None
+        while True:
+            aln = edlib.align(seq_a, seq_b, "NW", "path", band_size)
+            if aln["editDistance"] == -1:   #need to increase alignment band
+                if band_size > max(len(seq_a), len(seq_b)):
+                    raise Exception("Something's wrong with edlib")
+                band_size *= 2
+            else:
+                break
+        #print("Band size", band_size)
+        nice = edlib.getNiceAlignment(aln, seq_a, seq_b)
+        #note that target and query are swapped because the definition is edlib.align(query, target)
+        return nice["query_aligned"], nice["target_aligned"], nice["matched_aligned"]
+
     def _parse_bed_coverage(self, filename):
         contents = []
         with gzip.open(filename, 'r') as f:
@@ -396,6 +413,7 @@ class FlyeConsensus:
             logger.debug(f'Intersection length for clusters is less than 1 for clusters {first_cl}, {second_cl} in {edge}')
             return 1
 
+        """
         aligner = Align.PairwiseAligner()
         aligner.mode = 'global'
         aligner.match_score = 1
@@ -410,10 +428,23 @@ class FlyeConsensus:
         alignment_string = alignment_string.replace("X", ".")
         score = self._custom_scoring_function(aligned_first, alignment_string, aligned_second, intersection_start,
                                               first_cl_dict, second_cl_dict)
+        """
+
+        aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
+        edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, intersection_start,
+                                                    first_cl_dict, second_cl_dict)
+
+        """
+        print("Alignment scores", score, edlib_score)
+        if (score == 0 and edlib_score) > 0 or (edlib_score == 0 and score > 0):
+            print("Alignment", len(first_consensus_clipped), len(second_consensus_clipped))
+            print(edge, first_cl, second_cl)
+            print(alignment_string, edlib_aln)
+        """
 
         if debug:
-            self._log_alignment_info(aligned_first, alignment_string, aligned_second, first_cl_dict, second_cl_dict,score,
+            self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict,score,
                                      intersection_start, intersection_end)
 
         # score is not normalized!
-        return score
+        return edlib_score
