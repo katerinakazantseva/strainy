@@ -137,15 +137,11 @@ def remove_nested(G, cons):
             for neighbor in list(neighbors):
                 if cons[node]["Start"]<cons[neighbor]["Start"] and cons[node]["Stop"]>cons[neighbor]["Stop"]:
                     try:
-
-                        G.remove_node(neighbor)
+                        #G.remove_node(neighbor)
+                        G.remove_edge(node, neighbor)
+                        G.remove_edge(neighbor,node)
                         logger.debug("REMOVE NESTED" + str(neighbor))
-                        logger.debug(node)
-                        logger.debug(cons[node]["Start"])
-                        logger.debug(cons[node]["Stop"])
-                        logger.debug(neighbor)
-                        logger.debug(cons[neighbor]["Start"])
-                        logger.debug(cons[neighbor]["Stop"])
+
                     except:
                         continue
         except:

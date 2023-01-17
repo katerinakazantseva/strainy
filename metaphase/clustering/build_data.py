@@ -204,7 +204,24 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     clStop = 0
     clCov = 0
 
+    starts=[]
+    ends=[]
+
     for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
+        try:
+            start=int(data[read]["Start"])
+            stop=data[read]["Stop"]
+            starts.append(start)
+            ends.append(stop)
+            clCov = clCov + (stop - start)
+        except(KeyError):
+            pass
+    try:
+        clStart = sorted(starts)[1]
+        clStop = sorted(ends)[len(ends)-2]
+    except(IndexError):
+        pass
+    '''for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
         try:
             start = int(data[read]["Start"])
             stop = int(data[read]["Stop"])
@@ -215,7 +232,9 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
                 clStop = stop
 
         except(KeyError):
-            pass
+            pass'''
+
+
 
     try:
         if len(clSNP2) > 0 and max([int(clSNP2[i + 1]) - int(clSNP2[i])

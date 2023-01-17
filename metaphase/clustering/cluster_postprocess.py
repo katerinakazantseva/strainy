@@ -165,6 +165,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
 
     nested={}
     nodes = list(G.nodes())
+
     for node in nodes:
         try:
             neighbors = nx.all_neighbors(G, node)
@@ -174,11 +175,12 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
                     try:
                         G.remove_edge(node, neighbor)
                         logger.debug("REMOVE NESTED" + str(neighbor))
-                        try:
-                            nested[neighbor]=nested[neighbor].append(node)
-                        except:
-                            nodes=[node]
-                            nested[neighbor] =nodes
+                        if len(nx.all_neighbors(G, neighbor))==1:
+                            try:
+                                nested[neighbor]=nested[neighbor].append(node)
+                            except:
+                                nodes=[node]
+                                nested[neighbor] =nodes
                     except:
                         continue
         except:
@@ -257,7 +259,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
         new_clusters=list(set(clusters) - set(prev_clusters))
         prev_clusters=clusters
-        cl=join_clusters(cons, cl, R, edge, flye_consensus, True,new_clusters)
+        cl=join_clusters(cons, cl, R, edge, flye_consensus, False,new_clusters)
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
 
         for cluster in clusters:
@@ -293,13 +295,16 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
+
     cl = join_clusters(cons, cl, R, edge, flye_consensus)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
+    cl.to_csv("%s/clusters/5.csv" % MetaPhaseArgs.output)
     for cluster in clusters:
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
     cl=join_clusters(cons, cl, R, edge, flye_consensus, False)
-    cl = join_clusters(cons, cl, R, edge, flye_consensus, False,only_nested=True)
+
+    #cl = join_clusters(cons, cl, R, edge, flye_consensus, False,only_nested=True)
     return(cl)
 
 
