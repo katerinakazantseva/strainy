@@ -25,6 +25,7 @@ def _thread_fun(args):
     set_thread_logging(MetaPhaseArgs.log_phase, "phase", multiprocessing.current_process().pid)
     logger.info("\n\n\t==== Processing uniting " + str(MetaPhaseArgs.edges[args[0]]) + " ====")
     cluster(*args)
+    logger.info("Thread finished!")
 
 
 def _error_callback(pool, e):
@@ -62,9 +63,21 @@ def color_bam(edges):
     pool = multiprocessing.Pool(3)
     pool.map(color, range(0, len(edges)))
     pool.close()
-    subprocess.check_output('samtools merge %s/bam/coloredBAM.bam -f `find %s/bam -name "*unitig*.bam"`' % (MetaPhaseArgs.output, MetaPhaseArgs.output), 
+
+    out_bam_dir = os.path.join(MetaPhaseArgs.output, 'bam')
+    to_merge_file = os.path.join(out_bam_dir, 'to_merge.txt')
+    to_delete = []
+    with open(to_merge_file, "wb") as f:
+        for fname in subprocess.check_output('find %s -name "*unitig*.bam"' % out_bam_dir, shell=True).split(b'\n'):
+            if len(fname):
+                f.write(fname + b'\n')
+                to_delete.append(fname)
+
+    subprocess.check_output('samtools merge %s/bam/coloredBAM.bam -f -b %s' % (MetaPhaseArgs.output, to_merge_file),
                             shell=True, capture_output=False)
-    subprocess.check_output('rm `find %s/bam -name "*unitig*.bam"`' % MetaPhaseArgs.output, shell=True, capture_output=False)
+    for f in to_delete:
+        os.remove(f)
+    #subprocess.check_output('rm `find %s/bam -name "*unitig*.bam"`' % MetaPhaseArgs.output, shell=True, capture_output=False)
     pysam.samtools.index("%s/bam/coloredBAM.bam" % MetaPhaseArgs.output, "%s/bam/coloredBAM.bai" % MetaPhaseArgs.output)
 
 
