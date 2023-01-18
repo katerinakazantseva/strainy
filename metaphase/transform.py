@@ -243,7 +243,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
         except:
             pass
         
-    for path in paths[edge]:
+    for path in paths[edge].copy():
         for member in path:
             if member in full_clusters:
                 try:
