@@ -304,7 +304,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
     cl=join_clusters(cons, cl, R, edge, flye_consensus, False)
 
-    #cl = join_clusters(cons, cl, R, edge, flye_consensus, False,only_nested=True)
+    cl = join_clusters(cons, cl, R, edge, flye_consensus, False,only_nested=True)
     return(cl)
 
 
