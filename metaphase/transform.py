@@ -242,6 +242,15 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
             paths_leafs.remove(node)
         except:
             pass
+        
+    for path in paths[edge]:
+        for member in path:
+            if member in full_clusters:
+                try:
+                    paths[edge].remove(path)
+                except (ValueError):
+                    pass
+                
     for path in paths[edge]:
         for member in path:
             path_cl.append(member)
