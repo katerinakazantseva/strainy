@@ -850,8 +850,16 @@ def transform_main():
     simplify_links(initial_graph)
 
     gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed1)
-    gfapy.GraphOperations.merge_linear_paths(initial_graph)
-    gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed2)
+    
+    try:
+        gfapy.GraphOperations.merge_linear_paths(initial_graph)
+        gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed2)
+    except:
+        for i in initial_graph.segments:
+            if len(i.sequence)==0:
+                i.sequence='A'
+        gfapy.GraphOperations.merge_linear_paths(initial_graph)
+        gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed2)
 
 
 if __name__ == "__main__":
