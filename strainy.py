@@ -61,6 +61,7 @@ def main():
     StRainyArgs.mode = args.mode
     StRainyArgs.snp = args.snp
     StRainyArgs.threads = args.threads
+    StRainyArgs.flye = os.path.join(metaphase_root, "submodules", "Flye", "bin", "flye")
     StRainyArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
     StRainyArgs.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
     StRainyArgs.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output

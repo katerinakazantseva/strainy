@@ -16,12 +16,6 @@ StRainyArgs = GlobalArgumentStorage()
 
 #TODO: constant storage
 
-#TODO: link Flye as submodule
-
-# Path to the installed Flye executable
-# Should be Flye/bin/flye
-flye = "flye"
-
 minigraph=False
 unseparated_cluster_min_reads = 3
 
@@ -31,7 +25,7 @@ consensus_cache_path = "consensus_dict_2.pkl"
 
 # Whether to store the consensus cache or not
 # This needs to be True to carry out it from phase part to transform part
-write_consensus_cache = True
+write_consensus_cache = False
 
 # Number processes, default (-1) uses all available
 #processes = 4
