@@ -209,7 +209,7 @@ def find_full_paths(G, paths_roots, paths_leafs):
     #print("PATHS")
     for root in paths_roots:
         try:
-            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs, cutoff=10)
+            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs, cutoff=100)
         except:
             pass
         for path in list(paths_nx):
