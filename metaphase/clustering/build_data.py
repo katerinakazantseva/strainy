@@ -55,18 +55,21 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
 def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max):
     bamfile = pysam.AlignmentFile(bam, "rb")
     data = {}
-    ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
+    edge_len = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
     for read in bamfile.fetch(edge):
-        clipping = 0
-        start = read.get_reference_positions()[0]
-        stop = read.get_reference_positions()[len(read.get_reference_positions()) - 1]
-        de=float(re.sub(".*de',\s", "", str(str(read).split('\t')[11]), count=0, flags=0).split(')')[0])
+        clipping = False
+        start = int(read.get_reference_positions()[0])
+        stop = int(read.get_reference_positions()[-1])
+        aln_len = stop - start
+        de = float(re.sub(".*de',\s", "", str(str(read).split('\t')[11]), count=0, flags=0).split(')')[0])
         for i in read.cigartuples:
             if i[0] == 4 or i[0] == 5:
                 if i[1] > clipp:
-                    clipping = 1
-        if read.mapping_quality>=min_mapping_quality  and de < de_max and (((clipping == 0 and (stop - start) > min_al_len) and (
-                int(start) != 0 and int(stop) != int(ln) - 1)) or int(start) < 5  or int(stop) > int(ln) - 5):
+                    clipping = True
+
+        if read.mapping_quality >= min_mapping_quality and de < de_max and \
+                ((not clipping and aln_len > min_al_len and start != 0 and stop != edge_len - 1) or \
+                    start < extended_aln_flank or edge_len - stop < extended_aln_flank):
 
             data[read.query_name] = {}
             data[read.query_name]["Start"] = start

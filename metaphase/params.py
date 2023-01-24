@@ -75,6 +75,7 @@ clipp = 100
 min_mapping_quality = 20
 min_base_quality = 0
 min_al_len = 1000
+extended_aln_flank = 5
 de_max = 0.05
 
 # SNP allele frequency
