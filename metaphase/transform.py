@@ -59,6 +59,13 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
     #print(right)
     #print(len(seq))
     if len(seq) == 0:
+        g.add_line("S\t%s_%s\t*" % (edge, clN))
+        i = g.try_get_segment("%s_%s" % (edge, clN))
+        new_line = i
+        new_line.name = str(edge) + "_" + str(clN)
+        new_line.sid = str(edge) + "_" + str(clN)
+        new_line.sequence = 'A'
+        new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
         remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq)>0:
         g.add_line("S\t%s_%s\t*" % (edge, clN))
@@ -247,6 +254,12 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
         for member in path:
             if member in full_clusters:
                 try:
+                    paths[edge].remove(path)
+                except (ValueError):
+                    pass
+            if member in paths_leafs and path.index(member)!=len(path)-1:
+                try:
+                    print("remove")
                     paths[edge].remove(path)
                 except (ValueError):
                     pass
