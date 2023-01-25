@@ -52,7 +52,7 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
     return SNP_pos
 
 
-def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max):
+def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, max_aln_error):
     bamfile = pysam.AlignmentFile(bam, "rb")
     data = {}
     edge_len = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
@@ -67,7 +67,7 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
                 if i[1] > clipp:
                     clipping = True
 
-        if read.mapping_quality >= min_mapping_quality and de < de_max and \
+        if read.mapping_quality >= min_mapping_quality and de < max_aln_error and \
                 ((not clipping and aln_len > min_al_len and start != 0 and stop != edge_len - 1) or \
                     start < extended_aln_flank or edge_len - stop < extended_aln_flank):
 

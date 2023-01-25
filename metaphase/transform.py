@@ -488,7 +488,7 @@ def graph_create_unitigs(i, graph, flye_consensus):
         #try:
             #data=all_data[edge]
         #except(KeyError, FileNotFoundError):
-        data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max)
+        data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[MetaPhaseArgs.mode])
         all_data[edge]=data
 
         ln = int(pysam.samtools.coverage("-r", edge, MetaPhaseArgs.bam, "--no-header").split()[4])
