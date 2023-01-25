@@ -209,7 +209,10 @@ def find_full_paths(G, paths_roots, paths_leafs):
     #print("PATHS")
     for root in paths_roots:
         try:
-            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs, cutoff=100)
+            #TODO: we need to increas cutoff for longer unitigs with more clusters.
+            #But this will result in the exponential number of paths. Instead, we should be
+            #looking at all nodes that are reachable from both source and sink, which is linear
+            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs, cutoff=10)
         except:
             pass
         for path in list(paths_nx):
