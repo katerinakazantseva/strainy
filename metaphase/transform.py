@@ -357,6 +357,12 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     cut_l[i] = border
                 for i in R:
                     cut_r[i] = border
+            elif cut_r[member] != None:
+                for path in paths[edge]:
+                    try:
+                        cut_l[path[path.index(member)+1]]=cut_r[member]
+                    except:
+                        pass
 
     if None in cut_l.values():
         for member in cut_l.keys():
