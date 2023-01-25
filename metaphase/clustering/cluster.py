@@ -90,11 +90,11 @@ def cluster(i, flye_consensus):
 
     #CALCULATE DISTANCE and ADJ MATRIX
     logger.info("### Calculatind distances/Building adj matrix...")
-    try:
-        m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF), index_col='ReadName')
-    except FileNotFoundError:
-        m=build_adj_matrix(cl, data, SNP_pos, I, MetaPhaseArgs.bam, edge, R)
-        m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
+    #try:
+    #    m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF), index_col='ReadName')
+    #except FileNotFoundError:
+    m = build_adj_matrix(cl, data, SNP_pos, I, MetaPhaseArgs.bam, edge, R)
+    m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
 
     logger.info("### Removing overweighed egdes...")
     m = remove_edges(m, R)
