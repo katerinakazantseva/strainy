@@ -60,9 +60,9 @@ def split_cluster(cl,cluster, data,cons,clSNP, bam, edge, R, I,only_with_common_
                     child_clusters.append(new_cl_id_na)
                 else:
                     cl.loc[mask, "Cluster"] = 'NA'
-                    #print('NA')'''
+                    #print('NA')
 
-    print("cluster splitted for "+str(clN))
+    #print("cluster splitted for "+str(clN))
     return ([new_cl_id_na, clN])
 
 
@@ -244,7 +244,6 @@ def split_all2(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq):
                 split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq)
 
 
-
 def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     reference_seq = read_fasta_seq(MetaPhaseArgs.fa, edge)
 
@@ -266,12 +265,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             if cluster not in cons:
                 cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
-
-
     cl.to_csv("%s/clusters/2.csv" % MetaPhaseArgs.output)
-
-
-
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
 
     logging.info("Split2")
@@ -295,7 +289,6 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
-
     cl = join_clusters(cons, cl, R, edge, flye_consensus)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     cl.to_csv("%s/clusters/5.csv" % MetaPhaseArgs.output)
@@ -305,6 +298,4 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl=join_clusters(cons, cl, R, edge, flye_consensus, False)
 
     cl = join_clusters(cons, cl, R, edge, flye_consensus, False,only_nested=True)
-    return(cl)
-
-
+    return cl

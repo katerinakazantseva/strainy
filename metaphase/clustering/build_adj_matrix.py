@@ -136,7 +136,7 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     #except IndexError:
     #    pass
 
-    print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
+    #print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
     return d
 
 
@@ -176,5 +176,5 @@ def distance_clusters_old(first_cl, second_cl, cons, SNP_pos, only_with_common_s
                     continue
     except(IndexError):
         pass
-    print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
+    #print("distance: " + str(first_cl) + " " + str(second_cl) + ": " + str(d))
     return (d)
