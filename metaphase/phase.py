@@ -2,6 +2,7 @@ import multiprocessing
 import pysam
 import pickle
 import os
+import sys
 import subprocess
 from multiprocessing.managers import BaseManager
 import logging
@@ -35,6 +36,7 @@ def _error_callback(pool, e):
 
 
 def phase(edges):
+    logger.info("CMD: " + " ".join(sys.argv[1:]))
     if os.path.isdir(MetaPhaseArgs.log_phase):
         shutil.rmtree(MetaPhaseArgs.log_phase)
     os.mkdir(MetaPhaseArgs.log_phase)
