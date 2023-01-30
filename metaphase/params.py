@@ -23,7 +23,7 @@ MetaPhaseArgs = GlobalArgumentStorage()
 flye = "/home/mkolmogo/projects/Flye/bin/flye"
 
 minigraph=False
-unseparated_cluster_min_reads=2
+unseparated_cluster_min_reads = 3
 
 # Path to store and read the consensus dictionary
 # If one already exists and write_consensus_cache is true, it may be overwritten

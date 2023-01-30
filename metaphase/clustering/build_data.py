@@ -187,9 +187,10 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
             except(KeyError):
                 continue
 
-        min_snp_freq = max(1, AF * len(npos))
+        min_snp_freq = max(unseparated_cluster_min_reads, AF * len(npos))
+        alt_snp_freq = max(unseparated_cluster_min_reads, 0.3 * len(npos))
         try:
-            if len(npos) > 2:
+            if len(npos) >= unseparated_cluster_min_reads:
                 #store most frequent symbol as consensus
                 if int(Counter(npos).most_common()[0][1]) > 2:
                     val[pos] = Counter(npos).most_common()[0][0]
@@ -199,9 +200,11 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
                     if elem != reference_seq[int(pos) - 1] and freq >= min_snp_freq:
                         mpileup_snps.append(pos)
                         break
+                #clSNP2.append(pos)
 
             #2nd most frequent, indicating a variant
-            if int(Counter(npos).most_common()[1][1]) > unseparated_cluster_min_reads:
+            if int(Counter(npos).most_common()[1][1]) >= alt_snp_freq:
+                #print(cluster, pos, Counter(npos).most_common())
                 strange = 1
                 clSNP.append(pos)
 
@@ -246,11 +249,9 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
         except(KeyError):
             pass'''
 
-
-
     try:
         if len(clSNP2) > 0 and max([int(clSNP2[i + 1]) - int(clSNP2[i])
-                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * 1000:
+                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * I:
             strange2 = 1
 
         if (int(clSNP2[0]) - int(clStart)) > 1.5 * I or \
@@ -262,7 +263,7 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
 
     val["Strange"] = int(strange == 1)
     val["Strange2"] = int(strange2 == 1)
-    clCov = clCov / (clStop - clStart)
+    clCov = clCov / (clStop - clStart) if clStop > clStart else 0
     val["Stop"] = clStop
     val["Start"] = clStart
     val["Cov"] = clCov
