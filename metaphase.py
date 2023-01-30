@@ -9,22 +9,26 @@ import multiprocessing
 import logging
 import shutil
 
+# Setting executable paths
+metaphase_root = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, metaphase_root)
+
+# needed for importing directly calling the Flye polisher
+flye_root = os.path.join(metaphase_root, "submodules", "Flye")
+sys.path.insert(0, flye_root)
+
+
 from metaphase.phase import phase_main
 from metaphase.transform import transform_main
 from metaphase.params import MetaPhaseArgs
 from metaphase.logging import set_thread_logging
-import metaphase.params as params
 
 
 logger = logging.getLogger()
 
 
 def main():
-    #Setting executable paths
-    metaphase_root = os.path.dirname(os.path.realpath(__file__))
-    sys.path.insert(0, metaphase_root)
-
-    BIN_TOOLS = ["samtools", "bcftools", params.flye]
+    BIN_TOOLS = ["samtools", "bcftools"]
     for tool in BIN_TOOLS:
         if not shutil.which(tool):
             print("{} not installed".format(tool), file=sys.stderr)
@@ -44,7 +48,7 @@ def main():
 
     args = parser.parse_args()
 
-    bam_index = re.sub(".bam",".bam.bai", args.bam)
+    bam_index = re.sub(".bam", ".bam.bai", args.bam)
     bam_index_exist = os.path.exists(bam_index)
     if bam_index_exist == False:
         raise Exception("No index file found (%s) Please create index using \"samtools index\"." % bam_index)
@@ -60,8 +64,9 @@ def main():
     MetaPhaseArgs.mode = args.mode
     MetaPhaseArgs.snp = args.snp
     MetaPhaseArgs.threads = args.threads
+    MetaPhaseArgs.flye = os.path.join(metaphase_root, "submodules", "Flye", "bin", "flye")
     MetaPhaseArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
-    MetaPhaseArgs.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
+    MetaPhaseArgs.gfa_transformed1 = "%s/transformed_after_simplification.gfa" % args.output
     MetaPhaseArgs.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
     MetaPhaseArgs.log_phase = os.path.join(args.output, "log_phase")
     MetaPhaseArgs.log_transform = os.path.join(args.output, "log_transform")

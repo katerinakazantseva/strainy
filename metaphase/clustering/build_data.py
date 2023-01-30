@@ -7,8 +7,6 @@ from Bio import SeqIO
 
 from metaphase.params import *
 
-os.environ["PATH"] += os.pathsep + "/usr/local/bin"
-
 
 def read_snp(vcf_file, edge, bam, AF, cluster=None):
     SNP_pos = []
