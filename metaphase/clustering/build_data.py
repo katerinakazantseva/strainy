@@ -12,6 +12,7 @@ os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 
 def read_snp(vcf_file, edge, bam, AF, cluster=None):
     SNP_pos = []
+
     if vcf_file == None:
         if cluster == None:
             snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
@@ -22,12 +23,19 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                 lines = f.readlines()
                 for line in lines:
                     try:
-                        AlFreq = int(str(line.split()[2]).split(',')[2]) / int(line.split()[3])
+                        snp_freq = int(str(line.split()[2]).split(',')[2])
+                        pos_cov = int(line.split()[3])
+                        min_snp_freq = max(unseparated_cluster_min_reads, AF * pos_cov)
+                        #AlFreq = int(str(line.split()[2]).split(',')[2]) / int(line.split()[3])
+                        if snp_freq >= min_snp_freq:
+                            SNP_pos.append(line.split()[1])
+
                     except(IndexError):
-                        AlFreq = 0
-                    if AlFreq > AF:
-                        SNP_pos.append(line.split()[1])
+                        pass
+                        #AlFreq = 0
         else:
+            raise Exception("Shouldn't happen")
+            """
             snpos = ('bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
                      '| bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt').format(MetaPhaseArgs.fa, edge, bam, MetaPhaseArgs.output, edge, cluster)
             subprocess.check_output(snpos, shell=True, capture_output=False)
@@ -42,6 +50,7 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                         SNP_pos.append(line.split()[1])
                     if int(str(line.split()[3]).split(',')[0])==0 and int(str(line.split()[3]).split(',')[1])>min_reads_cluster and len(str(line.split()[2]).split(','))>1:
                         SNP_pos.append(line.split()[1])
+            """
 
     else:
         vcf = open(vcf_file, "rt")
