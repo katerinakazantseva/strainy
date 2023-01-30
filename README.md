@@ -64,7 +64,7 @@ required named arguments:
 Please specify Flye path in `params.py`:
 - `flye` - path to the installed Flye executable
 
-It is not recommended to other parameters.
+It is not recommended to change other parameters.
 
 ## Run and outputs
 
@@ -73,8 +73,7 @@ python3 ./metaPhase.py phase -o output_dir -b bam_file -g gfa_graph -f fasta fil
 ```
 Phasing stage clusters reads and produce csv files with read names and corresponding cluster names and BAM file wich visualise reads clustering
 
-<img width="853" alt="Screenshot 2023-01-30 at 16 36 31" src="https://user-images.githubusercontent.com/82141791/215479038-2e0cbba0-0b90-4a12-b84e-5d1965ca193b.png">
-<img width="444" alt="Screenshot 2023-01-30 at 16 38 55" src="https://user-images.githubusercontent.com/82141791/215479426-890859d9-75cb-45ad-86ac-f4c41a05ee80.png">
+<img width="500" alt="Screenshot 2023-01-30 at 17 01 47" src="https://user-images.githubusercontent.com/82141791/215484889-6a032cc0-9c90-4a26-9689-7d5cb41a2ab5.png">
 
 
 
@@ -82,12 +81,28 @@ Phasing stage clusters reads and produce csv files with read names and correspon
 python3 ./metaPhase.py transform -o output_dir -b bam_file -g gfa_graph -f fasta file -m mode -t threads
 ```
 Transform stage transform and simplify initial assembly graph, produce  final gfa file transformed_after_simplification_merged.gfa
-<img width="903" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
+<img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
 
-## Credits
+## Asknowledgements
+
+Consesus function of metaphase is [**Flye**](https://github.com/fenderglass/Flye)
+
+Community detection algorithm is [**Karate club**](https://github.com/benedekrozemberczki/KarateClub/blob/master/docs/source/notes/introduction.rst)
+
+
+## Authors
 
 metaPhase was originally developed at at [**Kolmogorov lab at NCI**](https://ccr.cancer.gov/staff-directory/mikhail-kolmogorov)  
 
+Code contributors:
+- Ekaterina Kazantseva
+- Ataberk Donmez
+- Mikhail Kolmogorov
+
+
+## Citation
+
+TBD
 
 ## License
 
