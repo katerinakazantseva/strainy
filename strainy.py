@@ -9,11 +9,11 @@ import multiprocessing
 import logging
 import shutil
 
-from metaphase.phase import phase_main
-from metaphase.transform import transform_main
-from metaphase.params import MetaPhaseArgs
-from metaphase.logging import set_thread_logging
-import metaphase.params as params
+from strainy.phase import phase_main
+from strainy.transform import transform_main
+from strainy.params import StRainyArgs
+from strainy.logging import set_thread_logging
+import strainy.params as params
 
 
 logger = logging.getLogger()
@@ -21,8 +21,8 @@ logger = logging.getLogger()
 
 def main():
     #Setting executable paths
-    metaphase_root = os.path.dirname(os.path.realpath(__file__))
-    sys.path.insert(0, metaphase_root)
+    strainy_root = os.path.dirname(os.path.realpath(__file__))
+    sys.path.insert(0, strainy_root)
 
     BIN_TOOLS = ["samtools", "bcftools", params.flye]
     for tool in BIN_TOOLS:
@@ -53,27 +53,27 @@ def main():
     multiprocessing.set_start_method("fork")
 
     #global arguments storage
-    MetaPhaseArgs.output = args.output
-    MetaPhaseArgs.bam = args.bam
-    MetaPhaseArgs.gfa = args.gfa
-    MetaPhaseArgs.fa = args.fa
-    MetaPhaseArgs.mode = args.mode
-    MetaPhaseArgs.snp = args.snp
-    MetaPhaseArgs.threads = args.threads
-    MetaPhaseArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
-    MetaPhaseArgs.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
-    MetaPhaseArgs.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
-    MetaPhaseArgs.log_phase = os.path.join(args.output, "log_phase")
-    MetaPhaseArgs.log_transform = os.path.join(args.output, "log_transform")
+    StRainyArgs.output = args.output
+    StRainyArgs.bam = args.bam
+    StRainyArgs.gfa = args.gfa
+    StRainyArgs.fa = args.fa
+    StRainyArgs.mode = args.mode
+    StRainyArgs.snp = args.snp
+    StRainyArgs.threads = args.threads
+    StRainyArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
+    StRainyArgs.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
+    StRainyArgs.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
+    StRainyArgs.log_phase = os.path.join(args.output, "log_phase")
+    StRainyArgs.log_transform = os.path.join(args.output, "log_transform")
 
-    if not os.path.isdir(MetaPhaseArgs.output):
-        os.mkdir(MetaPhaseArgs.output)
+    if not os.path.isdir(StRainyArgs.output):
+        os.mkdir(StRainyArgs.output)
 
     input_graph = gfapy.Gfa.from_file(args.gfa)
-    MetaPhaseArgs.edges = input_graph.segment_names
+    StRainyArgs.edges = input_graph.segment_names
     ###
 
-    set_thread_logging(MetaPhaseArgs.output, "root", None)
+    set_thread_logging(StRainyArgs.output, "root", None)
 
     if args.stage == "phase":
         sys.exit(phase_main())
