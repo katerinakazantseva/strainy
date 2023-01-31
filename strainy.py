@@ -85,18 +85,39 @@ def main():
     if not os.path.isdir(StRainyArgs.output):
         os.mkdir(StRainyArgs.output)
 
+    set_thread_logging(MetaPhaseArgs.output, "root", None)
+
+    if args.fasta is None:
+        fasta_name = os.path.join(MetaPhaseArgs.output, 'gfa_converted.fasta')
+        fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {MetaPhaseArgs.gfa} | fold > {fasta_name}"""
+        try:
+            logger.info(f'Creating fasta file from the provided gfa file {MetaPhaseArgs.gfa}')
+            subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
+            MetaPhaseArgs.fa = fasta_name
+            logger.info('Done!')
+        except subprocess.CalledProcessError as e:
+            print(e)
+            logger.error('You can create a fasta file yourself and provide it with "-f file.fasta"')
+            return 1
+    else:
+        MetaPhaseArgs.fa = args.fasta
+
+
     input_graph = gfapy.Gfa.from_file(args.gfa)
     StRainyArgs.edges = input_graph.segment_names
     ###
 
+<<<<<<< HEAD:strainy.py
     set_thread_logging(StRainyArgs.output, "root", None)
+=======
+>>>>>>> 045ee09 (runs e2e with no issues, needs further testing on other platforms):metaphase.py
 
     if args.stage == "phase":
         sys.exit(phase_main())
     elif args.stage == "transform":
         sys.exit(transform_main())
     else:
-        raise Exception("Stage should be aither phase or transform!")
+        raise Exception("Stage should be either phase or transform!")
 
 
 if __name__ == "__main__":
