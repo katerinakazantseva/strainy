@@ -11,8 +11,34 @@ metaPhase is a graph-based phasing algorithm, that takes a de novo assembly grap
 **metaPhase.py phase** - performs reads clustering according to SNP positions using community detection approach
 
 **metaPhase.py transfom** - transforms assembly graph 
+## Conda Installation
 
-## Installation
+Create a new conda envinroment and activate it
+```
+conda create -n metaphase python=3.8
+conda activate metaphase
+```
+
+Build and install Flye
+```
+git clone https://github.com/fenderglass/Flye
+cd Flye
+python setup.py install
+```
+Get metaPhase source and install requirements
+```
+cd ~/
+git clone https://github.com/katerinakazantseva/metaPhase.git
+cd metaphase
+pip install -r requirements.txt
+```
+
+Run test code
+```
+python3 metaphase.py phase  -o test_dir -b test_set/toy.bam -g test_set/toy.gfa -f test_set/toy.fasta -t 1 -m hifi 
+```
+
+## Source Installation
 ### Requirements
 ```
 python3
