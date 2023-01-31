@@ -39,6 +39,11 @@ $ pip install -r requirements.txt
 metaPhase takes as input gfa graph (can be produced with [**metaFlye**](https://github.com/fenderglass/Flye) or minigraph), 
 fasta file and BAM (reads alignned to fasta reference). Also it supports hifi and nanopore modes.
 
+How to get fasta from gfa:
+```
+awk '/^S/{print ">"$2"\n"$3}’ assembly_graph_.gfa | fold > assembly_graph_sim3.fa 
+```
+
 Usage:
 ```
 metaphase.py [-h] [-s SNP] [-t THREADS] -o OUTPUT -b BAM -g GFA -f FA -m {hifi,nano} stage
