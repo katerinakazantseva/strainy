@@ -822,6 +822,21 @@ def graph_link_unitigs(i, graph, G):
                         graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
                     except(gfapy.error.NotUniqueError):
                         pass
+def clean_g(g):
+    '''
+    Remove 0len unitigs, virtual  and self links
+    :param g:
+    :return:
+    '''
+    for line in g.dovetails:
+        if line.from_segment==line.to_segment:
+            g.rm(line)
+        if g.segment(line.from_segment).virtual==True or g.segment(line.to_segment).virtual==True:
+            g.rm(line)
+    for i in g.segments:
+        if len(i.sequence) == 0:
+            i.sequence = 'A'
+    return g
 
 
 def transform_main():
@@ -872,14 +887,11 @@ def transform_main():
     simplify_links(initial_graph)
 
     gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed1)
-    
     try:
         gfapy.GraphOperations.merge_linear_paths(initial_graph)
         gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
     except:
-        for i in initial_graph.segments:
-            if len(i.sequence)==0:
-                i.sequence='A'
+        initial_graph=clean_g(initial_graph)
         gfapy.GraphOperations.merge_linear_paths(initial_graph)
         gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
 
