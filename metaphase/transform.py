@@ -245,7 +245,7 @@ def add_path_links(graph, edge, paths,G):
 def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
     path_cl = []
     logger.debug("ADD PATH")
-    logger.debug(paths)
+    logger.debug(paths[edge])
     for node in full_clusters:
         try:
             paths_roots.remove(node)
