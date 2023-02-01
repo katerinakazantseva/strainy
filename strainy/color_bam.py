@@ -7,7 +7,7 @@ import matplotlib as mt
 import gfapy
 import os
 
-from metaphase.params import *
+from strainy.params import *
 
 
 def write_bam(edge, I, AF):
