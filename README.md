@@ -116,14 +116,14 @@ Transform stage transform and simplify initial assembly graph, produce  final gf
 
 ## Asknowledgements
 
-Consesus function of metaphase is [**Flye**](https://github.com/fenderglass/Flye)
+Consesus function of strainy is [**Flye**](https://github.com/fenderglass/Flye)
 
 Community detection algorithm is [**Karate club**](https://github.com/benedekrozemberczki/KarateClub/blob/master/docs/source/notes/introduction.rst)
 
 
 ## Authors
 
-metaPhase was originally developed at at [**Kolmogorov lab at NCI**](https://ccr.cancer.gov/staff-directory/mikhail-kolmogorov)  
+strainy was originally developed at at [**Kolmogorov lab at NCI**](https://ccr.cancer.gov/staff-directory/mikhail-kolmogorov)  
 
 Code contributors:
 - Ekaterina Kazantseva
