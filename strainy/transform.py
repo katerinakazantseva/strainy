@@ -829,11 +829,11 @@ def clean_g(g):
     :return:
     '''
     for line in g.dovetails:
-        if line.from_segment==line.to_segment:
+        if line.from_segment==line.to_segment: #TODO do not self links
             g.rm(line)
         if g.segment(line.from_segment).virtual==True or g.segment(line.to_segment).virtual==True:
             g.rm(line)
-    for i in g.segments:
+    for i in g.segments:  #TODO do not create o len unitigs
         if len(i.sequence) == 0:
             i.sequence = 'A'
     return g
