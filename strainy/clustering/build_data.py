@@ -12,6 +12,7 @@ os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 
 def read_snp(vcf_file, edge, bam, AF, cluster=None):
     SNP_pos = []
+
     if vcf_file == None:
         if cluster == None:
             snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
@@ -22,12 +23,19 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                 lines = f.readlines()
                 for line in lines:
                     try:
-                        AlFreq = int(str(line.split()[2]).split(',')[2]) / int(line.split()[3])
+                        snp_freq = int(str(line.split()[2]).split(',')[2])
+                        pos_cov = int(line.split()[3])
+                        min_snp_freq = max(unseparated_cluster_min_reads, AF * pos_cov)
+                        #AlFreq = int(str(line.split()[2]).split(',')[2]) / int(line.split()[3])
+                        if snp_freq >= min_snp_freq:
+                            SNP_pos.append(line.split()[1])
+
                     except(IndexError):
-                        AlFreq = 0
-                    if AlFreq > AF:
-                        SNP_pos.append(line.split()[1])
+                        pass
+                        #AlFreq = 0
         else:
+            raise Exception("Shouldn't happen")
+            """
             snpos = ('bcftools mpileup -f {} -r {} {}  -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
                      '| bcftools query -f  "%CHROM %POS %ALT [ %AD %DP]\n" >{}/vcf/vcf_{}_{}.txt').format(StRainyArgs.fa, edge, bam, StRainyArgs.output, edge, cluster)
             subprocess.check_output(snpos, shell=True, capture_output=False)
@@ -42,6 +50,7 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                         SNP_pos.append(line.split()[1])
                     if int(str(line.split()[3]).split(',')[0])==0 and int(str(line.split()[3]).split(',')[1])>min_reads_cluster and len(str(line.split()[2]).split(','))>1:
                         SNP_pos.append(line.split()[1])
+            """
 
     else:
         vcf = open(vcf_file, "rt")
@@ -178,9 +187,10 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
             except(KeyError):
                 continue
 
-        min_snp_freq = max(1, AF * len(npos))
+        min_snp_freq = max(unseparated_cluster_min_reads, AF * len(npos))
+        alt_snp_freq = max(unseparated_cluster_min_reads, split_allele_freq * len(npos))
         try:
-            if len(npos) > 2:
+            if len(npos) >= unseparated_cluster_min_reads:
                 #store most frequent symbol as consensus
                 if int(Counter(npos).most_common()[0][1]) > 2:
                     val[pos] = Counter(npos).most_common()[0][0]
@@ -190,9 +200,11 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
                     if elem != reference_seq[int(pos) - 1] and freq >= min_snp_freq:
                         mpileup_snps.append(pos)
                         break
+                #clSNP2.append(pos)
 
             #2nd most frequent, indicating a variant
-            if int(Counter(npos).most_common()[1][1]) > unseparated_cluster_min_reads:
+            if int(Counter(npos).most_common()[1][1]) >= alt_snp_freq:
+                #print(cluster, pos, Counter(npos).most_common())
                 strange = 1
                 clSNP.append(pos)
 
@@ -237,11 +249,9 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
         except(KeyError):
             pass'''
 
-
-
     try:
         if len(clSNP2) > 0 and max([int(clSNP2[i + 1]) - int(clSNP2[i])
-                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * 1000:
+                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * I:
             strange2 = 1
 
         if (int(clSNP2[0]) - int(clStart)) > 1.5 * I or \
@@ -253,7 +263,7 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
 
     val["Strange"] = int(strange == 1)
     val["Strange2"] = int(strange2 == 1)
-    clCov = clCov / (clStop - clStart)
+    clCov = clCov / (clStop - clStart) if clStop > clStart else 0
     val["Stop"] = clStop
     val["Start"] = clStart
     val["Cov"] = clCov

@@ -23,7 +23,7 @@ StRainyArgs = GlobalArgumentStorage()
 flye = "../Flye/bin/flye"
 
 minigraph=False
-unseparated_cluster_min_reads=2
+unseparated_cluster_min_reads = 3
 
 # Path to store and read the consensus dictionary
 # If one already exists and write_consensus_cache is true, it may be overwritten
@@ -80,6 +80,7 @@ de_max = {"hifi": 0.05, "nano": 0.10}
 
 # SNP allele frequency
 AF = 0.1
+split_allele_freq = 0.3
 
 # Please do not change
 #g = gfapy.Gfa.from_file(gfa)
