@@ -8,15 +8,15 @@ stRainy is a graph-based phasing algorithm, that takes a de novo assembly graph 
 <img width="694" alt="Screenshot 2023-01-30 at 16 47 16" src="https://user-images.githubusercontent.com/82141791/215481164-2b23544f-589d-4cd2-83f9-a6668ecb8ca6.png">
 
 
-**metaPhase.py phase** - performs reads clustering according to SNP positions using community detection approach
+**strainy.py phase** - performs reads clustering according to SNP positions using community detection approach
 
-**metaPhase.py transfom** - transforms assembly graph 
+**strainy.py transfom** - transforms assembly graph 
 ## Conda Installation
 
 Create a new conda envinroment and activate it
 ```
-conda create -n metaphase python=3.8
-conda activate metaphase
+conda create -n strainy python=3.8
+conda activate strainy
 ```
 
 Build and install Flye
@@ -25,17 +25,17 @@ git clone https://github.com/fenderglass/Flye
 cd Flye
 python setup.py install
 ```
-Get metaPhase source and install requirements
+Get strainy source and install requirements
 ```
 cd ~/
-git clone https://github.com/katerinakazantseva/metaPhase.git
-cd metaphase
+git clone https://github.com/katerinakazantseva/strainy.git
+cd strainy
 pip install -r requirements.txt
 ```
 
 Run test code
 ```
-python3 metaphase.py phase  -o test_dir -b test_set/toy.bam -g test_set/toy.gfa -f test_set/toy.fasta -t 1 -m hifi 
+python3 strainy.py phase  -o test_dir -b test_set/toy.bam -g test_set/toy.gfa -f test_set/toy.fasta -t 1 -m hifi 
 ```
 
 ## Source Installation
@@ -62,7 +62,7 @@ $ pip install -r requirements.txt
 
 ## Input requirements
 
-metaPhase takes as input gfa graph (can be produced with [**metaFlye**](https://github.com/fenderglass/Flye) or minigraph), 
+strainy takes as input gfa graph (can be produced with [**metaFlye**](https://github.com/fenderglass/Flye) or minigraph), 
 fasta file and BAM (reads alignned to fasta reference). Also it supports hifi and nanopore modes.
 
 How to get fasta from gfa:
@@ -72,7 +72,7 @@ awk '/^S/{print ">"$2"\n"$3}’ assembly_graph_.gfa | fold > assembly_graph_sim3
 
 Usage:
 ```
-metaphase.py [-h] [-s SNP] [-t THREADS] -o OUTPUT -b BAM -g GFA -f FA -m {hifi,nano} stage
+strainy.py [-h] [-s SNP] [-t THREADS] -o OUTPUT -b BAM -g GFA -f FA -m {hifi,nano} stage
 
 positional arguments:
   stage                 stage to run: either phase or transform
@@ -100,7 +100,7 @@ It is not recommended to change other parameters.
 ## Run and outputs
 
 ```
-python3 ./metaPhase.py phase -o output_dir -b bam_file -g gfa_graph -f fasta file -m mode -t threads
+python3 ./strainy.py phase -o output_dir -b bam_file -g gfa_graph -f fasta file -m mode -t threads
 ```
 Phasing stage clusters reads and produce csv files with read names and corresponding cluster names and BAM file wich visualise reads clustering
 
@@ -109,7 +109,7 @@ Phasing stage clusters reads and produce csv files with read names and correspon
 
 
 ```
-python3 ./metaPhase.py transform -o output_dir -b bam_file -g gfa_graph -f fasta file -m mode -t threads
+python3 ./strainy.py transform -o output_dir -b bam_file -g gfa_graph -f fasta file -m mode -t threads
 ```
 Transform stage transform and simplify initial assembly graph, produce  final gfa file transformed_after_simplification_merged.gfa
 <img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
