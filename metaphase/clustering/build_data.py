@@ -188,7 +188,7 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
                 continue
 
         min_snp_freq = max(unseparated_cluster_min_reads, AF * len(npos))
-        alt_snp_freq = max(unseparated_cluster_min_reads, 0.3 * len(npos))
+        alt_snp_freq = max(unseparated_cluster_min_reads, split_allele_freq * len(npos))
         try:
             if len(npos) >= unseparated_cluster_min_reads:
                 #store most frequent symbol as consensus

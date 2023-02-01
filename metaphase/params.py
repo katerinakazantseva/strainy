@@ -80,6 +80,7 @@ de_max = {"hifi": 0.05, "nano": 0.10}
 
 # SNP allele frequency
 AF = 0.1
+split_allele_freq = 0.3
 
 # Please do not change
 #g = gfapy.Gfa.from_file(gfa)
