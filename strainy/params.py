@@ -12,7 +12,7 @@ class GlobalArgumentStorage(object):
         self.gfa_transformed1 =  None
         self.gfa_transformed2 = None
 
-MetaPhaseArgs = GlobalArgumentStorage()
+StRainyArgs = GlobalArgumentStorage()
 
 #TODO: constant storage
 
@@ -38,7 +38,7 @@ write_consensus_cache = True
 
 delete_files = False
 
-# snp file path. If=None, metaPhase call snp using bcftools
+# snp file path. If=None, strainy call snp using bcftools
 # snp = None
 
 """It is not recommended to change parameters below"""

@@ -1,9 +1,9 @@
 import networkx as nx
 import logging
 
-from metaphase.clustering.community_detection import find_communities
-from metaphase.clustering.build_adj_matrix import *
-from metaphase.clustering.build_data import *
+from strainy.clustering.community_detection import find_communities
+from strainy.clustering.build_adj_matrix import *
+from strainy.clustering.build_data import *
 
 
 logger = logging.getLogger()
@@ -67,7 +67,7 @@ def split_cluster(cl,cluster, data,cons,clSNP, bam, edge, R, I,only_with_common_
 
 
 def build_adj_matrix_clusters (edge,cons,cl,flye_consensus, only_with_common_snip=True, set_slusters=None):
-    #SNP_pos = read_snp(MetaPhaseArgs.snp, edge, MetaPhaseArgs.bam, AF)
+    #SNP_pos = read_snp(StRainyArgs.snp, edge, StRainyArgs.bam, AF)
     if set_slusters==None:
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
     else:
@@ -123,7 +123,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     to_remove = []
     G_vis_before = nx.nx_agraph.to_agraph(G_vis)
     G_vis_before.layout(prog="neato")
-    G_vis_before.draw("%s/graphs/cluster_GV_graph_before_remove_%s.png" % (MetaPhaseArgs.output, edge))
+    G_vis_before.draw("%s/graphs/cluster_GV_graph_before_remove_%s.png" % (StRainyArgs.output, edge))
 
 
     path_remove=[]
@@ -154,7 +154,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     G_vis.remove_edges_from(ebunch=to_remove)
     G_vis = nx.nx_agraph.to_agraph(G_vis)
     G_vis.layout(prog="neato")
-    G_vis.draw("%s/graphs/cluster_GV_graph_%s.png" % (MetaPhaseArgs.output, edge))
+    G_vis.draw("%s/graphs/cluster_GV_graph_%s.png" % (StRainyArgs.output, edge))
     G = nx.from_pandas_adjacency(M)
     for n_path in path_remove:
         try:
@@ -245,10 +245,10 @@ def split_all2(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq):
 
 
 def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
-    reference_seq = read_fasta_seq(MetaPhaseArgs.fa, edge)
+    reference_seq = read_fasta_seq(StRainyArgs.fa, edge)
 
     cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
-    cl.to_csv("%s/clusters/1.csv" % MetaPhaseArgs.output)
+    cl.to_csv("%s/clusters/1.csv" % StRainyArgs.output)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
     cl.loc[cl['Cluster'] == 1000000, 'Cluster'] = 'NA'
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
@@ -265,13 +265,13 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             if cluster not in cons:
                 cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
-    cl.to_csv("%s/clusters/2.csv" % MetaPhaseArgs.output)
+    cl.to_csv("%s/clusters/2.csv" % StRainyArgs.output)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
 
     logging.info("Split2")
     for cluster in clusters:
         split_all2(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq)
-    cl.to_csv("%s/clusters/3.csv" % MetaPhaseArgs.output)
+    cl.to_csv("%s/clusters/3.csv" % StRainyArgs.output)
 
 
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 1000000
@@ -280,7 +280,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     split_all(cl, 1000000, data, cons, bam, edge, R, I, SNP_pos, reference_seq)
     cl = cl[cl['Cluster'] != 'NA']
     cl = cl[cl['Cluster'] != 1000000]
-    cl.to_csv("%s/clusters/4.csv" % MetaPhaseArgs.output)
+    cl.to_csv("%s/clusters/4.csv" % StRainyArgs.output)
     counts = cl['Cluster'].value_counts(dropna=False)
     cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
 
@@ -291,7 +291,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
 
     cl = join_clusters(cons, cl, R, edge, flye_consensus)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
-    cl.to_csv("%s/clusters/5.csv" % MetaPhaseArgs.output)
+    cl.to_csv("%s/clusters/5.csv" % StRainyArgs.output)
     for cluster in clusters:
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)

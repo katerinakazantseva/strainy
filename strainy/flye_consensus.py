@@ -14,7 +14,7 @@ from Bio import SeqIO, Align
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-from metaphase.params import *
+from strainy.params import *
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
@@ -53,10 +53,10 @@ class FlyeConsensus:
 
         self._num_processes = num_processes
         self._indel_block_length_leniency = indel_block_length_leniency
-        if MetaPhaseArgs.mode == "hifi":
+        if StRainyArgs.mode == "hifi":
             self._coverage_limit = 3
             self._flye_mode = "--pacbio-hifi"
-        elif MetaPhaseArgs.mode == "nano":
+        elif StRainyArgs.mode == "nano":
             self._coverage_limit = 5
             self._flye_mode = "--nano-raw"
 
@@ -135,7 +135,7 @@ class FlyeConsensus:
         # Flye polisher
         reads_from_curr_cluster = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
         salt = random.randint(1000, 10000)
-        fprefix = "%s/flye_inputs/" % MetaPhaseArgs.output
+        fprefix = "%s/flye_inputs/" % StRainyArgs.output
         cluster_start, cluster_end, read_limits = self.extract_reads(reads_from_curr_cluster,
                                                         f"{fprefix}cluster_{cluster}_reads_{salt}.bam", edge)
 
@@ -161,7 +161,7 @@ class FlyeConsensus:
         pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
         polish_cmd = f"{flye} --polish-target {fname}.fa " \
                      f"{self._flye_mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
-                     f"-o {MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
+                     f"-o {StRainyArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             logger.debug("Running Flye polisher")
             subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
@@ -178,7 +178,7 @@ class FlyeConsensus:
 
         try:
             # read back the output of the Flye polisher
-            consensus = SeqIO.read(f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/polished_1.fasta",
+            consensus = SeqIO.read(f"{StRainyArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/polished_1.fasta",
                                    "fasta")
         except (ImportError, ValueError) as e:
             # If there is an error, the sequence string is set to empty by default
@@ -194,7 +194,7 @@ class FlyeConsensus:
             os.remove(f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
             os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
             os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
-            shutil.rmtree(f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
+            shutil.rmtree(f"{StRainyArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
 
         with self._lock:
             self._consensus_dict[consensus_dict_key] = {
@@ -204,7 +204,7 @@ class FlyeConsensus:
                 'read_limits': read_limits,
                 'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
                 'reference_path': f"{fname}.fa",
-                'bed_path': f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
+                'bed_path': f"{StRainyArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
                             f"base_coverage.bed.gz"
             }
             return self._consensus_dict[consensus_dict_key]
@@ -309,7 +309,7 @@ class FlyeConsensus:
         #else:
         #    pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
         pid = int(multiprocessing.current_process().pid)
-        fname = f"{MetaPhaseArgs.output}/distance_inconsistency-{pid}.log"
+        fname = f"{StRainyArgs.output}/distance_inconsistency-{pid}.log"
 
         first_shift = intersection_start - first_cl_dict['start']
         second_shift = intersection_start - second_cl_dict['start']

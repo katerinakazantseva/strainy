@@ -3,7 +3,7 @@ pd.options.mode.chained_assignment = None
 import pysam
 import logging
 
-from metaphase.params import *
+from strainy.params import *
 
 logger = logging.getLogger()
 

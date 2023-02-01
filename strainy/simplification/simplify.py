@@ -2,7 +2,7 @@ import numpy
 
 import gfapy
 import pandas as pd
-from metaphase.params import *
+from strainy.params import *
 import re
 #gaf file path
 

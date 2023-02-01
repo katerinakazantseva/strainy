@@ -1,5 +1,5 @@
 import gfapy
-from metaphase.params import *
+from strainy.params import *
 import logging
 
 

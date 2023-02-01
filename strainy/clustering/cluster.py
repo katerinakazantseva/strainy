@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import matplotlib as mt
 import multiprocessing
 
-from metaphase.clustering.community_detection import find_communities
-from metaphase.clustering.cluster_postprocess import postprocess
-from metaphase.clustering.build_adj_matrix import *
-from metaphase.clustering.build_data import *
-from metaphase.params import *
+from strainy.clustering.community_detection import find_communities
+from strainy.clustering.cluster_postprocess import postprocess
+from strainy.clustering.build_adj_matrix import *
+from strainy.clustering.build_data import *
+from strainy.params import *
 
 
 logger = logging.getLogger()
@@ -47,7 +47,7 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
     plt.suptitle(str(edge) + " coverage:" + str(cov) + " length:" + str(ln) + " clN:" + str(clN))
-    plt.savefig("%s/graphs/graph_%s_%s_%s.png" % (MetaPhaseArgs.output, edge, I, AF), format="PNG", dpi=300)
+    plt.savefig("%s/graphs/graph_%s_%s_%s.png" % (StRainyArgs.output, edge, I, AF), format="PNG", dpi=300)
     plt.close()
     """
 
@@ -67,14 +67,14 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
 def cluster(i, flye_consensus):
     # params = #i, consensus_dict)
     #i, flye_consensus = params
-    #print(MetaPhaseArgs, MetaPhaseArgs.bam)
+    #print(StRainyArgs, StRainyArgs.bam)
 
-    edge = MetaPhaseArgs.edges[i]
+    edge = StRainyArgs.edges[i]
     logger.info("### Reading SNPs...")
-    SNP_pos = read_snp(MetaPhaseArgs.snp, edge, MetaPhaseArgs.bam, AF)
+    SNP_pos = read_snp(StRainyArgs.snp, edge, StRainyArgs.bam, AF)
 
     logger.info("### Reading Reads...")
-    data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[MetaPhaseArgs.mode])
+    data = read_bam(StRainyArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs.mode])
     cl=pd.DataFrame(data={'ReadName': data.keys()})
     logger.debug(str(len(cl['ReadName'])) + " reads found")
     cl['Cluster'] = 'NA'
@@ -82,19 +82,19 @@ def cluster(i, flye_consensus):
         return
 
     if len(SNP_pos)==0:
-        #data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[MetaPhaseArgs.mode])
+        #data = read_bam(StRainyArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs.mode])
         cl = pd.DataFrame(data={'ReadName': data.keys()})
         cl['Cluster'] = 1
-        cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
+        cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF))
         return
 
     #CALCULATE DISTANCE and ADJ MATRIX
     logger.info("### Calculatind distances/Building adj matrix...")
     #try:
-    #    m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF), index_col='ReadName')
+    #    m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF), index_col='ReadName')
     #except FileNotFoundError:
-    m = build_adj_matrix(cl, data, SNP_pos, I, MetaPhaseArgs.bam, edge, R)
-    m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
+    m = build_adj_matrix(cl, data, SNP_pos, I, StRainyArgs.bam, edge, R)
+    m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF))
 
     logger.info("### Removing overweighed egdes...")
     m = remove_edges(m, R)
@@ -119,19 +119,19 @@ def cluster(i, flye_consensus):
             uncl = uncl + 1
 
     logger.info(str(clN)+" clusters found")
-    cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
+    cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF))
 
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = unclustered_group_N
     if clN != 0:
         logger.info("### Cluster post-processing...")
-        cl = postprocess(MetaPhaseArgs.bam, cl, SNP_pos, data, edge, R, I, flye_consensus)
+        cl = postprocess(StRainyArgs.bam, cl, SNP_pos, data, edge, R, I, flye_consensus)
     else:
         counts = cl['Cluster'].value_counts(dropna=False)
         cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]
     clN = len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
     logger.info(str(clN) + " clusters after post-processing")
-    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
+    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF))
     logger.info("### Graph viz...")
 
-    clusters_vis_stats (G,cl, clN,uncl,SNP_pos, MetaPhaseArgs.bam, edge, I, AF)
-    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF))
+    clusters_vis_stats (G,cl, clN,uncl,SNP_pos, StRainyArgs.bam, edge, I, AF)
+    cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF))

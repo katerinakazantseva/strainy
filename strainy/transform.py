@@ -10,13 +10,13 @@ import logging
 import multiprocessing
 import shutil
 
-from metaphase.clustering.build_adj_matrix import *
-from metaphase.clustering.cluster_postprocess import *
-from metaphase.simplification.simplify_links import *
-from metaphase.flye_consensus import FlyeConsensus
-from metaphase.clustering.build_data  import *
-from metaphase.params import *
-from metaphase.logging import set_thread_logging
+from strainy.clustering.build_adj_matrix import *
+from strainy.clustering.cluster_postprocess import *
+from strainy.simplification.simplify_links import *
+from strainy.flye_consensus import FlyeConsensus
+from strainy.clustering.build_data  import *
+from strainy.params import *
+from strainy.logging import set_thread_logging
 
 
 logger = logging.getLogger()
@@ -198,7 +198,7 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots,
     graph_vis = str(graph_vis)
     graph_vis = gv.AGraph(graph_vis)
     graph_vis.layout(prog="neato")
-    graph_vis.draw("%s/graphs/full_paths_cluster_GV_graph_%s.png" % (MetaPhaseArgs.output, edge))
+    graph_vis.draw("%s/graphs/full_paths_cluster_GV_graph_%s.png" % (StRainyArgs.output, edge))
     G_vis.remove_node("Src")
     G_vis.remove_node("Sink")
     return(cl_removed)
@@ -418,7 +418,7 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut=True):
     for cluster in othercl:
         other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
 
-    reference_seq = read_fasta_seq(MetaPhaseArgs.fa, edge)
+    reference_seq = read_fasta_seq(StRainyArgs.fa, edge)
     cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp, edge, reference_seq)
     i = g.try_get_segment(edge)
     seq = i.sequence
@@ -484,23 +484,23 @@ def gfa_to_nx(g):
 
 
 def graph_create_unitigs(i, graph, flye_consensus):
-    edge = MetaPhaseArgs.edges[i]
+    edge = StRainyArgs.edges[i]
     logger.debug(edge)
     full_paths_roots = []
     full_paths_leafs = []
     full_clusters = []
 
     try:
-        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output, edge, I, AF), keep_default_na=False)
-        SNP_pos = read_snp(MetaPhaseArgs.snp, edge, MetaPhaseArgs.bam, AF)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF), keep_default_na=False)
+        SNP_pos = read_snp(StRainyArgs.snp, edge, StRainyArgs.bam, AF)
         # Save
         #try:
             #data=all_data[edge]
         #except(KeyError, FileNotFoundError):
-        data = read_bam(MetaPhaseArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[MetaPhaseArgs.mode])
+        data = read_bam(StRainyArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs.mode])
         all_data[edge]=data
 
-        ln = int(pysam.samtools.coverage("-r", edge, MetaPhaseArgs.bam, "--no-header").split()[4])
+        ln = int(pysam.samtools.coverage("-r", edge, StRainyArgs.bam, "--no-header").split()[4])
         if len(cl.loc[cl['Cluster'] == 0,'Cluster'].values)>10:
             cl.loc[cl['Cluster'] == 0, 'Cluster'] = 1000000
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
@@ -510,7 +510,7 @@ def graph_create_unitigs(i, graph, flye_consensus):
         except:
             pass
 
-        reference_seq = read_fasta_seq(MetaPhaseArgs.fa, edge)
+        reference_seq = read_fasta_seq(StRainyArgs.fa, edge)
         cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
 
         if len(clusters) == 1:
@@ -605,14 +605,14 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
     except(FileNotFoundError, IndexError):
         logger.debug("NO CLUSTERS")
-        cov = pysam.samtools.coverage("-r", edge, MetaPhaseArgs.bam, "--no-header").split()[6]
+        cov = pysam.samtools.coverage("-r", edge, StRainyArgs.bam, "--no-header").split()[6]
         i = graph.try_get_segment(edge)
         logger.debug(cov)
         i.dp = round(float(cov))
         pass
         clusters = []
 
-    stats = open('%s/stats_clusters.txt' % MetaPhaseArgs.output, 'a')
+    stats = open('%s/stats_clusters.txt' % StRainyArgs.output, 'a')
     fcN = 0
     fpN = 0
 
@@ -633,7 +633,7 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
 def graph_link_unitigs(i, graph, G):
     logger.debug("CREATING NEW LINKS")
-    edge = MetaPhaseArgs.edges[i]
+    edge = StRainyArgs.edges[i]
     logger.debug(edge)
     link_added = False
 
@@ -643,7 +643,7 @@ def graph_link_unitigs(i, graph, G):
     except(KeyError):
         pass
     try:
-        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output,edge, I, AF), keep_default_na=False)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output,edge, I, AF), keep_default_na=False)
     except(FileNotFoundError):
         pass
     link_unitigs=[]
@@ -715,7 +715,7 @@ def graph_link_unitigs(i, graph, G):
             to_or=orient[n][1]
             w=1
             try:
-                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (MetaPhaseArgs.output,n, I, AF), keep_default_na=False)
+                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output,n, I, AF), keep_default_na=False)
             except(FileNotFoundError):
                 add_link(graph, "%s_%s" % (edge, clN), fr_or,n, to_or,w)
                 continue
@@ -825,39 +825,39 @@ def graph_link_unitigs(i, graph, G):
 
 
 def transform_main():
-    if os.path.isdir(MetaPhaseArgs.log_transform):
-        shutil.rmtree(MetaPhaseArgs.log_transform)
-    os.mkdir(MetaPhaseArgs.log_transform)
-    set_thread_logging(MetaPhaseArgs.log_transform, "transform", None)
+    if os.path.isdir(StRainyArgs.log_transform):
+        shutil.rmtree(StRainyArgs.log_transform)
+    os.mkdir(StRainyArgs.log_transform)
+    set_thread_logging(StRainyArgs.log_transform, "transform", None)
 
-    stats = open('%s/stats_clusters.txt' % MetaPhaseArgs.output, 'a')
+    stats = open('%s/stats_clusters.txt' % StRainyArgs.output, 'a')
     stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
     stats.close()
 
-    initial_graph = gfapy.Gfa.from_file(MetaPhaseArgs.gfa)
+    initial_graph = gfapy.Gfa.from_file(StRainyArgs.gfa)
     G = gfa_to_nx(initial_graph)
     #try:
-        #all_data = np.load("%s/all_data.npy" % MetaPhaseArgs.output , allow_pickle='TRUE').item()
+        #all_data = np.load("%s/all_data.npy" % StRainyArgs.output , allow_pickle='TRUE').item()
     #except(FileNotFoundError):
         #pass
 
     try:
-        with open(os.path.join(MetaPhaseArgs.output, consensus_cache_path), 'rb') as f:
+        with open(os.path.join(StRainyArgs.output, consensus_cache_path), 'rb') as f:
             logger.debug(os.getcwd())
             consensus_dict = pickle.load(f)
     except FileNotFoundError:
         consensus_dict = {}
 
-    flye_consensus = FlyeConsensus(MetaPhaseArgs.bam, MetaPhaseArgs.fa, 1, consensus_dict, multiprocessing.Manager())
+    flye_consensus = FlyeConsensus(StRainyArgs.bam, StRainyArgs.fa, 1, consensus_dict, multiprocessing.Manager())
 
-    for i in range(0, len(MetaPhaseArgs.edges)):
+    for i in range(0, len(StRainyArgs.edges)):
         #TODO: this can run in parallel (and probably takes the most time)
         graph_create_unitigs(i, initial_graph, flye_consensus)
 
-    for i in range(0, len(MetaPhaseArgs.edges)):
+    for i in range(0, len(StRainyArgs.edges)):
         graph_link_unitigs(i, initial_graph, G)
 
-    gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed)
+    gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed)
 
     for ed in initial_graph.segments:
         if ed.name in remove_clusters:
@@ -867,21 +867,21 @@ def transform_main():
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
 
-    gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed)
+    gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed)
 
     simplify_links(initial_graph)
 
-    gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed1)
+    gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed1)
     
     try:
         gfapy.GraphOperations.merge_linear_paths(initial_graph)
-        gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed2)
+        gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
     except:
         for i in initial_graph.segments:
             if len(i.sequence)==0:
                 i.sequence='A'
         gfapy.GraphOperations.merge_linear_paths(initial_graph)
-        gfapy.Gfa.to_file(initial_graph, MetaPhaseArgs.gfa_transformed2)
+        gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
 
 
 if __name__ == "__main__":
