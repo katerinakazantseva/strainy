@@ -107,11 +107,6 @@ def main():
     StRainyArgs.edges = input_graph.segment_names
     ###
 
-<<<<<<< HEAD:strainy.py
-    set_thread_logging(StRainyArgs.output, "root", None)
-=======
->>>>>>> 045ee09 (runs e2e with no issues, needs further testing on other platforms):metaphase.py
-
     if args.stage == "phase":
         sys.exit(phase_main())
     elif args.stage == "transform":
