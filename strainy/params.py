@@ -20,7 +20,7 @@ StRainyArgs = GlobalArgumentStorage()
 
 # Path to the installed Flye executable
 # Should be Flye/bin/flye
-flye = "../Flye/bin/flye"
+flye = "flye"
 
 minigraph=False
 unseparated_cluster_min_reads = 3
