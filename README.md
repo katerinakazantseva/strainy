@@ -23,7 +23,7 @@ cd strainy
 
 Create a new conda envinroment and activate it
 ```
-conda env create -f  strainy_conda_environment.yml -n strainy python=3.8
+conda env create -f  strainy_conda_environment.yml -n strainy python>=3.8
 conda activate 
 ```
 
