@@ -56,6 +56,7 @@ $ git clone https://github.com/katerinakazantseva/metaPhase.git
 $ cd metaPhase
 $ pip install -r requirements.txt
 $ git submodule update --init --recursive
+$ pushd submodules/Flye/ && python setup.py install && popd
 ```
 
 **MacOS 12:**
@@ -65,6 +66,7 @@ $ git clone https://github.com/katerinakazantseva/metaPhase.git
 $ cd metaPhase
 $ pip install -r requirements.txt
 $ git submodule update --init --recursive
+$ pushd submodules/Flye/ && python setup.py install && popd
 ```
 
 ## Input requirements

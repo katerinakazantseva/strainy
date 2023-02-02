@@ -1,8 +1,8 @@
-Bio
+biopython
 gfapy
 karateclub
 matplotlib
-more_itertools
+more-itertools
 networkx
 numpy
 pandas

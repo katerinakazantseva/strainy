@@ -89,7 +89,7 @@ def main():
 
     if args.fasta is None:
         fasta_name = os.path.join(MetaPhaseArgs.output, 'gfa_converted.fasta')
-        fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {MetaPhaseArgs.gfa} | fold > {fasta_name}"""
+        fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {MetaPhaseArgs.gfa} > {fasta_name}"""
         try:
             logger.info(f'Creating fasta file from the provided gfa file {MetaPhaseArgs.gfa}')
             subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
