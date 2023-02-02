@@ -4,17 +4,18 @@ import subprocess
 import os
 import shutil
 import random
-import re
 import logging
 import time
 
 import edlib
 import pysam
-from Bio import SeqIO, Align
+from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from argparse import Namespace
 
 from strainy.params import *
+from flye.main import _run_polisher_only
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
@@ -55,10 +56,14 @@ class FlyeConsensus:
         self._indel_block_length_leniency = indel_block_length_leniency
         if StRainyArgs.mode == "hifi":
             self._coverage_limit = 3
-            self._flye_mode = "--pacbio-hifi"
+            self._platform = "pacbio"
+            self._read_type = "hifi"
+            self._mode = "--pacbio-hifi"
         elif StRainyArgs.mode == "nano":
             self._coverage_limit = 5
-            self._flye_mode = "--nano-raw"
+            self._platform = "nano"
+            self._read_type = "raw"
+            self._mode = "--nano-raw"
 
         self._key_hit = multiproc_manager.Value("i", 0)
         self._key_miss = multiproc_manager.Value("i", 0)
@@ -159,8 +164,19 @@ class FlyeConsensus:
                    f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
         # index the bam file
         pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
-        polish_cmd = f"{flye} --polish-target {fname}.fa " \
-                     f"{self._flye_mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
+
+        #  Polisher arguments for to call _run_polisher_only(polish_args)
+        # polish_args = Namespace(polish_target=f"{fname}.fa",
+        #                         reads=[f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam"],
+        #                         out_dir=f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}",
+        #                         num_iters=1,
+        #                         threads=1,
+        #                         platform=self._platform,
+        #                         read_type=self._read_type,
+        #                         output_progress=True)
+
+        polish_cmd = f"{StRainyArgs.flye} --polish-target {fname}.fa " \
+                     f" {self._mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
                      f"-o {StRainyArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             logger.debug("Running Flye polisher")
@@ -241,7 +257,7 @@ class FlyeConsensus:
         alignment_string: a string consisting of '-', '.', '|' characters which correspond to indel, mismatch, match,
         respectively.
         Mismatches are worth 1 point, indels are 1 point each if there are more than 5 of them in a contiguous block.
-        Except for the indel blocks start at at the beginning or finish at the end, those indels are ignored.
+        Except for the indel blocks start at the beginning or finish at the end, those indels are ignored.
         Moreover, variants that are covered by less than self._coverage_limits are ignored (assumed match)
         """
         score = 0

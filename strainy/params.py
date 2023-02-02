@@ -16,26 +16,16 @@ StRainyArgs = GlobalArgumentStorage()
 
 #TODO: constant storage
 
-#TODO: link Flye as submodule
-
-# Path to the installed Flye executable
-# Should be Flye/bin/flye
-flye = "flye"
-
 minigraph=False
 unseparated_cluster_min_reads = 3
 
 # Path to store and read the consensus dictionary
 # If one already exists and write_consensus_cache is true, it may be overwritten
-consensus_cache_path = "consensus_dict_2.pkl"
+consensus_cache_path = "consensus_dict.pkl"
 
 # Whether to store the consensus cache or not
 # This needs to be True to carry out it from phase part to transform part
-write_consensus_cache = True
-
-# Number processes, default (-1) uses all available
-#processes = 4
-
+write_consensus_cache = False
 delete_files = False
 
 # snp file path. If=None, strainy call snp using bcftools
