@@ -25,7 +25,7 @@ def main():
     strainy_root = os.path.dirname(os.path.realpath(__file__))
     sys.path.insert(0, strainy_root)
 
-    BIN_TOOLS = ["samtools", "bcftools", params.flye]
+    BIN_TOOLS = ["samtools", "bcftools"]
     for tool in BIN_TOOLS:
         if not shutil.which(tool):
             print("{} not installed".format(tool), file=sys.stderr)
@@ -61,7 +61,7 @@ def main():
     StRainyArgs.mode = args.mode
     StRainyArgs.snp = args.snp
     StRainyArgs.threads = args.threads
-    StRainyArgs.flye = os.path.join(metaphase_root, "submodules", "Flye", "bin", "flye")
+    StRainyArgs.flye = os.path.join(strainy_root, "submodules", "Flye", "bin", "flye")
     StRainyArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
     StRainyArgs.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
     StRainyArgs.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
@@ -85,22 +85,22 @@ def main():
     if not os.path.isdir(StRainyArgs.output):
         os.mkdir(StRainyArgs.output)
 
-    set_thread_logging(MetaPhaseArgs.output, "root", None)
+    set_thread_logging(StRainyArgs.output, "root", None)
 
     if args.fasta is None:
-        fasta_name = os.path.join(MetaPhaseArgs.output, 'gfa_converted.fasta')
-        fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {MetaPhaseArgs.gfa} > {fasta_name}"""
+        fasta_name = os.path.join(StRainyArgs.output, 'gfa_converted.fasta')
+        fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {StRainyArgs.gfa} > {fasta_name}"""
         try:
-            logger.info(f'Creating fasta file from the provided gfa file {MetaPhaseArgs.gfa}')
+            logger.info(f'Creating fasta file from the provided gfa file {StRainyArgs.gfa}')
             subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
-            MetaPhaseArgs.fa = fasta_name
+            StRainyArgs.fa = fasta_name
             logger.info('Done!')
         except subprocess.CalledProcessError as e:
             print(e)
             logger.error('You can create a fasta file yourself and provide it with "-f file.fasta"')
             return 1
     else:
-        MetaPhaseArgs.fa = args.fasta
+        StRainyArgs.fa = args.fasta
 
 
     input_graph = gfapy.Gfa.from_file(args.gfa)
