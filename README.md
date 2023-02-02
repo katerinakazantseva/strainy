@@ -31,9 +31,15 @@ conda activate
 Run test code
 ```
 python3 strainy.py phase  -o test_dir -b test_set/toy.bam -g test_set/toy.gfa -f test_set/toy.fasta -t 1 -m hifi 
+python3 strainy.py transfrom  -o test_dir -b test_set/toy.bam -g test_set/toy.gfa -f test_set/toy.fasta -t 1 -m hifi 
 ```
 
+If you use an M1 processor you should make `conda config --add subdirs osx-64`  before installation. Find details [**here**](https://github.com/conda/conda/issues/11216)
+
 ## Source Installation
+
+If for some reason you cannot setup conda environment you can install from the source:
+
 ### Requirements
 ```
 python3
