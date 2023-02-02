@@ -13,25 +13,20 @@ stRainy is a graph-based phasing algorithm, that takes a de novo assembly graph 
 **strainy.py transfom** - transforms assembly graph 
 ## Conda Installation
 
-Create a new conda envinroment and activate it
-```
-conda create -n strainy python=3.8
-conda activate strainy
-```
 
-Build and install Flye
-```
-git clone https://github.com/fenderglass/Flye
-cd Flye
-python setup.py install
-```
 Get strainy source and install requirements
 ```
 cd ~/
 git clone https://github.com/katerinakazantseva/strainy.git
 cd strainy
-pip install -r requirements.txt
 ```
+
+Create a new conda envinroment and activate it
+```
+conda env create -f  strainy_conda_environment.yml -n strainy python=3.8
+conda activate 
+```
+
 
 Run test code
 ```
