@@ -831,12 +831,11 @@ def clean_g(g):
     for line in g.dovetails:
         if line.from_segment==line.to_segment: #TODO do not self links
             g.rm(line)
-        if g.segment(line.from_segment).virtual==True or g.segment(line.to_segment).virtual==True:
-            g.rm(line)
+        #if g.segment(line.from_segment).virtual==True or g.segment(line.to_segment).virtual==True:
+        #    g.rm(line)
     for i in g.segments:  #TODO do not create o len unitigs
         if len(i.sequence) == 0:
             i.sequence = 'A'
-    return g
 
 
 def transform_main():
@@ -883,17 +882,13 @@ def transform_main():
             initial_graph.rm(link)
 
     gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed)
-
     simplify_links(initial_graph)
-
     gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed1)
-    try:
-        gfapy.GraphOperations.merge_linear_paths(initial_graph)
-        gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
-    except:
-        initial_graph=clean_g(initial_graph)
-        gfapy.GraphOperations.merge_linear_paths(initial_graph)
-        gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
+
+    clean_g(initial_graph)
+    gfapy.GraphOperations.merge_linear_paths(initial_graph)
+    clean_g(initial_graph)  #removes zero edges created during merge
+    gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
 
 
 if __name__ == "__main__":
