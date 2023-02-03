@@ -2,7 +2,6 @@ biopython
 gfapy
 karateclub
 matplotlib
-more-itertools
 networkx
 numpy
 pandas

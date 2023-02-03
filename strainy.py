@@ -25,12 +25,6 @@ def main():
     strainy_root = os.path.dirname(os.path.realpath(__file__))
     sys.path.insert(0, strainy_root)
 
-    BIN_TOOLS = ["samtools", "bcftools"]
-    for tool in BIN_TOOLS:
-        if not shutil.which(tool):
-            print("{} not installed".format(tool), file=sys.stderr)
-            return 1
-
     parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
     parser.add_argument("stage", help="stage to run: either phase or transform")
     parser.add_argument("-s", "--snp", help="vcf file", default=None)
@@ -67,6 +61,12 @@ def main():
     StRainyArgs.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
     StRainyArgs.log_phase = os.path.join(args.output, "log_phase")
     StRainyArgs.log_transform = os.path.join(args.output, "log_transform")
+
+    BIN_TOOLS = ["samtools", "bcftools", StRainyArgs.flye]
+    for tool in BIN_TOOLS:
+        if not shutil.which(tool):
+            print("{} not installed".format(tool), file=sys.stderr)
+            return 1
 
     if not os.path.isdir(StRainyArgs.output):
         os.mkdir(StRainyArgs.output)

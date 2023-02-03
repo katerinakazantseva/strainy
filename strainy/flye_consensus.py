@@ -15,7 +15,7 @@ from Bio.SeqRecord import SeqRecord
 from argparse import Namespace
 
 from strainy.params import *
-from flye.main import _run_polisher_only
+#from flye.main import _run_polisher_only
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)

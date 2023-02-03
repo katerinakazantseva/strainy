@@ -11,62 +11,37 @@ stRainy is a graph-based phasing algorithm, that takes a de novo assembly graph 
 **strainy.py phase** - performs reads clustering according to SNP positions using community detection approach
 
 **strainy.py transfom** - transforms assembly graph 
+
 ## Conda Installation
 
 
-Get stRainy source and install requirements
+The recommended way of installing is though [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html):
+
 ```
-cd ~/
-git clone https://github.com/katerinakazantseva/strainy.git
-cd strainy
+git clone https://github.com/katerinakazantseva/stRainy
+cd stRainy
+make -C submodules/flye
+conda env create -f strainy_conda_environment.yml -n strainy
 ```
 
-Create a new conda envinroment and activate it
-```
-conda env create -f  strainy_conda_environment.yml -n strainy python>=3.8
-conda activate 
-```
+Note that if you use an M1 conda installation, you should run `conda config --add subdirs osx-64` before installation. 
+Find details [**here**](https://github.com/conda/conda/issues/11216)
 
+Once installed, you will need to activate the conda environemnt prior running:
 
-Run test code
 ```
-python3 strainy.py phase  -o test_dir -b test_set/toy.bam -g test_set/toy.gfa -f test_set/toy.fasta -t 1 -m hifi 
-python3 strainy.py transfrom  -o test_dir -b test_set/toy.bam -g test_set/toy.gfa -f test_set/toy.fasta -t 1 -m hifi 
+conda activate strainy
+python strainy.py
 ```
 
-If you use an M1 processor you should make `conda config --add subdirs osx-64`  before installation. Find details [**here**](https://github.com/conda/conda/issues/11216)
+## Quick usage example
 
-## Source Installation
+After successful installation, you should be able to run:
 
-If for some reason you cannot setup conda environment you can install from the source:
-
-### Requirements
 ```
-python3
-pip
-samtools
-```
-
-### Installation
-
-**Ubuntu 20.04:**
-```
-$ sudo apt update && sudo apt install libbz2-dev liblzma-dev graphviz graphviz-dev bcftools
-$ git clone https://github.com/katerinakazantseva/metaPhase.git
-$ cd metaPhase
-$ pip install -r requirements.txt
-$ git submodule update --init --recursive
-$ pushd submodules/Flye/ && python setup.py install && popd
-```
-
-**MacOS 12:**
-```
-$ brew install bcftools
-$ git clone https://github.com/katerinakazantseva/metaPhase.git
-$ cd metaPhase
-$ pip install -r requirements.txt
-$ git submodule update --init --recursive
-$ pushd submodules/Flye/ && python setup.py install && popd
+conda activate strainy
+python3 strainy.py phase  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 1 -m hifi 
+python3 strainy.py transfrom  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 1 -m hifi 
 ```
 
 ## Input requirements
