@@ -22,7 +22,7 @@ git clone https://github.com/katerinakazantseva/stRainy
 cd stRainy
 git submodule update --init
 make -C submodules/flye
-conda env create -f conda_environment.yml -n strainy
+conda env create -f environment.yml -n strainy
 ```
 
 Note that if you use an M1 conda installation, you should run `conda config --add subdirs osx-64` before installation. 
