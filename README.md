@@ -32,7 +32,7 @@ Once installed, you will need to activate the conda environemnt prior running:
 
 ```
 conda activate strainy
-python strainy.py
+./strainy.py
 ```
 
 ## Quick usage example
@@ -41,8 +41,8 @@ After successful installation, you should be able to run:
 
 ```
 conda activate strainy
-python3 strainy.py phase  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 1 -m hifi 
-python3 strainy.py transfrom  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 1 -m hifi 
+./strainy.py phase  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 4 -m hifi 
+./strainy.py transfrom  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 4 -m hifi 
 ```
 
 ## Input requirements
@@ -86,7 +86,7 @@ required named arguments:
 ## Run and outputs
 
 ```
-python3 ./strainy.py phase -o output_dir -b bam_file -g gfa_graph -m mode -t threads
+./strainy.py phase -o output_dir -b bam_file -g gfa_graph -m mode -t threads
 ```
 Phasing stage clusters reads and produce csv files with read names and corresponding cluster names and BAM file wich visualise reads clustering
 
@@ -95,7 +95,7 @@ Phasing stage clusters reads and produce csv files with read names and correspon
 
 
 ```
-python3 ./strainy.py transform -o output_dir -b bam_file -g gfa_graph -m mode -t threads
+./strainy.py transform -o output_dir -b bam_file -g gfa_graph -m mode -t threads
 ```
 Transform stage transform and simplify initial assembly graph, produce  final gfa file transformed_after_simplification_merged.gfa
 <img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
