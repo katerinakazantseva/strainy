@@ -1,6 +1,7 @@
+name: strainy
 channels:
-  - bioconda
   - conda-forge
+  - bioconda
   - defaults
 dependencies:
   - python>=3.8
