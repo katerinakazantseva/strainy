@@ -20,8 +20,9 @@ The recommended way of installing is though [conda](https://conda.io/projects/co
 ```
 git clone https://github.com/katerinakazantseva/stRainy
 cd stRainy
+git submodule update --init
 make -C submodules/flye
-conda env create -f strainy_conda_environment.yml -n strainy
+conda env create -f conda_environment.yml -n strainy
 ```
 
 Note that if you use an M1 conda installation, you should run `conda config --add subdirs osx-64` before installation. 
@@ -52,9 +53,11 @@ and
 2. BAM file (reads aligned to the fasta reference generated from the GFA file).
 
 
-How to get fasta from gfa:
+How to get fasta from gfa and perform alignment (assuming ONT reads):
 ```
-awk '/^S/{print ">"$2"\n"$3}’ assembly_graph_.gfa | fold > assembly_graph_sim3.fa 
+awk '/^S/{print ">"$2"\n"$3}’ assembly_graph.gfa > assembly_graph.fasta
+minimap2 -ax map-ont assembly_graph.gfa reads.fastq | samtools sort -@4 -t 8 > assembly_graph.bam
+samtools index assmebly_grpah.bam
 ```
 
 Usage:
@@ -79,8 +82,6 @@ required named arguments:
   -g GFA, --gfa GFA     gfa file
   -m {hifi,nano}, --mode {hifi,nano}
 ```
-
-It is not recommended to change the parameters in ```params.py```.
 
 ## Run and outputs
 
