@@ -39,7 +39,7 @@ def main():
 
     args = parser.parse_args()
 
-    bam_index = re.sub(".bam",".bam.bai", args.bam)
+    bam_index = args.bam + ".bai"
     bam_index_exist = os.path.exists(bam_index)
     if bam_index_exist == False:
         raise Exception("No index file found (%s) Please create index using \"samtools index\"." % bam_index)
