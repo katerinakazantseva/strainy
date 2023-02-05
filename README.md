@@ -21,7 +21,7 @@ The recommended way of installing is though [conda](https://conda.io/projects/co
 git clone https://github.com/katerinakazantseva/stRainy
 cd stRainy
 git submodule update --init
-make -C submodules/flye
+make -C submodules/Flye
 conda env create -f environment.yml -n strainy
 ```
 
