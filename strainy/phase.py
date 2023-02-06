@@ -37,15 +37,10 @@ def phase(edges):
     if os.path.isdir(StRainyArgs.log_phase):
         shutil.rmtree(StRainyArgs.log_phase)
     os.mkdir(StRainyArgs.log_phase)
-    #CustomManager.register('FlyeConsensus', FlyeConsensus)
-    #with CustomManager() as manager:
     default_manager = multiprocessing.Manager()
-    #lock = default_manager.Lock()
     empty_consensus_dict = {}
-    num_processes = multiprocessing.cpu_count() if StRainyArgs.threads == -1 else StRainyArgs.threads
-    #shared_flye_consensus = manager.FlyeConsensus(StRainyArgs.bam, StRainyArgs.gfa, num_processes, empty_consensus_dict, lock)
-    shared_flye_consensus = FlyeConsensus(StRainyArgs.bam, StRainyArgs.fa, num_processes, empty_consensus_dict, default_manager)
-    pool = multiprocessing.Pool(num_processes)
+    shared_flye_consensus = FlyeConsensus(StRainyArgs.bam, StRainyArgs.fa, StRainyArgs.threads, empty_consensus_dict, default_manager)
+    pool = multiprocessing.Pool(StRainyArgs.threads)
     init_args = [(i, shared_flye_consensus) for i in range(len(edges))]
     pool.map_async(_thread_fun, init_args, error_callback=lambda e: _error_callback(pool, e))
     pool.close()
@@ -55,25 +50,35 @@ def phase(edges):
 
 
 def color_bam(edges):
-    pool = multiprocessing.Pool(3)
+    pool = multiprocessing.Pool(StRainyArgs.threads)
     pool.map(color, range(0, len(edges)))
     pool.close()
 
     out_bam_dir = os.path.join(StRainyArgs.output, 'bam')
-    to_merge_file = os.path.join(out_bam_dir, 'to_merge.txt')
-    to_delete = []
-    with open(to_merge_file, "wb") as f:
-        for fname in subprocess.check_output('find %s -name "*unitig*.bam"' % out_bam_dir, shell=True).split(b'\n'):
-            if len(fname):
-                f.write(fname + b'\n')
-                to_delete.append(fname)
+    files_to_be_merged = []
+    for fname in subprocess.check_output(f'find {out_bam_dir} -name "*unitig*.bam"', shell=True, universal_newlines=True).split('\n'):
+        if len(fname):
+            files_to_be_merged.append(fname)
 
-    subprocess.check_output('samtools merge %s/bam/coloredBAM.bam -f -b %s' % (StRainyArgs.output, to_merge_file),
-                            shell=True, capture_output=False)
-    for f in to_delete:
+    # Number of file to be merged could be > 4092, in which case samtools merge throws too many open files error
+    for i, bam_file in enumerate(files_to_be_merged):
+        # fetch the header and put it at the top of the file, for the first bam_file only
+        if i == 0:
+            subprocess.check_output(f"samtools view -H {bam_file} > {StRainyArgs.output}/bam/coloredSAM.sam", shell=True)
+
+        # convert bam to sam, append to the file
+        subprocess.check_output(f"samtools view {bam_file} >> {StRainyArgs.output}/bam/coloredSAM.sam", shell=True)
+
+    # convert the file to bam and sort
+    subprocess.check_output(f"samtools view -b {StRainyArgs.output}/bam/coloredSAM.sam >> {StRainyArgs.output}/bam/unsortedBAM.bam", shell=True)
+    pysam.samtools.sort(f"{StRainyArgs.output}/bam/unsortedBAM.bam", "-o", f"{StRainyArgs.output}/bam/coloredBAM.bam")
+    pysam.samtools.index(f"{StRainyArgs.output}/bam/coloredBAM.bam", f"{StRainyArgs.output}/bam/coloredBAM.bai")
+
+    # remove unnecessary files
+    os.remove(f"{StRainyArgs.output}/bam/unsortedBAM.bam")
+    os.remove(f"{StRainyArgs.output}/bam/coloredSAM.sam")
+    for f in files_to_be_merged:
         os.remove(f)
-    #subprocess.check_output('rm `find %s/bam -name "*unitig*.bam"`' % StRainyArgs.output, shell=True, capture_output=False)
-    pysam.samtools.index("%s/bam/coloredBAM.bam" % StRainyArgs.output, "%s/bam/coloredBAM.bai" % StRainyArgs.output)
 
 
 def phase_main():
