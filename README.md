@@ -37,7 +37,7 @@ After successful installation, you should be able to run:
 ```
 conda activate strainy
 ./strainy.py phase  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 4 -m hifi 
-./strainy.py transfrom  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 4 -m hifi 
+./strainy.py transform  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 4 -m hifi 
 ```
 
 ## Limitations
