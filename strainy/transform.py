@@ -149,9 +149,8 @@ def remove_nested(G, cons):
 
 
 def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots, full_paths_leafs, full_clusters, cluster_distances):
-     '''
+    '''
      Graph visualization function
-    
     '''
     M = cluster_distances
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
@@ -213,9 +212,8 @@ def find_full_paths(G, paths_roots, paths_leafs):
 
 
 def add_link(graph, fr, fr_or, to, to_or,w):
-     '''
+    '''
      Add gfa links between unitigs
-    
     '''
     link = 'L	%s	%s	%s	%s	0M	ex:i:%s' % (fr, fr_or, to, to_or, w)
     try:
@@ -225,7 +223,7 @@ def add_link(graph, fr, fr_or, to, to_or,w):
 
 
 def add_path_links(graph, edge, paths,G):
-     '''
+    '''
      Add gfa links between newly created unitigs forming 'full path'
     '''
     for path in paths:
