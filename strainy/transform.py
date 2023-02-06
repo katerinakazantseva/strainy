@@ -22,13 +22,6 @@ from strainy.logging import set_thread_logging
 logger = logging.getLogger()
 
 
-#g = gfapy.Gfa.from_file(gfa)
-#initial_graph = None
-#full_paths_leafs_roots = {}
-#full_path_clusters = {}
-#subunits_borderline = {}
-#connected_subunits = {}
-
 
 #TODO: get rid of these global variables.
 full_cl = {}
@@ -43,7 +36,10 @@ all_data={}
 
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
-
+    '''
+    The function creates initiges in the gfa graph
+    
+    '''
     consensus = flye_consensus.flye_consensus(clN, edge, cl)
     consensus_start = consensus['start']
     if consensus_start>left:
@@ -54,10 +50,6 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         logger.debug("CHECKIT " + str(edge))
     else:
         seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
-    #print(consensus_start)
-    #print(left)
-    #print(right)
-    #print(len(seq))
     if len(seq) == 0:
         g.add_line("S\t%s_%s\t*" % (edge, clN))
         i = g.try_get_segment("%s_%s" % (edge, clN))
@@ -74,20 +66,17 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         new_line.name = str(edge) + "_" + str(clN)
         new_line.sid = str(edge) + "_" + str(clN)
         new_line.sequence = seq
-
-        #new_line.sequence = seq[left - consensus_start:right - consensus_start + 1]
         new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
 
 
 def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs, cluster_distances):
-    #M = build_adj_matrix_clusters(cons, SNP_pos, cl, False)
-    #M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
-    #M = change_w(M, 1)
+    '''
+    Create 'overlap' graph for clusters within a unitig, based on flye distance
+    
+    '''
     M = cluster_distances
-
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
-    #print(G)
     try:
         G.remove_node(0)
     except:
@@ -136,7 +125,10 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
 
 
 def remove_nested(G, cons):
-
+    '''
+     Disconnect 'nested' clusters from the parent cluster
+    
+    '''
     nodes=list(G.nodes())
     for node in nodes:
         try:
@@ -157,12 +149,12 @@ def remove_nested(G, cons):
 
 
 def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots, full_paths_leafs, full_clusters, cluster_distances):
-    #M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
-    #M = change_w(M, 1)
+     '''
+     Graph visualization function
+    
+    '''
     M = cluster_distances
-
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
-
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
     cl_removed = []
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
@@ -206,7 +198,6 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots,
 
 def find_full_paths(G, paths_roots, paths_leafs):
     paths = []
-    #print("PATHS")
     for root in paths_roots:
         try:
             #TODO: we need to increas cutoff for longer unitigs with more clusters.
@@ -216,13 +207,16 @@ def find_full_paths(G, paths_roots, paths_leafs):
         except:
             pass
         for path in list(paths_nx):
-            #print(path)
             paths.append(path)
 
     return (paths)
 
 
 def add_link(graph, fr, fr_or, to, to_or,w):
+     '''
+     Add gfa links between unitigs
+    
+    '''
     link = 'L	%s	%s	%s	%s	0M	ex:i:%s' % (fr, fr_or, to, to_or, w)
     try:
         graph.add_line(link)
@@ -231,6 +225,9 @@ def add_link(graph, fr, fr_or, to, to_or,w):
 
 
 def add_path_links(graph, edge, paths,G):
+     '''
+     Add gfa links between newly created unitigs forming 'full path'
+    '''
     for path in paths:
         for i in range(0, len(path) - 1):
                 try:
@@ -243,6 +240,9 @@ def add_path_links(graph, edge, paths,G):
 
 
 def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
+    '''
+    Add gfa nodes (unitigs) forming 'full path', calculating cluster boundaries
+    '''
     path_cl = []
     logger.debug("ADD PATH")
     logger.debug(paths[edge])
@@ -291,16 +291,11 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for i in order_by_stop_pos:
         cut_l[i] = cut_l_unsorted[i]
         cut_r[i] = cut_r_unsorted[i]
-    #print(cut_l)
-    #print(cut_r)
+
 
     #while None in cut_l.values():
     if 1==1:
         for member in cut_l.keys():
-            #print("new")
-            #print(member)
-            #print(cut_l)
-            #print(cut_r)
             if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
                 Q = deque()
                 L = []
@@ -340,15 +335,11 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                 l_borders = []
                 r_borders = []
                 for i in L:
-                    #print(i)
-                    #consensus = flye_consensus.flye_consensus(i, edge, cl)
                     l_borders.append(int(cons[i]["Start"]))
-                    #l_borders.append(int(consensus['start']))
+
 
                 for i in R:
-                    #consensus = flye_consensus.flye_consensus(i, edge, cl)
                     r_borders.append(int(cons[i]["Stop"]))
-                    #r_borders.append(int(consensus['end']))
                 if member in paths_leafs:
                     border=cut_r[member]
                 else:
@@ -402,16 +393,6 @@ def change_cov(g,edge,cons,ln,clusters,othercl):
     return(cov)
 
 
-'''
-def change_sec(g, edge, othercl, cl, flye_consensus):
-    cl_copy = cl.copy()
-    for cluster in othercl:
-        cl_copy.loc[cl['Cluster'] == cluster, "Cluster"] = "OTHER_%s" % edge
-    consensus = flye_consensus.flye_consensus("OTHER_%s" % edge, edge, cl_copy)
-    #g.line(edge).sequence = str(consensus['consensus'])
-'''
-
-
 def change_sec(g, edge, othercl, cl,SNP_pos, data, cut=True):
     temp={}
     other_cl=cl
@@ -428,29 +409,6 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut=True):
             seq[int(key) - 1] = val
         except (ValueError):
             continue
-
-
-"""
-def cut(graph, edge):
-    fr=1
-    to=1
-    for i in to_neighbours(graph, edge,'+'):
-        if len(from_neighbours(graph,i[0],i[1]))==1:
-            fr=0
-    for i in to_neighbours(graph, edge,'-'):
-        if len(from_neighbours(graph, i[0],i[1]))==1:
-            fr=0
-    for i in from_neighbours(graph, edge,'+'):
-        if len(to_neighbours(graph, i[0],i[1])) == 1:
-            to=0
-    for i in from_neighbours(graph, edge,'-'):
-        if len(to_neighbours(graph, i[0],i[1])) == 1:
-            to=0
-    if fr ==0 or to==0:
-        res=True
-    else: res=False
-    return res
-"""
 
 
 def strong_tail(cluster, cl, ln, data):
@@ -484,6 +442,9 @@ def gfa_to_nx(g):
 
 
 def graph_create_unitigs(i, graph, flye_consensus):
+    '''
+    First part of the transformation: creation of all new unitigs from clusters obtained during the phasing stage
+    '''
     edge = StRainyArgs.edges[i]
     logger.debug(edge)
     full_paths_roots = []
@@ -493,10 +454,6 @@ def graph_create_unitigs(i, graph, flye_consensus):
     try:
         cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF), keep_default_na=False)
         SNP_pos = read_snp(StRainyArgs.snp, edge, StRainyArgs.bam, AF)
-        # Save
-        #try:
-            #data=all_data[edge]
-        #except(KeyError, FileNotFoundError):
         data = read_bam(StRainyArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs.mode])
         all_data[edge]=data
 
@@ -568,8 +525,6 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
             othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths[edge] for j in i]) - set(cl_removed))
             if len(othercl) > 0:
-                #M = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
-                #M = change_w(M, 1)
                 G = nx.from_pandas_adjacency(cluster_distances.copy(), create_using=nx.DiGraph)
 
             close_to_full = []
@@ -600,7 +555,6 @@ def graph_create_unitigs(i, graph, flye_consensus):
                 set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
 
         else:
-            #change_sec(graph, edge, [clusters[0]], cl, flye_consensus)
             change_sec(graph, edge, [clusters[0]], cl, SNP_pos, data, False)
 
     except(FileNotFoundError, IndexError):
@@ -632,6 +586,9 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
 
 def graph_link_unitigs(i, graph, G):
+    '''
+    Second part of the transformation: linkage of all new unitigs created during the first tranforming stage
+    '''
     logger.debug("CREATING NEW LINKS")
     edge = StRainyArgs.edges[i]
     logger.debug(edge)
@@ -703,11 +660,6 @@ def graph_link_unitigs(i, graph, G):
                         else:
                             orient[n] = ['-', '+']
 
-
-
-        #print(neighbours)
-        #print(set(neighbours))
-        #print(set(neighbours.values()))
 
         for n in set({k for k, v in Counter(neighbours.values()).items() if v > min_reads_neighbour}):
             link_full = False
@@ -850,10 +802,6 @@ def transform_main():
 
     initial_graph = gfapy.Gfa.from_file(StRainyArgs.gfa)
     G = gfa_to_nx(initial_graph)
-    #try:
-        #all_data = np.load("%s/all_data.npy" % StRainyArgs.output , allow_pickle='TRUE').item()
-    #except(FileNotFoundError):
-        #pass
 
     try:
         with open(os.path.join(StRainyArgs.output, consensus_cache_path), 'rb') as f:
