@@ -46,7 +46,6 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         insert=main_seq.sequence[left:consensus_start]
         seq = str(consensus['consensus'])[0:right - consensus_start + 1]
         seq=insert+seq
-        logger.debug("CHECKIT " + str(edge))
     else:
         seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
     if len(seq) == 0:
@@ -66,6 +65,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         new_line.sid = str(edge) + "_" + str(clN)
         new_line.sequence = seq
         new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
+    logger.debug("unitig added  %s_%s" % (edge, clN))
 
 
 def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs, cluster_distances):
@@ -235,8 +235,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     Add gfa nodes (unitigs) forming 'full path', calculating cluster boundaries
     '''
     path_cl = []
-    logger.debug("ADD PATH")
-    logger.debug(paths[edge])
+    logger.debug("Add path")
     for node in full_clusters:
         try:
             paths_roots.remove(node)
@@ -253,7 +252,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     pass
             if member in paths_leafs and path.index(member)!=len(path)-1:
                 try:
-                    print("remove")
                     paths[edge].remove(path)
                 except (ValueError):
                     pass
@@ -436,7 +434,6 @@ def graph_create_unitigs(i, graph, flye_consensus):
     First part of the transformation: creation of all new unitigs from clusters obtained during the phasing stage
     '''
     edge = StRainyArgs.edges[i]
-    logger.debug(edge)
     full_paths_roots = []
     full_paths_leafs = []
     full_clusters = []
@@ -519,7 +516,6 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
             close_to_full = []
             for cluster in othercl.copy():
-                logger.debug(cluster)
                 neighbors = nx.all_neighbors(G, cluster)
                 A=set(neighbors)
                 B=set([j for i in full_paths[edge] for j in i])
@@ -548,10 +544,9 @@ def graph_create_unitigs(i, graph, flye_consensus):
             change_sec(graph, edge, [clusters[0]], cl, SNP_pos, data, False)
 
     except(FileNotFoundError, IndexError):
-        logger.debug("NO CLUSTERS")
+        logger.debug("%s: No clusters" % edge)
         cov = pysam.samtools.coverage("-r", edge, StRainyArgs.bam, "--no-header").split()[6]
         i = graph.try_get_segment(edge)
-        logger.debug(cov)
         i.dp = round(float(cov))
         pass
         clusters = []
@@ -569,7 +564,7 @@ def graph_create_unitigs(i, graph, flye_consensus):
         fpN = len(set([j for i in full_paths[edge] for j in i]))
     except(KeyError,UnboundLocalError):
         pass
-
+    logger.info("%s: %s unitigs are created" % (edge,str(fcN+fpN)))
     othercl=len(clusters)-fcN-fpN
     stats.write(edge + "\t" + str(fcN) + "\t" + str(fpN) + "\t" + str(othercl) +"\n")
     stats.close()
@@ -579,9 +574,8 @@ def graph_link_unitigs(i, graph, G):
     '''
     Second part of the transformation: linkage of all new unitigs created during the first tranforming stage
     '''
-    logger.debug("CREATING NEW LINKS")
     edge = StRainyArgs.edges[i]
-    logger.debug(edge)
+    logger.info(edge)
     link_added = False
 
     clusters=[]
@@ -603,8 +597,6 @@ def graph_link_unitigs(i, graph, G):
             continue
 
     for clN in link_unitigs:
-        logger.debug("")
-        logger.debug("%s_%s" % (edge, clN))
         reads = list(cl.loc[cl['Cluster'] == clN, 'ReadName'])
         neighbours={}
         orient={}
@@ -633,7 +625,6 @@ def graph_link_unitigs(i, graph, G):
 
                 for n, v in data[read]["Lclip"].items():
                     try:
-                        logger.debug(str(n) + " " + str(edge))
                         if len(nx.shortest_path(G, n, edge)) <= max_hops:
                             neighbours[read]=n
                             if v[0]=='+' and v[1]=='+':
@@ -722,7 +713,6 @@ def graph_link_unitigs(i, graph, G):
                             continue
 
     if link_added==False or edge not in remove_clusters:
-        logger.debug("restore links")
         for d in graph.dovetails:
             repl=[]
             if d.from_segment==edge:
@@ -745,7 +735,6 @@ def graph_link_unitigs(i, graph, G):
                     except(gfapy.error.NotUniqueError):
                         pass
             if d.to_segment==edge:
-                logger.debug(d.from_segment.name)
                 if d.from_orient == '+':
                     try:
                         for i in link_clusters_sink[d.from_segment.name]:
@@ -764,6 +753,7 @@ def graph_link_unitigs(i, graph, G):
                         graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
                     except(gfapy.error.NotUniqueError):
                         pass
+
 def clean_g(g):
     '''
     Remove 0len unitigs, virtual  and self links
@@ -801,32 +791,35 @@ def transform_main():
         consensus_dict = {}
 
     flye_consensus = FlyeConsensus(StRainyArgs.bam, StRainyArgs.fa, 1, consensus_dict, multiprocessing.Manager())
-
+    logger.info("### Create unitigs")
     for i in range(0, len(StRainyArgs.edges)):
         #TODO: this can run in parallel (and probably takes the most time)
         graph_create_unitigs(i, initial_graph, flye_consensus)
-
+    logger.info("### Link unitigs")
     for i in range(0, len(StRainyArgs.edges)):
         graph_link_unitigs(i, initial_graph, G)
 
     gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed)
-
+    logger.info("### Remove initial segments")
     for ed in initial_graph.segments:
         if ed.name in remove_clusters:
             initial_graph.rm(ed)
-            logger.debug(ed.name)
+            logger.info(ed.name)
     for link in initial_graph.dovetails:
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
 
     gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed)
+    logger.info("### Simplify graph")
     simplify_links(initial_graph)
     gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed1)
 
     clean_g(initial_graph)
+    logger.info("### Merge graph")
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
     clean_g(initial_graph)  #removes zero edges created during merge
     gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
+    logger.info("### Done!")
 
 
 if __name__ == "__main__":

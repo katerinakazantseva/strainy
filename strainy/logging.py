@@ -28,6 +28,15 @@ def set_thread_logging(log_dir, log_prefix, thread_id):
 
     file_handler = logging.FileHandler(log_file, mode="a")
     file_handler.setFormatter(log_formatter)
-    logger.setLevel(logging.DEBUG)
+    #logger.setLevel(logging.INFO)
+    console_log.setLevel(logging.INFO)
+    file_handler.setLevel(logging.DEBUG)
     logger.addHandler(console_log)
     logger.addHandler(file_handler)
+
+
+
+
+
+
+

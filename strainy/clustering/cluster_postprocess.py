@@ -10,7 +10,7 @@ logger = logging.getLogger()
 
 
 def split_cluster(cl,cluster, data,cons,clSNP, bam, edge, R, I,only_with_common_snip=True):
-    logging.info("Split cluster: " + str(cluster)+ " "+ str(only_with_common_snip))
+    #logging.debug("Split cluster: " + str(cluster)+ " "+ str(only_with_common_snip))
     child_clusters = []
     reads=sorted(set(cl.loc[cl['Cluster'] == cluster,'ReadName'].values))
     if cluster==unclustered_group_N or cluster==unclustered_group_N2  or only_with_common_snip==False: #NA cluster
