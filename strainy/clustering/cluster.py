@@ -37,8 +37,6 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
 
     [G.remove_node(i) for i in set(G.nodes) if i not in set(cl['ReadName'])]
 
-    #This is currently disabled because it was throwing an error with fork multiprocessing mode in MacOS
-    """
     try:
         nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5,node_color=cl['Color'])
     except:
@@ -49,7 +47,6 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     plt.suptitle(str(edge) + " coverage:" + str(cov) + " length:" + str(ln) + " clN:" + str(clN))
     plt.savefig("%s/graphs/graph_%s_%s_%s.png" % (StRainyArgs().output, edge, I, AF), format="PNG", dpi=300)
     plt.close()
-    """
 
     # Calculate statistics
     logger.debug("Summary for: " + edge)
