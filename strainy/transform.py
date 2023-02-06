@@ -182,7 +182,7 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots,
     graph_vis = str(graph_vis)
     graph_vis = gv.AGraph(graph_vis)
     graph_vis.layout(prog="neato")
-    graph_vis.draw("%s/graphs/full_paths_cluster_GV_graph_%s.png" % (StRainyArgs.output, edge))
+    graph_vis.draw("%s/graphs/full_paths_cluster_GV_graph_%s.png" % (StRainyArgs().output, edge))
     G_vis.remove_node("Src")
     G_vis.remove_node("Sink")
     return(cl_removed)
@@ -387,7 +387,7 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut=True):
     for cluster in othercl:
         other_cl.loc[cl['Cluster']==cluster, "Cluster"] = "OTHER_%s" %edge
 
-    reference_seq = read_fasta_seq(StRainyArgs.fa, edge)
+    reference_seq = read_fasta_seq(StRainyArgs().fa, edge)
     cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp, edge, reference_seq)
     i = g.try_get_segment(edge)
     seq = i.sequence
@@ -433,18 +433,18 @@ def graph_create_unitigs(i, graph, flye_consensus):
     '''
     First part of the transformation: creation of all new unitigs from clusters obtained during the phasing stage
     '''
-    edge = StRainyArgs.edges[i]
+    edge = StRainyArgs().edges[i]
     full_paths_roots = []
     full_paths_leafs = []
     full_clusters = []
 
     try:
-        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output, edge, I, AF), keep_default_na=False)
-        SNP_pos = read_snp(StRainyArgs.snp, edge, StRainyArgs.bam, AF)
-        data = read_bam(StRainyArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs.mode])
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na=False)
+        SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
+        data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
         all_data[edge]=data
 
-        ln = int(pysam.samtools.coverage("-r", edge, StRainyArgs.bam, "--no-header").split()[4])
+        ln = int(pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[4])
         if len(cl.loc[cl['Cluster'] == 0,'Cluster'].values)>10:
             cl.loc[cl['Cluster'] == 0, 'Cluster'] = 1000000
         clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
@@ -454,7 +454,7 @@ def graph_create_unitigs(i, graph, flye_consensus):
         except:
             pass
 
-        reference_seq = read_fasta_seq(StRainyArgs.fa, edge)
+        reference_seq = read_fasta_seq(StRainyArgs().fa, edge)
         cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
 
         if len(clusters) == 1:
@@ -545,13 +545,13 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
     except(FileNotFoundError, IndexError):
         logger.debug("%s: No clusters" % edge)
-        cov = pysam.samtools.coverage("-r", edge, StRainyArgs.bam, "--no-header").split()[6]
+        cov = pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[6]
         i = graph.try_get_segment(edge)
         i.dp = round(float(cov))
         pass
         clusters = []
 
-    stats = open('%s/stats_clusters.txt' % StRainyArgs.output, 'a')
+    stats = open('%s/stats_clusters.txt' % StRainyArgs().output, 'a')
     fcN = 0
     fpN = 0
 
@@ -574,7 +574,7 @@ def graph_link_unitigs(i, graph, G):
     '''
     Second part of the transformation: linkage of all new unitigs created during the first tranforming stage
     '''
-    edge = StRainyArgs.edges[i]
+    edge = StRainyArgs().edges[i]
     logger.info(edge)
     link_added = False
 
@@ -584,7 +584,7 @@ def graph_link_unitigs(i, graph, G):
     except(KeyError):
         pass
     try:
-        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output,edge, I, AF), keep_default_na=False)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na=False)
     except(FileNotFoundError):
         pass
     link_unitigs=[]
@@ -648,7 +648,7 @@ def graph_link_unitigs(i, graph, G):
             to_or=orient[n][1]
             w=1
             try:
-                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs.output,n, I, AF), keep_default_na=False)
+                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output,n, I, AF), keep_default_na=False)
             except(FileNotFoundError):
                 add_link(graph, "%s_%s" % (edge, clN), fr_or,n, to_or,w)
                 continue
@@ -770,36 +770,38 @@ def clean_g(g):
             i.sequence = 'A'
 
 
-def transform_main():
-    if os.path.isdir(StRainyArgs.log_transform):
-        shutil.rmtree(StRainyArgs.log_transform)
-    os.mkdir(StRainyArgs.log_transform)
-    set_thread_logging(StRainyArgs.log_transform, "transform", None)
+def transform_main(args):
+    init_global_args_storage(args)
 
-    stats = open('%s/stats_clusters.txt' % StRainyArgs.output, 'a')
+    if os.path.isdir(StRainyArgs().log_transform):
+        shutil.rmtree(StRainyArgs().log_transform)
+    os.mkdir(StRainyArgs().log_transform)
+    set_thread_logging(StRainyArgs().log_transform, "transform", None)
+
+    stats = open('%s/stats_clusters.txt' % StRainyArgs().output, 'a')
     stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
     stats.close()
 
-    initial_graph = gfapy.Gfa.from_file(StRainyArgs.gfa)
+    initial_graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
     G = gfa_to_nx(initial_graph)
 
     try:
-        with open(os.path.join(StRainyArgs.output, consensus_cache_path), 'rb') as f:
+        with open(os.path.join(StRainyArgs().output, consensus_cache_path), 'rb') as f:
             logger.debug(os.getcwd())
             consensus_dict = pickle.load(f)
     except FileNotFoundError:
         consensus_dict = {}
 
-    flye_consensus = FlyeConsensus(StRainyArgs.bam, StRainyArgs.fa, 1, consensus_dict, multiprocessing.Manager())
+    flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, consensus_dict, multiprocessing.Manager())
     logger.info("### Create unitigs")
-    for i in range(0, len(StRainyArgs.edges)):
+    for i in range(0, len(StRainyArgs().edges)):
         #TODO: this can run in parallel (and probably takes the most time)
         graph_create_unitigs(i, initial_graph, flye_consensus)
     logger.info("### Link unitigs")
-    for i in range(0, len(StRainyArgs.edges)):
+    for i in range(0, len(StRainyArgs().edges)):
         graph_link_unitigs(i, initial_graph, G)
 
-    gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed)
+    gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
     logger.info("### Remove initial segments")
     for ed in initial_graph.segments:
         if ed.name in remove_clusters:
@@ -809,16 +811,16 @@ def transform_main():
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
 
-    gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed)
+    gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
     logger.info("### Simplify graph")
     simplify_links(initial_graph)
-    gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed1)
+    gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed1)
 
     clean_g(initial_graph)
     logger.info("### Merge graph")
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
     clean_g(initial_graph)  #removes zero edges created during merge
-    gfapy.Gfa.to_file(initial_graph, StRainyArgs.gfa_transformed2)
+    gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed2)
     logger.info("### Done!")
 
 

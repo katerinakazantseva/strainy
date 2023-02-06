@@ -14,9 +14,9 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
     if vcf_file == None:
         if cluster == None:
             snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
-                     '| bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs.output, edge)
+                     '| bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs().output, edge)
             subprocess.check_output(snpos, shell=True, capture_output=False)
-            with open("%s/vcf/vcf_%s.txt" % (StRainyArgs.output, edge)) as f:
+            with open("%s/vcf/vcf_%s.txt" % (StRainyArgs().output, edge)) as f:
                 lines = f.readlines()
                 for line in lines:
                     try:

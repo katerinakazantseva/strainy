@@ -1,18 +1,37 @@
+import os
 
+
+#TODO: this is a temporary way to share some global "constants"
+#that are set at runtime once. Instead of adding one more constant,
+#consider explicitly sharing it instead (or as a part of parsed command line arguments)
 class GlobalArgumentStorage(object):
-    def __init__(self):
-        self.output = None
-        self.bam = None
-        self.gfa = None
-        self.fa = None
-        self.snp = None
-        self.edges = None
+    pass
 
-        self.gfa_transformed = None
-        self.gfa_transformed1 =  None
-        self.gfa_transformed2 = None
+_glob_args = None
 
-StRainyArgs = GlobalArgumentStorage()
+def init_global_args_storage(args):
+    global _glob_args
+    _glob_args = GlobalArgumentStorage()
+    _glob_args.output = args.output
+    _glob_args.bam = args.bam
+    _glob_args.gfa = args.gfa
+    _glob_args.mode = args.mode
+    _glob_args.snp = args.snp
+    _glob_args.threads = args.threads
+    _glob_args.flye = os.path.join(args.strainy_root, "submodules", "Flye", "bin", "flye")
+    _glob_args.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
+    _glob_args.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
+    _glob_args.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
+    _glob_args.log_phase = os.path.join(args.output, "log_phase")
+    _glob_args.log_transform = os.path.join(args.output, "log_transform")
+    _glob_args.edges = args.graph_edges
+    _glob_args.fa = args.fasta
+
+def StRainyArgs():
+    global _glob_args
+    return _glob_args
+##########
+
 
 #TODO: constant storage
 

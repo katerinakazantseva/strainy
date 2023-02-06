@@ -12,7 +12,7 @@ import shutil
 
 from strainy.phase import phase_main
 from strainy.transform import transform_main
-from strainy.params import StRainyArgs
+from strainy.params import StRainyArgs, init_global_args_storage
 from strainy.logging import set_thread_logging
 import strainy.params as params
 
@@ -38,6 +38,7 @@ def main():
     requiredNamed.add_argument("-m", "--mode", help="", choices=["hifi", "nano"], required=True)
 
     args = parser.parse_args()
+    args.strainy_root = strainy_root
 
     bam_index = args.bam + ".bai"
     bam_index_exist = os.path.exists(bam_index)
@@ -45,72 +46,49 @@ def main():
         raise Exception("No index file found (%s) Please create index using \"samtools index\"." % bam_index)
 
     #important so that global variables are inherited
-    multiprocessing.set_start_method("fork")
+    #multiprocessing.set_start_method("fork")
 
-    #global arguments storage
+    #list of edges to process (can be manually modified for debugging)
+    input_graph = gfapy.Gfa.from_file(args.gfa)
+    args.graph_edges = input_graph.segment_names
 
-    StRainyArgs.output = args.output
-    StRainyArgs.bam = args.bam
-    StRainyArgs.gfa = args.gfa
-    StRainyArgs.mode = args.mode
-    StRainyArgs.snp = args.snp
-    StRainyArgs.threads = args.threads
-    StRainyArgs.flye = os.path.join(strainy_root, "submodules", "Flye", "bin", "flye")
-    StRainyArgs.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
-    StRainyArgs.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
-    StRainyArgs.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
-    StRainyArgs.log_phase = os.path.join(args.output, "log_phase")
-    StRainyArgs.log_transform = os.path.join(args.output, "log_transform")
+    #setting up global arguments storage
+    init_global_args_storage(args)
 
-    BIN_TOOLS = ["samtools", "bcftools", StRainyArgs.flye]
+    BIN_TOOLS = ["samtools", "bcftools", StRainyArgs().flye]
     for tool in BIN_TOOLS:
         if not shutil.which(tool):
             print("{} not installed".format(tool), file=sys.stderr)
             return 1
 
-    if not os.path.isdir(StRainyArgs.output):
-        os.mkdir(StRainyArgs.output)
+    if not os.path.isdir(StRainyArgs().output):
+        os.mkdir(StRainyArgs().output)
 
-    fasta_name = os.path.join(StRainyArgs.output, 'gfa_converted.fasta')
-    fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {StRainyArgs.gfa} | fold > {fasta_name}"""
-    try:
-        subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
-        StRainyArgs.fa = fasta_name
-    except subprocess.CalledProcessError as e:
-        print(e)
-        logger.error(f'Error creating fasta file from the provided gfa file: {args.gfa}'
-                     f'Optionally, you can create a fasta file yourself and provide it with "-f file.fasta"')
-        return 1
-
-    if not os.path.isdir(StRainyArgs.output):
-        os.mkdir(StRainyArgs.output)
-
-    set_thread_logging(StRainyArgs.output, "root", None)
+    set_thread_logging(StRainyArgs().output, "root", None)
 
     if args.fasta is None:
-        fasta_name = os.path.join(StRainyArgs.output, 'gfa_converted.fasta')
-        fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {StRainyArgs.gfa} > {fasta_name}"""
+        fasta_name = os.path.join(StRainyArgs().output, 'gfa_converted.fasta')
+        fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {StRainyArgs().gfa} > {fasta_name}"""
         try:
-            logger.info(f'Creating fasta file from the provided gfa file {StRainyArgs.gfa}')
+            logger.info(f'Creating fasta file from the provided gfa file {StRainyArgs().gfa}')
             subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
-            StRainyArgs.fa = fasta_name
+            args.fasta = fasta_name
             logger.info('Done!')
+
         except subprocess.CalledProcessError as e:
-            print(e)
+            logger.error(e)
             logger.error('You can create a fasta file yourself and provide it with "-f file.fasta"')
+            logger.error(f'Error creating fasta file from the provided gfa file: {args.gfa}'
+                         f'Optionally, you can create a fasta file yourself and provide it with "-f file.fasta"')
             return 1
-    else:
-        StRainyArgs.fa = args.fasta
 
-
-    input_graph = gfapy.Gfa.from_file(args.gfa)
-    StRainyArgs.edges = input_graph.segment_names
-    ###
+    #setting up again (to update fasta parameter)
+    init_global_args_storage(args)
 
     if args.stage == "phase":
-        sys.exit(phase_main())
+        sys.exit(phase_main(args))
     elif args.stage == "transform":
-        sys.exit(transform_main())
+        sys.exit(transform_main(args))
     else:
         raise Exception("Stage should be either phase or transform!")
 

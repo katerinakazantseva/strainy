@@ -112,7 +112,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     to_remove = []
     G_vis_before = nx.nx_agraph.to_agraph(G_vis)
     G_vis_before.layout(prog="neato")
-    G_vis_before.draw("%s/graphs/cluster_GV_graph_before_remove_%s.png" % (StRainyArgs.output, edge))
+    G_vis_before.draw("%s/graphs/cluster_GV_graph_before_remove_%s.png" % (StRainyArgs().output, edge))
     path_remove=[]
     for node in G_vis.nodes():
         neighbors = nx.all_neighbors(G_vis, node)
@@ -141,7 +141,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     G_vis.remove_edges_from(ebunch=to_remove)
     G_vis = nx.nx_agraph.to_agraph(G_vis)
     G_vis.layout(prog="neato")
-    G_vis.draw("%s/graphs/cluster_GV_graph_%s.png" % (StRainyArgs.output, edge))
+    G_vis.draw("%s/graphs/cluster_GV_graph_%s.png" % (StRainyArgs().output, edge))
     G = nx.from_pandas_adjacency(M)
     for n_path in path_remove:
         try:
@@ -230,9 +230,9 @@ def split_all2(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq):
 
 
 def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
-    reference_seq = read_fasta_seq(StRainyArgs.fa, edge)
+    reference_seq = read_fasta_seq(StRainyArgs().fa, edge)
     cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
-    cl.to_csv("%s/clusters/1.csv" % StRainyArgs.output)
+    cl.to_csv("%s/clusters/1.csv" % StRainyArgs().output)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
     cl.loc[cl['Cluster'] == 1000000, 'Cluster'] = 'NA'
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
@@ -249,7 +249,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             if cluster not in cons:
                 cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
-    cl.to_csv("%s/clusters/2.csv" % StRainyArgs.output)
+    cl.to_csv("%s/clusters/2.csv" % StRainyArgs().output)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
 
     logging.info("Split stage2: Break regions of low heterozygosity")
