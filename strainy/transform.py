@@ -792,7 +792,7 @@ def transform_main(args):
     except FileNotFoundError:
         consensus_dict = {}
 
-    flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, consensus_dict, multiprocessing.Manager())
+    flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, multiprocessing.Manager())
     logger.info("### Create unitigs")
     for i in range(0, len(StRainyArgs().edges)):
         #TODO: this can run in parallel (and probably takes the most time)

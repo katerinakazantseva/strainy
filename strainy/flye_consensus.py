@@ -175,7 +175,7 @@ class FlyeConsensus:
         #                         read_type=self._read_type,
         #                         output_progress=True)
 
-        polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa " \
+        polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa --threads {self._num_processes}" \
                      f" {self._mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
                      f"-o {StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:

@@ -45,7 +45,7 @@ def phase(edges, args):
     empty_consensus_dict = {}
     num_processes = multiprocessing.cpu_count() if StRainyArgs().threads == -1 else StRainyArgs().threads
     #shared_flye_consensus = manager.FlyeConsensus(StRainyArgs().bam, StRainyArgs().gfa, num_processes, empty_consensus_dict, lock)
-    shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, num_processes, empty_consensus_dict, default_manager)
+    shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, empty_consensus_dict, default_manager)
     pool = multiprocessing.Pool(num_processes)
     init_args = [(i, shared_flye_consensus, args) for i in range(len(edges))]
     pool.starmap_async(_thread_fun, init_args, error_callback=lambda e: _error_callback(pool, e))
