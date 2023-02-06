@@ -58,17 +58,9 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     logger.debug("Number of reads in each cluster: ")
     logger.debug(cl['Cluster'].value_counts(dropna=False))
 
-    #stats = open('%s/stats.txt' % output, 'a')
-    #stats.write(edge + "\t" + str(ln) + "\t" + str(cov) + "\t" + str(len(cl['ReadName'])) + "\t" + str(
-        #len(SNP_pos)) + "\t" + str(clN) + "\t" + str(uncl) + "\n")
-    #stats.close()
 
 
 def cluster(i, flye_consensus):
-    # params = #i, consensus_dict)
-    #i, flye_consensus = params
-    #print(StRainyArgs, StRainyArgs.bam)
-
     edge = StRainyArgs.edges[i]
     logger.info("### Reading SNPs...")
     SNP_pos = read_snp(StRainyArgs.snp, edge, StRainyArgs.bam, AF)
@@ -80,7 +72,6 @@ def cluster(i, flye_consensus):
     cl['Cluster'] = 'NA'
     if len(cl['ReadName'])==0:
         return
-
     if len(SNP_pos)==0:
         #data = read_bam(StRainyArgs.bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs.mode])
         cl = pd.DataFrame(data={'ReadName': data.keys()})

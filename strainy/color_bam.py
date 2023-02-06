@@ -42,17 +42,8 @@ def write_bam(edge, I, AF):
 
 def color(i):
     edge=StRainyArgs.edges[i]
-
     try:
         write_bam(edge, I, AF)
-        #print("color")
     except (FileNotFoundError):
         pass
 
-#I=1000
-#AF=0.1
-#bam="/Users/ekaterina.kazantseva/MT/5strain_hifi_sim/minigraph2/mg2.bam"
-#output="minigraph_2"
-#edges=['s365']
-
-#color(0)

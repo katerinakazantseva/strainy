@@ -18,9 +18,6 @@ from strainy.logging import set_thread_logging
 logger = logging.getLogger()
 
 
-#class CustomManager(BaseManager):
-#    pass
-
 
 def _thread_fun(args):
     set_thread_logging(StRainyArgs.log_phase, "phase", multiprocessing.current_process().pid)
@@ -40,9 +37,7 @@ def phase(edges):
     if os.path.isdir(StRainyArgs.log_phase):
         shutil.rmtree(StRainyArgs.log_phase)
     os.mkdir(StRainyArgs.log_phase)
-
     #CustomManager.register('FlyeConsensus', FlyeConsensus)
-
     #with CustomManager() as manager:
     default_manager = multiprocessing.Manager()
     #lock = default_manager.Lock()
@@ -50,13 +45,11 @@ def phase(edges):
     num_processes = multiprocessing.cpu_count() if StRainyArgs.threads == -1 else StRainyArgs.threads
     #shared_flye_consensus = manager.FlyeConsensus(StRainyArgs.bam, StRainyArgs.gfa, num_processes, empty_consensus_dict, lock)
     shared_flye_consensus = FlyeConsensus(StRainyArgs.bam, StRainyArgs.fa, num_processes, empty_consensus_dict, default_manager)
-
     pool = multiprocessing.Pool(num_processes)
     init_args = [(i, shared_flye_consensus) for i in range(len(edges))]
     pool.map_async(_thread_fun, init_args, error_callback=lambda e: _error_callback(pool, e))
     pool.close()
     pool.join()
-
     shared_flye_consensus.print_cache_statistics()
     return shared_flye_consensus.get_consensus_dict()
 

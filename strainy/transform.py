@@ -37,8 +37,7 @@ all_data={}
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
     '''
-    The function creates initiges in the gfa graph
-    
+    The function creates unitiges in the gfa graph
     '''
     consensus = flye_consensus.flye_consensus(clN, edge, cl)
     consensus_start = consensus['start']
@@ -71,8 +70,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
 
 def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs, cluster_distances):
     '''
-    Create 'overlap' graph for clusters within a unitig, based on flye distance
-    
+    Create an 'overlap' graph for clusters within a unitig, based on flye distance
     '''
     M = cluster_distances
     G = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
@@ -81,10 +79,8 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
         G.remove_node(0)
     except:
         pass
-
     path_remove = []
     node_remove = []
-
     for node in full_paths_leafs:
         neighbors = list(full_paths_leafs)
         for neighbor in list(neighbors):
@@ -99,7 +95,6 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
     G = remove_nested(G, cons)
-
     for node in node_remove:
         try:
             G.remove_node(node)
@@ -127,7 +122,6 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
 def remove_nested(G, cons):
     '''
      Disconnect 'nested' clusters from the parent cluster
-    
     '''
     nodes=list(G.nodes())
     for node in nodes:
@@ -136,7 +130,6 @@ def remove_nested(G, cons):
             for neighbor in list(neighbors):
                 if cons[node]["Start"]<cons[neighbor]["Start"] and cons[node]["Stop"]>cons[neighbor]["Stop"]:
                     try:
-                        #G.remove_node(neighbor)
                         G.remove_edge(node, neighbor)
                         G.remove_edge(neighbor,node)
                         logger.debug("REMOVE NESTED" + str(neighbor))
@@ -291,67 +284,66 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
         cut_r[i] = cut_r_unsorted[i]
 
 
-    #while None in cut_l.values():
-    if 1==1:
-        for member in cut_l.keys():
-            if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
-                Q = deque()
-                L = []
-                R = []
-                for path in paths[edge]:
-                    try:
-                        L.append(path[path.index(member) + 1])
-                        Q.append(path[path.index(member) + 1])
-                    except (ValueError, IndexError):
-                        continue
-                visited = []
-                Q=list(set(Q))
-                while Q:
-                    n = Q.pop()
-                    visited.append(n)
-                    if n in L:
-                        for path in paths[edge]:
-                            try:
-                                if path.index(n)>0:
-                                    if path[path.index(n) - 1] not in visited:
-                                        R.append(path[path.index(n) - 1])
-                                        if path[path.index(n) - 1] not in Q:
-                                            Q.append(path[path.index(n) - 1])
-                            except (ValueError, IndexError):
-                                continue
-                    else:
-                        for path in paths[edge]:
-                            try:
-                                if path[path.index(n) + 1] not in visited:
-                                    L.append(path[path.index(n) + 1])
-                                    if path[path.index(n) + 1] not in Q:
-                                        Q.append(path[path.index(n) + 1])
 
-                            except (ValueError, IndexError):
-                                   continue
-
-                l_borders = []
-                r_borders = []
-                for i in L:
-                    l_borders.append(int(cons[i]["Start"]))
-
-
-                for i in R:
-                    r_borders.append(int(cons[i]["Stop"]))
-                if member in paths_leafs:
-                    border=cut_r[member]
+    for member in cut_l.keys():
+        if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
+            Q = deque()
+            L = []
+            R = []
+            for path in paths[edge]:
+                try:
+                    L.append(path[path.index(member) + 1])
+                    Q.append(path[path.index(member) + 1])
+                except (ValueError, IndexError):
+                    continue
+            visited = []
+            Q=list(set(Q))
+            while Q:
+                n = Q.pop()
+                visited.append(n)
+                if n in L:
+                    for path in paths[edge]:
+                        try:
+                            if path.index(n)>0:
+                                if path[path.index(n) - 1] not in visited:
+                                    R.append(path[path.index(n) - 1])
+                                    if path[path.index(n) - 1] not in Q:
+                                        Q.append(path[path.index(n) - 1])
+                        except (ValueError, IndexError):
+                            continue
                 else:
-                    border = max(l_borders) + (min(r_borders) - max(l_borders)) // 2
-                for i in L:
-                    cut_l[i] = border
-                for i in R:
-                    cut_r[i] = border
-            elif cut_r[member] != None:
-                for path in paths[edge]:
-                    try:
-                        cut_l[path[path.index(member)+1]]=cut_r[member]
-                    except:
-                        pass
+                    for path in paths[edge]:
+                        try:
+                            if path[path.index(n) + 1] not in visited:
+                                L.append(path[path.index(n) + 1])
+                                if path[path.index(n) + 1] not in Q:
+                                    Q.append(path[path.index(n) + 1])
+
+                        except (ValueError, IndexError):
+                                continue
+
+            l_borders = []
+            r_borders = []
+            for i in L:
+                l_borders.append(int(cons[i]["Start"]))
+
+
+            for i in R:
+                r_borders.append(int(cons[i]["Stop"]))
+            if member in paths_leafs:
+                border=cut_r[member]
+            else:
+                border = max(l_borders) + (min(r_borders) - max(l_borders)) // 2
+            for i in L:
+                cut_l[i] = border
+            for i in R:
+                cut_r[i] = border
+        elif cut_r[member] != None:
+            for path in paths[edge]:
+                try:
+                    cut_l[path[path.index(member)+1]]=cut_r[member]
+                except:
+                    pass
 
     if None in cut_l.values():
         for member in cut_l.keys():

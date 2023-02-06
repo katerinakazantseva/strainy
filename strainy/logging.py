@@ -10,7 +10,6 @@ def set_thread_logging(log_dir, log_prefix, thread_id):
     """
     #clear all handlers if we rerun this in a new thread
     logger.handlers.clear()
-
     #thread_id = str(multiprocessing.current_process().name).split("-")[-1]
     #thread_id = str(multiprocessing.current_process().pid)
     if thread_id:
