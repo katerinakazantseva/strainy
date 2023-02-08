@@ -107,12 +107,14 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
             M = build_adj_matrix_clusters(edge, cons, cl, consensus, True, set_clusters)
 
     M=change_w(M,R)
+
     G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
     to_remove = []
     G_vis_before = nx.nx_agraph.to_agraph(G_vis)
-    G_vis_before.layout(prog="neato")
-    G_vis_before.draw("%s/graphs/cluster_GV_graph_before_remove_%s.png" % (StRainyArgs().output, edge))
+    G_vis_before.layout(prog="dot")
+    G_vis_before.draw("%s/graphs/linear_phase_%s.png" % (StRainyArgs().output, edge))
+
     path_remove=[]
     for node in G_vis.nodes():
         neighbors = nx.all_neighbors(G_vis, node)
@@ -138,11 +140,13 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     for i in lis:
         if first.count(i[0]) > 1 or last.count(i[1]) > 1:
             to_remove.append(i)
+
     G_vis.remove_edges_from(ebunch=to_remove)
     G_vis = nx.nx_agraph.to_agraph(G_vis)
-    G_vis.layout(prog="neato")
-    G_vis.draw("%s/graphs/cluster_GV_graph_%s.png" % (StRainyArgs().output, edge))
+    G_vis.layout(prog="dot")
+    G_vis.draw("%s/graphs/linear_phase_simplified_%s.png" % (StRainyArgs().output, edge))
     G = nx.from_pandas_adjacency(M)
+
     for n_path in path_remove:
         try:
             G.remove_edge(n_path[0], n_path[2])

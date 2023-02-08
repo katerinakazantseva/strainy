@@ -141,7 +141,8 @@ def remove_nested(G, cons):
     return (G)
 
 
-def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots, full_paths_leafs, full_clusters, cluster_distances):
+def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots,
+                        full_paths_leafs, full_clusters, cluster_distances):
     '''
      Graph visualization function
     '''
@@ -150,10 +151,18 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots,
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
     cl_removed = []
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
+
     try:
         G_vis.remove_node(0)
     except:
         pass
+
+    cluster_colors = {}
+    for i, row in cl.iterrows():
+        if row["Cluster"] not in cluster_colors:
+            cluster_colors[row["Cluster"]] = row["Color"]
+
+    """
     path_remove = []
     for node in G_vis.nodes():
         neighbors = nx.all_neighbors(G_vis, node)
@@ -162,30 +171,40 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl,full_paths_roots,
             for n_path in nx.algorithms.all_simple_paths(G_vis, node, neighbor, cutoff=5):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
+    """
 
     for e in G_vis.edges():
-        first_cl = e[0]
-        second_cl = e[1]
-        intersect = set(range(cons[first_cl]["Start"], cons[first_cl]["Stop"])).intersection(
-            set(range(cons[second_cl]["Start"], cons[second_cl]["Stop"])))
-        G_vis[e[0]][e[1]]['weight'] = len(intersect)
+        first_cl, second_cl = e
+        intersect = min(cons[first_cl]["Stop"], cons[second_cl]["Stop"]) - \
+                    max(cons[first_cl]["Start"], cons[second_cl]["Start"])
+        G_vis[first_cl][second_cl]["label"] = f"Ovlp:{intersect}"
+
+    for n in G_vis.nodes():
+        clust_len = cons[n]["Stop"] - cons[n]["Start"]
+        color = cluster_colors[n]
+        G_vis.nodes[n]["label"] = f"{color} len:{clust_len}"
+
     G_vis.add_node("Src",style='filled',fillcolor='gray',shape='square')
     G_vis.add_node("Sink",style='filled',fillcolor='gray',shape='square')
     for i in full_paths_roots:
         G_vis.add_edge("Src", i)
+
     for i in full_paths_leafs:
         G_vis.add_edge(i, "Sink")
+
     for i in full_clusters:
         G_vis.add_edge("Src", i)
         G_vis.add_edge(i, "Sink")
-    graph_vis = nx.nx_agraph.to_agraph(G_vis)
-    graph_vis = str(graph_vis)
-    graph_vis = gv.AGraph(graph_vis)
-    graph_vis.layout(prog="neato")
-    graph_vis.draw("%s/graphs/full_paths_cluster_GV_graph_%s.png" % (StRainyArgs().output, edge))
+
+    graph_str = str(nx.nx_agraph.to_agraph(G_vis))
+    graph_vis = gv.AGraph(graph_str)
+    graph_vis.layout(prog="dot")
+    graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output, edge))
+
     G_vis.remove_node("Src")
     G_vis.remove_node("Sink")
-    return(cl_removed)
+
+    return cl_removed
 
 
 def find_full_paths(G, paths_roots, paths_leafs):
@@ -440,6 +459,8 @@ def graph_create_unitigs(i, graph, flye_consensus):
 
     try:
         cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na=False)
+
+
         SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
         data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
         all_data[edge]=data
@@ -454,6 +475,7 @@ def graph_create_unitigs(i, graph, flye_consensus):
         except:
             pass
 
+        
         reference_seq = read_fasta_seq(StRainyArgs().fa, edge)
         cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
 
@@ -498,7 +520,7 @@ def graph_create_unitigs(i, graph, flye_consensus):
                                   data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
             full_cl[edge] = full_clusters
-            cl_removed = paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos,cl,full_paths_roots,
+            cl_removed = paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl, full_paths_roots,
                                              full_paths_leafs, full_clusters, cluster_distances.copy())
 
             try:
