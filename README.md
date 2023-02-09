@@ -50,7 +50,7 @@ stRainy to larger metagenomes is a work in progress.
 
 stRainy supports PacBio HiFi and Nanopore (Guppy5+) sequencing. 
 
-The inputs to metaPhase are:
+The inputs to stRainy are:
 1. GFA file (can be produced with [**metaFlye**](https://github.com/fenderglass/Flye) or minigraph) 
 and
 2. BAM file (reads aligned to the fasta reference generated from the GFA file).
