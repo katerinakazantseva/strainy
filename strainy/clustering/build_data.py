@@ -55,7 +55,7 @@ def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, max_aln
 
         if read.mapping_quality >= min_mapping_quality and de < max_aln_error and \
                 ((not clipping and aln_len > min_al_len and start != 0 and stop != edge_len - 1) or \
-                    start < extended_aln_flank or edge_len - stop < extended_aln_flank):
+                    start < start_end_gap or edge_len - stop < start_end_gap):
 
             data[read.query_name] = {}
             data[read.query_name]["Start"] = start

@@ -35,9 +35,6 @@ def StRainyArgs():
 
 #TODO: constant storage
 
-minigraph=False
-unseparated_cluster_min_reads = 3
-
 # Path to store and read the consensus dictionary
 # If one already exists and write_consensus_cache is true, it may be overwritten
 consensus_cache_path = "consensus_dict.pkl"
@@ -47,50 +44,41 @@ consensus_cache_path = "consensus_dict.pkl"
 write_consensus_cache = False
 delete_files = False
 
-# snp file path. If=None, strainy call snp using bcftools
-# snp = None
-
 """It is not recommended to change parameters below"""
 
-# reads max mismatch count
-R = 1
 
 #cluster parameters
-min_cluster_size=2
-unclustered_group_N=1000000
-unclustered_group_N2=3000000
-split_id=10000
+R = 1 # reads max mismatch count
+I = 1000 # reads min intersection
+unseparated_cluster_min_reads = 3
+min_cluster_size = 2
+unclustered_group_N = 1000000
+unclustered_group_N2 = 3000000
+split_id = 10000
 
-#transformation
-parental_min_coverage=6
-parental_min_len=0.7
-start_end_gap=5
-strong_cluster_min_reads=2
-max_hops=10
-min_reads_neighbour=0
-min_reads_cluster=2
+#creating new unitigs
+parental_min_coverage = 6
+parental_min_len = 0.7
+start_end_gap = 50
+strong_cluster_min_reads = 2
+
+#adding new links
+max_hops = 10
+min_reads_neighbour = 0
+min_reads_cluster = 2
 
 #simplification
-cov_ratio=1.6
-
-#g = gfapy.Gfa.from_file(gfa)
-#edges=g.segment_names
-
-# reads min intersection
-I = 1000
+cov_ratio = 1.6
+minigraph = False
 
 # alignment filtering
 clipp = 100
 min_mapping_quality = 20
 min_base_quality = 0
 min_al_len = 1000
-extended_aln_flank = 50
+# extended_aln_flank = 50
 de_max = {"hifi": 0.05, "nano": 0.10}
 
 # SNP allele frequency
 AF = 0.1
 split_allele_freq = 0.3
-
-# Please do not change
-#g = gfapy.Gfa.from_file(gfa)
-#edges = g.segment_names
