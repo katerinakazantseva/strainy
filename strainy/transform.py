@@ -22,16 +22,15 @@ from strainy.logging import set_thread_logging
 logger = logging.getLogger()
 
 
-
 #TODO: get rid of these global variables.
 full_cl = {}
 full_paths = {}
-paths = {}
+#paths = {}
 link_clusters = {}
 link_clusters_src = {}
 link_clusters_sink = {}
 remove_clusters = []
-remove_zeroes = []
+#remove_zeroes = []
 all_data={}
 
 
@@ -56,7 +55,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         new_line.sid = str(edge) + "_" + str(clN)
         new_line.sequence = 'A'
         new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
-        remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
+        #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq)>0:
         g.add_line("S\t%s_%s\t*" % (edge, clN))
         i = g.try_get_segment("%s_%s" % (edge, clN))
@@ -261,7 +260,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
             paths_leafs.remove(node)
         except:
             pass
-        
+
     for path in paths[edge].copy():
         for member in path:
             if member in full_clusters:
@@ -274,7 +273,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                     paths[edge].remove(path)
                 except (ValueError):
                     pass
-                
+
     for path in paths[edge]:
         for member in path:
             path_cl.append(member)
@@ -291,7 +290,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for i in cut_r_unsorted.keys():
         stop_pos[i]=cons[i]["Stop"]
 
-
     order_by_stop_pos = list(dict(sorted(stop_pos.items(), key=lambda item: item[1])).keys())
 
     cut_l = {}
@@ -299,8 +297,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     for i in order_by_stop_pos:
         cut_l[i] = cut_l_unsorted[i]
         cut_r[i] = cut_r_unsorted[i]
-
-
 
     for member in cut_l.keys():
         if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
@@ -344,7 +340,6 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
             for i in L:
                 l_borders.append(int(cons[i]["Start"]))
 
-
             for i in R:
                 r_borders.append(int(cons[i]["Stop"]))
             if member in paths_leafs:
@@ -385,19 +380,19 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     return(path_cl)
 
 
-def change_cov(g,edge,cons,ln,clusters,othercl):
-    cov=0
-    len_cl=[]
+def change_cov(g, edge, cons, ln, clusters, othercl):
+    cov = 0
+    len_cl = []
     for i in othercl:
-        cov=cov+cons[i]["Cov"]*(cons[i]["Stop"]-cons[i]["Start"])
+        cov += cons[i]["Cov"] * (cons[i]["Stop"] - cons[i]["Start"])
         for i in range(cons[i]["Start"],cons[i]["Stop"]):
             len_cl.append(i)
-    if (len(set(len_cl))/ln)<parental_min_len and len(clusters)-len(othercl)!=0:
+    if (len(set(len_cl)) / ln) < parental_min_len and len(clusters)- len(othercl) != 0:
         remove_clusters.append(edge)
-    cov=cov/ln
+    cov=cov / ln
     i = g.try_get_segment(edge)
-    i.dp =round(cov)
-    return(cov)
+    i.dp = round(cov)
+    return cov
 
 
 def change_sec(g, edge, othercl, cl,SNP_pos, data, cut=True):
@@ -475,7 +470,6 @@ def graph_create_unitigs(i, graph, flye_consensus):
         except:
             pass
 
-        
         reference_seq = read_fasta_seq(StRainyArgs().fa, edge)
         cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
 
@@ -663,7 +657,6 @@ def graph_link_unitigs(i, graph, G):
                         else:
                             orient[n] = ['-', '+']
 
-
         for n in set({k for k, v in Counter(neighbours.values()).items() if v > min_reads_neighbour}):
             link_full = False
             fr_or=orient[n][0]
@@ -775,6 +768,7 @@ def graph_link_unitigs(i, graph, G):
                         graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
                     except(gfapy.error.NotUniqueError):
                         pass
+
 
 def clean_g(g):
     '''
