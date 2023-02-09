@@ -541,7 +541,7 @@ def graph_create_unitigs(i, graph, flye_consensus):
                     logger.debug("REMOVE " + str(cluster))
 
             new_cov = change_cov(graph, edge,cons,ln,clusters,othercl)
-            if parental_min_coverage < 6 and len(clusters) - len(othercl) != 0:
+            if  new_cov< parental_min_coverage and len(clusters) - len(othercl) != 0:
                 remove_clusters.append(edge)
 
             else:
