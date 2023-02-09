@@ -102,13 +102,13 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     firstSNPs = list(cons[first_cl].keys())
     secondSNPs = list(cons[second_cl].keys())
     keys=('clSNP','clSNP2', 'Strange', 'Strange2','Stop','Start','Cov')
-    firstSNPs = [key for key in firstSNPs if key not in keys]
-    secondSNPs = [key for key in secondSNPs if key not in keys]
+    firstSNPs = [key for key in firstSNPs if key not in keys and int(key)>cons[first_cl]["Start"] and int(key) < cons[first_cl]["Stop"]]
+    secondSNPs = [key for key in secondSNPs if key not in keys and int(key)>cons[second_cl]["Start"] and int(key) < cons[second_cl]["Stop"]]
     commonSNP = sorted(set(firstSNPs).intersection(secondSNPs))
     intersect = set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
     if only_with_common_snip == False and len(commonSNP) == 0 and len(intersect) > I:
         d = 0
-    elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
+    elif only_with_common_snip == True and (len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0 or len(commonSNP) == 0):
         d = 1
     elif len(intersect) > I:
         d = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge)
