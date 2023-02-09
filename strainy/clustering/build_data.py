@@ -194,8 +194,12 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
         except(KeyError):
             pass
     try:
-        clStart = sorted(starts)[1]
-        clStop = sorted(ends)[len(ends)-2]
+        if StRainyArgs.mode == "nano":
+            clStart = sorted(starts)[4]
+            clStop = sorted(ends)[len(ends)-5]
+        else:
+            clStart = sorted(starts)[1]
+            clStop = sorted(ends)[len(ends)-2]
     except(IndexError):
         pass
     try:
