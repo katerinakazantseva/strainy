@@ -1,5 +1,5 @@
 import pandas as pd
-pd.options.mode.chained_assignment = None
+#pd.options.mode.chained_assignment = None
 import pysam
 import logging
 from strainy.params import *
