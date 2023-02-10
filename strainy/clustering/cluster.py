@@ -1,7 +1,9 @@
 import numpy as np
 import networkx as nx
+import logging
 import matplotlib.pyplot as plt
 import matplotlib as mt
+logging.getLogger('matplotlib.font_manager').disabled = True
 import multiprocessing
 
 from strainy.clustering.community_detection import find_communities

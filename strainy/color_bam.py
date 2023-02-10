@@ -2,7 +2,9 @@ import csv
 import pysam
 import pandas as pd
 import numpy as np
+import logging
 import matplotlib.pyplot as plt
+logging.getLogger('matplotlib.font_manager').disabled = True
 import matplotlib as mt
 import gfapy
 import os
