@@ -64,20 +64,60 @@ def split_long_unitigs(input_graph):
                 new_unitig_name = f"{unitig.name}_s{i+1}"
                 new_unitig_seq = unitig.sequence[i*new_unitig_len : (i+1) * new_unitig_len]
                 input_graph.add_line(f"S\t{new_unitig_name}\t{new_unitig_seq}")
-
+                
+                # the left most unitig and the right most unitig
+                # inherits the incoming edges of the original unitig
                 if i == 0:
                     # the left most unitig inherits the incoming edges
                     for edge in unitig.dovetails_L:
-                        input_graph.add_line(f"L\t{edge.from_segment.name}\t+\t{new_unitig_name}\t+\t0M")
+                        if edge.from_name == unitig.name:
+                            input_graph.add_line(
+                                f"L"
+                                f"\t{new_unitig_name}\t"
+                                f"{edge.from_orient}\t"
+                                f"{edge.to_name}\t"
+                                f"{edge.to_orient}\t"
+                                f"0M"
+                                )
+                        else:
+                            input_graph.add_line(
+                                f"L\t"
+                                f"{edge.from_name}\t"
+                                f"{edge.from_orient}\t"
+                                f"{new_unitig_name}\t"
+                                f"{edge.to_orient}\t"
+                                f"0M"
+                                )
                 else:
-                    # connect all the unitigs except for the first one to the previous unitig
-                    input_graph.add_line(f"L\t{prev_unitig}\t+\t{new_unitig_name}\t+\t0M")
-                    
+                    # connect all the unitigs (except for the first one) to the previous unitig
+                    input_graph.add_line(
+                                f"L\t"
+                                f"{prev_unitig}\t"
+                                f"+\t"
+                                f"{new_unitig_name}\t"
+                                f"+\t"
+                                f"0M"
+                                )
                 if i == n_new_unitigs - 1:
-                    # the last unitig inherits the outgoing edges
                     for edge in unitig.dovetails_R:
-                        input_graph.add_line(f"L\t{new_unitig_name}\t+\t{edge.to_segment.name}\t+\t0M")
-                
+                        if edge.from_name == unitig.name:
+                            input_graph.add_line(
+                                f"L"
+                                f"\t{new_unitig_name}\t"
+                                f"{edge.from_orient}\t"
+                                f"{edge.to_name}\t"
+                                f"{edge.to_orient}\t"
+                                f"0M"
+                                )
+                        else:
+                            input_graph.add_line(
+                                f"L\t"
+                                f"{edge.from_name}\t"
+                                f"{edge.from_orient}\t"
+                                f"{new_unitig_name}\t"
+                                f"{edge.to_orient}\t"
+                                f"0M"
+                                )
                 prev_unitig = new_unitig_name
 
             unitig.disconnect()
