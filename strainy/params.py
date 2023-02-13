@@ -17,6 +17,7 @@ def init_global_args_storage(args):
     _glob_args.gfa = args.gfa
     _glob_args.mode = args.mode
     _glob_args.snp = args.snp
+    _glob_args.spm = args.snps_per_mismatch
     _glob_args.threads = args.threads
     _glob_args.flye = os.path.join(args.strainy_root, "submodules", "Flye", "bin", "flye")
     _glob_args.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output

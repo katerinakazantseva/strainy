@@ -35,7 +35,7 @@ def calculate_coverage(position, bed_file_content):
 
 class FlyeConsensus:
     def __init__(self, bam_file_name, graph_fasta_name, num_processes, consensus_dict, multiproc_manager,
-                indel_block_length_leniency=5):
+                mismatch_forgiveness_rate=50, indel_block_length_leniency=5):
 
         self._consensus_dict = multiproc_manager.dict(consensus_dict)
         self._lock = multiproc_manager.Lock()
@@ -54,6 +54,7 @@ class FlyeConsensus:
 
         self._num_processes = num_processes
         self._indel_block_length_leniency = indel_block_length_leniency
+        self._mismatch_forgiveness_rate = mismatch_forgiveness_rate
         if StRainyArgs().mode == "hifi":
             self._coverage_limit = 3
             self._platform = "pacbio"
@@ -397,7 +398,7 @@ class FlyeConsensus:
             f.write("**********-------************\n\n")
 
 
-    def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, debug=False):
+    def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, n_common_SNPs, debug=False):
         """
         Computes the distance between two clusters consensus'. The distance is based on the global alignment between the
         intersecting parts of the consensus'.
@@ -449,6 +450,7 @@ class FlyeConsensus:
         aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, intersection_start,
                                                     first_cl_dict, second_cl_dict)
+        edlib_score = max(edlib_score - (n_common_SNPs // self._mismatch_forgiveness_rate), 0)
 
         """
         print("Alignment scores", score, edlib_score)

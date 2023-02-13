@@ -30,6 +30,7 @@ def main():
     parser.add_argument("-s", "--snp", help="vcf file", default=None)
     parser.add_argument("-t", "--threads", help="number of threads", type=int, default=4)
     parser.add_argument("-f", "--fasta", help="fasta file", required=False)
+    parser.add_argument("-spm", "--snps-per-mismatch", help="number of matching SNPs to forgive a single mismatch, when merging clusters", required=False, type=int, default=50)
 
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument("-o", "--output", help="output dir",required=True)
