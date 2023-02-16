@@ -62,6 +62,15 @@ minimap2 -ax map-ont assembly_graph.fasta reads.fastq | samtools sort -@4 -t 8 >
 samtools index assembly_graph.bam
 ```
 
+## Improving de novo metagenomic assmbelies
+
+We have tested stRainy using metaFlye metagenoimic assembly graphs as input. The recommended
+set of parameters is `--meta --keep-haplotypes -i 0`. 
+
+Note that `-i 0` disables metaFlye's polishing procedure, which we found to improve read assignemnt
+to bubble branches during `minimap2` realignment. `--keep-haplotypes` retains structural
+variations between strains on the assmebly graph.
+
 ## Usage and outputs
 
 **strainy.py phase** - performs reads clustering according to SNP positions using community detection approach
