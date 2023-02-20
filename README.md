@@ -91,24 +91,33 @@ Transform stage transform and simplify initial assembly graph, produce the final
 ## Parameters desciption
 
 ```
-strainy.py [-h] [-s SNP] [-t THREADS] [-f FASTA] -o OUTPUT -b BAM -g GFA -m {hifi,nano} stage
+usage: strainy.py [-h] -o OUTPUT -b BAM -g GFA -m {hifi,nano} [-s SNP] [-t THREADS] [-f FASTA] [-splu] [-fq FASTQ]
+                  [-splen UNITIG_SPLIT_LENGTH]
+                  {phase,transform}
 
 positional arguments:
-  stage                 stage to run: either phase or transform
+  {phase,transform}     stage to run: either phase or transform
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -s SNP, --snp SNP     vcf file
+  -s SNP, --snp SNP     vcf file (default: None)
   -t THREADS, --threads THREADS
-                        number of threads
+                        number of threads to use (default: 4)
   -f FASTA, --fasta FASTA
-                        fasta file
+                        fasta file (default: None)
+  -splu, --split-long-unitigs
+                        Split unitigs with long sequences into multiple smaller unitigs for faster processing, requires -fq to be
+                        provided (default: False)
+  -fq FASTQ, --fastq FASTQ
+                        fastq file containing reads to perform alignment, only used if -splu is set (default: False)
+  -splen UNITIG_SPLIT_LENGTH, --unitig-split-length UNITIG_SPLIT_LENGTH
+                        The length (in kb) which the unitigs that are longer will be split, only used if -splu is set (default: 50)
 
 required named arguments:
   -o OUTPUT, --output OUTPUT
-                        output dir
-  -b BAM, --bam BAM     bam file
-  -g GFA, --gfa GFA     gfa file
+                        output dir (default: None)
+  -b BAM, --bam BAM     bam file (default: None)
+  -g GFA, --gfa GFA     gfa file (default: None)
   -m {hifi,nano}, --mode {hifi,nano}
 ```
 

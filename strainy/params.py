@@ -26,7 +26,7 @@ def init_global_args_storage(args):
     _glob_args.log_transform = os.path.join(args.output, "log_transform")
     _glob_args.edges = args.graph_edges
     _glob_args.fa = args.fasta
-    _glob_args.fastq = args.fastq
+    _glob_args.fq = args.fastq
     _glob_args.splu = args.split_long_unitigs
     _glob_args.splen = args.unitig_split_length
 

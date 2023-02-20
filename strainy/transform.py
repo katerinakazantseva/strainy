@@ -843,4 +843,4 @@ def transform_main(args):
 
 
 if __name__ == "__main__":
-    main_transform()
+    transform_main()
