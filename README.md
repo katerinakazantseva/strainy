@@ -72,7 +72,7 @@ samtools index assembly_graph.bam
 ./strainy.py phase -o output_dir -b bam_file -g gfa_graph -m mode -t threads
 ```
 
-Phasing stage clusters reads and produce csv files with read names and corresponding cluster names and BAM file wich visualise reads clustering
+Phase stage clusters reads and produces csv files with read names, corresponding cluster names and a BAM file. The BAM file visualises the clustering of the reads
 
 <p align="center">
 <img width="500" alt="Screenshot 2023-01-30 at 17 01 47" src="https://user-images.githubusercontent.com/82141791/215484889-6a032cc0-9c90-4a26-9689-7d5cb41a2ab5.png">
@@ -82,7 +82,7 @@ Phasing stage clusters reads and produce csv files with read names and correspon
 ./strainy.py transform -o output_dir -b bam_file -g gfa_graph -m mode -t threads
 ```
 
-Transform stage transform and simplify initial assembly graph, produce the final gfa file: `transformed_after_simplification_merged.gfa`
+Transform stage transforms and simplifies initial assembly graph, producing the final gfa file: `transformed_after_simplification_merged.gfa`
 
 <p align="center">
 <img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
