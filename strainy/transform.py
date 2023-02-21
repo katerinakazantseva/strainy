@@ -834,6 +834,7 @@ def transform_main(args):
     clean_g(initial_graph)  #removes zero edges created during merge
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed2)
 
+    flye_consensus.print_cache_statistics()
     logger.info("### Done!")
 
 
