@@ -66,12 +66,20 @@ def cluster(i, flye_consensus):
 
     logger.info("### Reading Reads...")
     data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
-    cl=pd.DataFrame(data={'ReadName': data.keys()})
-    logger.debug(str(len(cl['ReadName'])) + " reads found")
+    cl = pd.DataFrame(data={'ReadName': data.keys()})
     cl['Cluster'] = 'NA'
-    if len(cl['ReadName'])==0:
+
+    total_coverage = 0
+    edge_length = len(read_fasta_seq(StRainyArgs().fa, edge))
+    num_reads = len(data)
+    for read in data:
+        total_coverage += data[read]["Stop"] - data[read]["Start"]
+    mean_edge_cov = total_coverage // edge_length
+    logger.debug(f"num reads: {num_reads}. edge length: {edge_length}, coverage: {mean_edge_cov}")
+
+    if num_reads == 0:
         return
-    if len(SNP_pos)==0:
+    if len(SNP_pos) == 0:
         #data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
         cl = pd.DataFrame(data={'ReadName': data.keys()})
         cl['Cluster'] = 1
