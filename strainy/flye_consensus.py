@@ -41,6 +41,7 @@ class FlyeConsensus:
         self._lock = multiproc_manager.Lock()
 
         self._bam_path = bam_file_name
+        self._read_index = None
         self._unitig_seqs = {}
         for seq in SeqIO.parse(graph_fasta_name, "fasta"):
             self._unitig_seqs[str(seq.id)] = str(seq.seq)
@@ -83,15 +84,15 @@ class FlyeConsensus:
 
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
 
-        ts = time.time()
-        read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
-        read_index.build()
-        te = time.time()
-        logger.debug("Index building time %f", te - ts)
+        #ts = time.time()
+        if self._read_index is None:
+            self._read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
+            self._read_index.build()
+        #te = time.time()
+        #logger.debug("Index building time %f", te - ts)
 
         for name in read_names:
-            #with self._lock:
-            iterator = read_index.find(name)
+            iterator = self._read_index.find(name)
             for x in iterator:
                 if x.reference_name == edge:
                     if x.reference_start < cluster_start or cluster_start == -1:
