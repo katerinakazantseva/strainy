@@ -214,7 +214,7 @@ def add_link(graph, fr, fr_or, to, to_or,w):
     '''
      Add gfa links between unitigs
     '''
-    link = 'L	%s	%s	%s	%s	0M	ex:i:%s' % (fr, fr_or, to, to_or, w)
+    link = 'L\t%s\t%s\t%s\t%s\t0M\tex:i:%s' % (fr, fr_or, to, to_or, w)
     try:
         graph.add_line(link)
         logger.debug("link added from %s %s to %s %s" % (fr, fr_or, to, to_or))
@@ -228,10 +228,9 @@ def add_path_links(graph, edge, paths,G):
     for path in paths:
         for i in range(0, len(path) - 1):
                 try:
-                    str='L	first_edge	+	second_edge	+	0M	ix:i:%s' % 1
-                    graph.add_line(str.replace('first_edge', "%s_%s" % (edge, path[i])).replace('second_edge',
-                                                                                            "%s_%s" % (
-                                                                               edge, path[i + 1])))
+                    line_str='L\tfirst_edge\t+\tsecond_edge\t+\t0M\tix:i:1'.replace('first_edge', "%s_%s" % (edge, path[i])) \
+                                                                           .replace('second_edge',"%s_%s" % (edge, path[i + 1]))
+                    graph.add_line(line_str)
                 except(gfapy.error.NotUniqueError, KeyError):
                     continue
 
@@ -549,9 +548,6 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
 
     except(FileNotFoundError, IndexError):
         logger.debug("%s: No clusters" % edge)
-        cov = pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[6]
-        i = graph.try_get_segment(edge)
-        i.dp = round(float(cov))
         clusters = []
 
     stats = open('%s/stats_clusters.txt' % StRainyArgs().output, 'a')
@@ -785,7 +781,10 @@ def transform_main(args):
     stats.close()
 
     initial_graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
-    G = gfa_to_nx(initial_graph)
+    #Setting up coverage for all unitigs based on bam alignment depth
+    for edge in StRainyArgs().edges:
+        edge_cov = pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[6]
+        initial_graph.try_get_segment(edge).dp = round(float(edge_cov))
 
     try:
         with open(os.path.join(StRainyArgs().output, consensus_cache_path), 'rb') as f:
@@ -809,6 +808,7 @@ def transform_main(args):
                              link_clusters, link_clusters_src, link_clusters_sink, remove_clusters)
 
     logger.info("### Link unitigs")
+    G = gfa_to_nx(initial_graph)
     for edge in StRainyArgs().edges:
         graph_link_unitigs(edge, initial_graph, G, bam_cache, link_clusters, link_clusters_src,
                            link_clusters_sink, remove_clusters)
