@@ -71,14 +71,14 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
     for node in full_paths_leafs:
         neighbors = list(full_paths_leafs)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=5):
+            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=2):
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
 
     for node in full_paths_roots:
         neighbors = list(full_paths_roots)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node, cutoff=5):
+            for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node, cutoff=2):
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
     G = remove_nested(G, cons)
@@ -94,7 +94,7 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
     for node in G.nodes():
         neighbors = nx.all_neighbors(G, node)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=5):
+            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=3):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
 

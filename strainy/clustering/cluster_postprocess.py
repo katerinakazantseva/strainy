@@ -122,7 +122,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     for node in G_vis.nodes():
         neighbors = nx.all_neighbors(G_vis, node)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G_vis, node, neighbor, cutoff=5):
+            for n_path in nx.algorithms.all_simple_paths(G_vis, node, neighbor, cutoff=3):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
 
