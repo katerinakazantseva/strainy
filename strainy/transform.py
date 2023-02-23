@@ -601,44 +601,46 @@ def graph_link_unitigs(edge, graph, G, bam_cache, link_clusters, link_clusters_s
         n_cl_set_src = []
         n_cl_set_snk = []
 
+        #get split reads, identify which unitigs they connect and in which orientation
         data = bam_cache[edge]
         for read in reads:
-                for n, v in data[read]["Rclip"].items():
-                    try:
-                        if len(nx.shortest_path(G,n,edge))<=max_hops:
-                            neighbours[read]=n
-                            if v[0]=='+' and v[1]=='+':
-                                orient[n] = ['+', '+']
-                            elif v[0] == '-' and v[1] == '-':
-                                orient[n] = ['+', '+']
-                            else:
-                                orient[n] = ['+', '-']
-                    except(nx.NetworkXNoPath):
-                        if v[0] == '+' and v[1] == '+':
+            for n, v in data[read]["Rclip"].items():
+                try:
+                    if len(nx.shortest_path(G,n,edge))<=max_hops:
+                        neighbours[read]=n
+                        if v[0]=='+' and v[1]=='+':
                             orient[n] = ['+', '+']
                         elif v[0] == '-' and v[1] == '-':
                             orient[n] = ['+', '+']
                         else:
                             orient[n] = ['+', '-']
+                except(nx.NetworkXNoPath):
+                    if v[0] == '+' and v[1] == '+':
+                        orient[n] = ['+', '+']
+                    elif v[0] == '-' and v[1] == '-':
+                        orient[n] = ['+', '+']
+                    else:
+                        orient[n] = ['+', '-']
 
-                for n, v in data[read]["Lclip"].items():
-                    try:
-                        if len(nx.shortest_path(G, n, edge)) <= max_hops:
-                            neighbours[read]=n
-                            if v[0]=='+' and v[1]=='+':
-                                orient[n] = ['-', '-']
-                            elif v[0] == '-' and v[1] == '-':
-                                orient[n] = ['-', '-']
-                            else:
-                                orient[n] = ['-', '+']
-                    except(nx.NetworkXNoPath):
-                        if v[0] == '+' and v[1] == '+':
+            for n, v in data[read]["Lclip"].items():
+                try:
+                    if len(nx.shortest_path(G, n, edge)) <= max_hops:
+                        neighbours[read]=n
+                        if v[0]=='+' and v[1]=='+':
                             orient[n] = ['-', '-']
                         elif v[0] == '-' and v[1] == '-':
                             orient[n] = ['-', '-']
                         else:
                             orient[n] = ['-', '+']
+                except(nx.NetworkXNoPath):
+                    if v[0] == '+' and v[1] == '+':
+                        orient[n] = ['-', '-']
+                    elif v[0] == '-' and v[1] == '-':
+                        orient[n] = ['-', '-']
+                    else:
+                        orient[n] = ['-', '+']
 
+        #for each "neighbor", a potential unitig-unitig connection
         for n in set({k for k, v in Counter(neighbours.values()).items() if v > min_reads_neighbour}):
             link_full = False
             fr_or=orient[n][0]
