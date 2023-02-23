@@ -35,23 +35,17 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         seq=insert+seq
     else:
         seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
+
+    g.add_line("S\t%s_%s\t*" % (edge, clN))
+    new_line = g.try_get_segment("%s_%s" % (edge, clN))
+    new_line.name = str(edge) + "_" + str(clN)
+    new_line.sid = str(edge) + "_" + str(clN)
+    new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
+    #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq) == 0:
-        g.add_line("S\t%s_%s\t*" % (edge, clN))
-        i = g.try_get_segment("%s_%s" % (edge, clN))
-        new_line = i
-        new_line.name = str(edge) + "_" + str(clN)
-        new_line.sid = str(edge) + "_" + str(clN)
         new_line.sequence = 'A'
-        new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
-        #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
-    if len(seq)>0:
-        g.add_line("S\t%s_%s\t*" % (edge, clN))
-        i = g.try_get_segment("%s_%s" % (edge, clN))
-        new_line = i
-        new_line.name = str(edge) + "_" + str(clN)
-        new_line.sid = str(edge) + "_" + str(clN)
+    else:
         new_line.sequence = seq
-        new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
     logger.debug("unitig added  %s_%s" % (edge, clN))
 
 
@@ -210,29 +204,35 @@ def find_full_paths(G, paths_roots, paths_leafs):
     return (paths)
 
 
-def add_link(graph, fr, fr_or, to, to_or,w):
+def add_link(graph, fr, fr_or, to, to_or, w):
     '''
      Add gfa links between unitigs
     '''
-    link = 'L\t%s\t%s\t%s\t%s\t0M\tex:i:%s' % (fr, fr_or, to, to_or, w)
+    #check if segments exist before connecting
+    if graph.segment(fr) is None or graph.segment(to) is None:
+        return
+
+    link = f"L\t{fr}\t{fr_or}\t{to}\t{to_or}\t0M\tex:i:{w}"
     try:
         graph.add_line(link)
-        logger.debug("link added from %s %s to %s %s" % (fr, fr_or, to, to_or))
-    except(gfapy.NotUniqueError): pass
+        logger.debug("link added: " + link)
+    except(gfapy.NotUniqueError):   #link already exists
+        pass
 
 
-def add_path_links(graph, edge, paths,G):
+def add_path_links(graph, edge, paths, G):
     '''
      Add gfa links between newly created unitigs forming 'full path'
     '''
     for path in paths:
         for i in range(0, len(path) - 1):
-                try:
-                    line_str='L\tfirst_edge\t+\tsecond_edge\t+\t0M\tix:i:1'.replace('first_edge', "%s_%s" % (edge, path[i])) \
-                                                                           .replace('second_edge',"%s_%s" % (edge, path[i + 1]))
-                    graph.add_line(line_str)
-                except(gfapy.error.NotUniqueError, KeyError):
-                    continue
+            add_link(graph, f"{edge}_{path[i]}", "+", f"{edge}_{path[i + 1]}", "+", 1)
+            #try:
+            #    line_str='L\tfirst_edge\t+\tsecond_edge\t+\t0M\tix:i:1'.replace('first_edge', "%s_%s" % (edge, path[i])) \
+            #                                                           .replace('second_edge',"%s_%s" % (edge, path[i + 1]))
+            #    graph.add_line(line_str)
+            #except(gfapy.error.NotUniqueError, KeyError):
+            #    continue
 
 
 def add_path_edges ( edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
@@ -729,10 +729,11 @@ def graph_link_unitigs(edge, graph, G, bam_cache, link_clusters, link_clusters_s
                         pass
                 for i in repl:
                     logger.debug(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
-                    try:
-                        graph.add_line(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
-                    except(gfapy.error.NotUniqueError):
-                        pass
+                    add_link(graph, d.from_segment.name, d.from_orient, f"{d.to_segment.name}_{i}", d.to_orient, 1)
+                    #try:
+                    #    graph.add_line(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
+                    #except(gfapy.error.NotUniqueError):
+                    #    pass
             if d.to_segment==edge:
                 if d.from_orient == '+':
                     try:
@@ -748,10 +749,11 @@ def graph_link_unitigs(edge, graph, G, bam_cache, link_clusters, link_clusters_s
                         pass
                 for i in repl:
                     logger.debug(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
-                    try:
-                        graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
-                    except(gfapy.error.NotUniqueError):
-                        pass
+                    add_link(graph, f"{d.from_segment.name}_{i}", d.from_orient, d.to_segment.name, d.to_orient, 1)
+                    #try:
+                    #    graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
+                    #except(gfapy.error.NotUniqueError):
+                    #    pass
 
 
 def clean_g(g):

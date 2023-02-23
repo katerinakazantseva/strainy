@@ -87,6 +87,8 @@ def clear_links(edge,g):
             if i[0] != edge and len(from_neighbours(g, i[0], i[1])) > 1:
                 changed = remove_link(from_n[0][0], from_n[0][1],i[0], i[1],g)
 
+    return changed
+
 
 def remove_link(fr, fr_or, to, to_or, g):
     if fr == to:    #Weird self loops that should not happen, it seems it breaks somwthing in gfapy
