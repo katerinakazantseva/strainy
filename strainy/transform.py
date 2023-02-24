@@ -569,7 +569,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
     stats.close()
 
 
-def graph_link_unitigs(edge, graph, G, bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters):
+def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters):
     '''
     Second part of the transformation: linkage of all new unitigs created during the first tranforming stage
     '''
@@ -581,179 +581,188 @@ def graph_link_unitigs(edge, graph, G, bam_cache, link_clusters, link_clusters_s
         clusters = link_clusters[edge]
     except(KeyError):
         pass
+
     try:
         cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na=False)
     except(FileNotFoundError):
         pass
     link_unitigs=[]
 
-    for clN in set(clusters):
+    for phase_clust in set(clusters):
         try:
-            if graph.try_get_segment("%s_%s" % (edge, clN)):
-                link_unitigs.append(clN)
+            if graph.try_get_segment("%s_%s" % (edge, phase_clust)):
+                link_unitigs.append(phase_clust)
         except:
             continue
 
-    for clN in link_unitigs:
-        reads = list(cl.loc[cl['Cluster'] == clN, 'ReadName'])
-        neighbours={}
-        orient={}
-        n_cl_set_src = []
-        n_cl_set_snk = []
+    nx_graph = gfa_to_nx(graph)
+
+    #for each cluster in the initial unitig
+    for cur_clust in link_unitigs:
+        cluster_reads = list(cl.loc[cl['Cluster'] == cur_clust, 'ReadName'])
+        neighbours = {}
+        orient = {}
 
         #get split reads, identify which unitigs they connect and in which orientation
-        data = bam_cache[edge]
-        for read in reads:
-            for n, v in data[read]["Rclip"].items():
+        read_data = bam_cache[edge]
+        for read in cluster_reads:
+            for next_seg, link_orientation in read_data[read]["Rclip"].items():
                 try:
-                    if len(nx.shortest_path(G,n,edge))<=max_hops:
-                        neighbours[read]=n
-                        if v[0]=='+' and v[1]=='+':
-                            orient[n] = ['+', '+']
-                        elif v[0] == '-' and v[1] == '-':
-                            orient[n] = ['+', '+']
-                        else:
-                            orient[n] = ['+', '-']
+                    if len(nx.shortest_path(nx_graph, next_seg, edge)) <= max_hops:
+                        neighbours[read] = next_seg
                 except(nx.NetworkXNoPath):
-                    if v[0] == '+' and v[1] == '+':
-                        orient[n] = ['+', '+']
-                    elif v[0] == '-' and v[1] == '-':
-                        orient[n] = ['+', '+']
-                    else:
-                        orient[n] = ['+', '-']
+                    pass
 
-            for n, v in data[read]["Lclip"].items():
+                if link_orientation == ['+', '+']:
+                    orient[next_seg] = ['+', '+']
+                elif link_orientation == ['-', '-']:
+                    orient[next_seg] = ['+', '+']
+                else:
+                    orient[next_seg] = ['+', '-']
+
+            for next_seg, link_orientation in read_data[read]["Lclip"].items():
                 try:
-                    if len(nx.shortest_path(G, n, edge)) <= max_hops:
-                        neighbours[read]=n
-                        if v[0]=='+' and v[1]=='+':
-                            orient[n] = ['-', '-']
-                        elif v[0] == '-' and v[1] == '-':
-                            orient[n] = ['-', '-']
-                        else:
-                            orient[n] = ['-', '+']
+                    if len(nx.shortest_path(nx_graph, next_seg, edge)) <= max_hops:
+                        neighbours[read] = next_seg
                 except(nx.NetworkXNoPath):
-                    if v[0] == '+' and v[1] == '+':
-                        orient[n] = ['-', '-']
-                    elif v[0] == '-' and v[1] == '-':
-                        orient[n] = ['-', '-']
-                    else:
-                        orient[n] = ['-', '+']
+                    pass
 
-        #for each "neighbor", a potential unitig-unitig connection
-        for n in set({k for k, v in Counter(neighbours.values()).items() if v > min_reads_neighbour}):
-            link_full = False
-            fr_or=orient[n][0]
-            to_or=orient[n][1]
-            w=1
+                if link_orientation == ['+', '+']:
+                    orient[next_seg] = ['-', '-']
+                elif link_orientation == ['-', '-']:
+                    orient[next_seg] = ['-', '-']
+                else:
+                    orient[next_seg] = ['-', '+']
+
+        #for each "neighbor" (a potential unitig-unitig connection derived from reads)
+        for next_seg in set({k for k, v in Counter(neighbours.values()).items() if v > min_reads_neighbour}):
+            fr_or = orient[next_seg][0]
+            to_or = orient[next_seg][1]
             try:
-                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output,n, I, AF), keep_default_na=False)
+                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, next_seg, I, AF), keep_default_na=False)
             except(FileNotFoundError):
-                add_link(graph, "%s_%s" % (edge, clN), fr_or,n, to_or,w)
+                add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 555)
                 continue
-            reads = []
-            for k, v in neighbours.items():
-                if v == n:
-                    reads.append(k)
-            n_cl = cl_n.loc[cl_n['ReadName'].isin(reads), 'Cluster']
-            n_cl_set = list(set([x for x in list(Counter(list(n_cl))) if Counter(list(n_cl))[x]  >= min_reads_cluster]))
 
-            link_added=False
+            #for each neighbor, identify which clusters should be connected
+            connecting_reads = []
+            for read, read_adj in neighbours.items():
+                if read_adj == next_seg:
+                    connecting_reads.append(read)
+            connected_clusters = cl_n.loc[cl_n['ReadName'].isin(connecting_reads), 'Cluster']
+            connected_clusters_thld = list(set([x for x in list(Counter(list(connected_clusters)))
+                                            if Counter(list(connected_clusters))[x]  >= min_reads_cluster]))
 
-            for i in n_cl_set:
-                w=Counter(list(n_cl))[i]
+            #make cluster-cluster connections
+            link_added = False
+            for next_clust in connected_clusters_thld:
+                w = Counter(list(connected_clusters))[next_clust]
                 try:
-                    if graph.try_get_segment("%s_%s" % (n, i)):
-                        link_added=True
-                        add_link(graph, "%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or,w)
+                    if graph.try_get_segment(f"{next_seg}_{next_clust}"):
+                        add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{next_clust}", to_or, w)
+                        print(f"Direct link: {edge}_{cur_clust} to {next_seg}_{next_clust}, {w}")
+                        link_added = True
                 except(gfapy.NotFoundError):
                     continue
 
-            if link_added==False:
-                if n in remove_clusters:
+            #in case nothing was connected, either connect it to all starts/ends for the other uinig
+            #or, if the partent segment is not deleted, connect to parent segment
+            n_cl_set_src = []
+            n_cl_set_snk = []
+            link_full = False
+            if link_added == False:
+                if next_seg in remove_clusters:
+                    rewire_clusters = []
                     try:
-                        if clN in link_clusters_sink[edge] and clN in link_clusters_src[edge]:
-                           link_full=True
-                           n_cl_set_src = link_clusters_src[n]
-                           n_cl_set_snk = link_clusters_sink[n]
-                        elif clN in link_clusters_sink[edge]:
-                            n_cl_set = link_clusters_src[n]  #
-                        elif clN in link_clusters_src[edge]:
-                            n_cl_set = link_clusters_sink[n]
+                        if cur_clust in link_clusters_sink[edge] and cur_clust in link_clusters_src[edge]:
+                           link_full = True
+                           n_cl_set_src = link_clusters_src[next_seg]
+                           n_cl_set_snk = link_clusters_sink[next_seg]
+                        elif cur_clust in link_clusters_sink[edge]:
+                            rewire_clusters = link_clusters_src[next_seg]  #
+                        elif cur_clust in link_clusters_src[edge]:
+                            rewire_clusters = link_clusters_sink[next_seg]
+                    except(KeyError):
+                        pass
+
+                    for next_clust in rewire_clusters:
+                        try:
+                            if graph.try_get_segment(f"{next_seg}_{next_clust}"):
+                                link_added = True
+                                add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{next_clust}", to_or, 666)
+                        except(gfapy.NotFoundError):
+                            pass
+
+                else:
+                    add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 666)
+                    link_added = True
+            ###### end block of non-connection
+
+            #special case of linking the full clusters (don't know why is it special case)?
+            if link_full:
+                if to_or == '+':
+                    for src_clust in n_cl_set_src:
+                        print(f"LINK FULL {edge}_{cur_clust} to {next_seg}_{src_clust}")
+                        try:
+                            if graph.try_get_segment(f"{next_seg}_{src_clust}"):
+                                link_added = True
+                                add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{src_clust}", to_or, 777)
+                        except(gfapy.NotFoundError):
+                            continue
+
+                if to_or == '-':
+                    for sink_clust in n_cl_set_snk:
+                        try:
+                            print(f"LINK FULL {edge}_{cur_clust} to {next_seg}_{sink_clust}")
+                            if graph.try_get_segment(f"{next_seg}_{sink_clust}"):
+                                link_added = True
+                                add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{sink_clust}", to_or, 777)
+                        except(gfapy.NotFoundError):
+                            continue
+            ###
+
+    #if nothing at all was connected OR we keeping the parental segment,
+    #connect paren segment with all clusters in the adjecent edge.
+    #but I think it's an error since it only checks link_added of the last cluster
+    #if link_added == False or edge not in remove_clusters:
+    if edge not in remove_clusters:
+        for link in graph.dovetails:
+            repl = []
+            if link.from_segment == edge:
+                if link.to_orient == '+':
+                    try:
+                        for next_clust in link_clusters_src[link.to_segment.name]:
+                            repl.append(next_clust)
                     except(KeyError):
                         pass
                 else:
-                    add_link(graph, "%s_%s" % (edge, clN), fr_or, n, to_or,w)
-                    link_added = True
-            for i in n_cl_set:
-                try:
-                    if graph.try_get_segment("%s_%s" % (n, i)):
-                        link_added=True
-                        add_link(graph, "%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or,w)
-                except(gfapy.NotFoundError):
-                    continue
+                    try:
+                        for next_clust in link_clusters_sink[link.to_segment.name]:
+                            repl.append(next_clust)
+                    except(KeyError):
+                        pass
 
-            if link_full:
-                if to_or=='+':
-                    for i in n_cl_set_src:
-                        try:
-                            if graph.try_get_segment("%s_%s" % (n, i)):
-                                link_added = True
-                                add_link(graph, "%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or, w)
-                        except(gfapy.NotFoundError):
-                            continue
-                if to_or == '-':
-                    for i in n_cl_set_snk:
-                        try:
-                            if graph.try_get_segment("%s_%s" % (n, i)):
-                                link_added = True
-                                add_link(graph, "%s_%s" % (edge, clN), fr_or, "%s_%s" % (n, i), to_or, w)
-                        except(gfapy.NotFoundError):
-                            continue
+                for next_clust in repl:
+                    logger.debug(str(link).replace(link.to_segment.name, f'{link.to_segment.name}_{next_clust}'))
+                    add_link(graph, link.from_segment.name, link.from_orient, f"{link.to_segment.name}_{next_clust}", link.to_orient, 888)
 
-    if link_added==False or edge not in remove_clusters:
-        for d in graph.dovetails:
-            repl=[]
-            if d.from_segment==edge:
-                if d.to_orient=='+':
+            if link.to_segment==edge:
+                if link.from_orient == '+':
                     try:
-                        for i in link_clusters_src[d.to_segment.name]:
-                            repl.append(i)
+                        for next_clust in link_clusters_sink[link.from_segment.name]:
+                            repl.append(next_clust)
                     except(KeyError):
                         pass
-                if d.to_orient == '-':
+                if link.from_orient == '-':
                     try:
-                        for i in link_clusters_sink[d.to_segment.name]:
-                            repl.append(i)
+                        for next_clust in link_clusters_src[link.from_segment.name]:
+                            repl.append(next_clust)
                     except(KeyError):
                         pass
-                for i in repl:
-                    logger.debug(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
-                    add_link(graph, d.from_segment.name, d.from_orient, f"{d.to_segment.name}_{i}", d.to_orient, 1)
-                    #try:
-                    #    graph.add_line(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
-                    #except(gfapy.error.NotUniqueError):
-                    #    pass
-            if d.to_segment==edge:
-                if d.from_orient == '+':
-                    try:
-                        for i in link_clusters_sink[d.from_segment.name]:
-                            repl.append(i)
-                    except(KeyError):
-                        pass
-                if d.from_orient == '-':
-                    try:
-                        for i in link_clusters_src[d.from_segment.name]:
-                            repl.append(i)
-                    except(KeyError):
-                        pass
-                for i in repl:
-                    logger.debug(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
-                    add_link(graph, f"{d.from_segment.name}_{i}", d.from_orient, d.to_segment.name, d.to_orient, 1)
-                    #try:
-                    #    graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
-                    #except(gfapy.error.NotUniqueError):
-                    #    pass
+
+                for next_clust in repl:
+                    logger.debug(str(link).replace(link.from_segment.name, f'{link.from_segment.name}_{next_clust}'))
+                    add_link(graph, f"{link.from_segment.name}_{next_clust}", link.from_orient, link.to_segment.name, link.to_orient, 888)
 
 
 def clean_g(g):
@@ -812,9 +821,8 @@ def transform_main(args):
                              link_clusters, link_clusters_src, link_clusters_sink, remove_clusters)
 
     logger.info("### Link unitigs")
-    G = gfa_to_nx(initial_graph)
     for edge in StRainyArgs().edges:
-        graph_link_unitigs(edge, initial_graph, G, bam_cache, link_clusters, link_clusters_src,
+        graph_link_unitigs(edge, initial_graph, bam_cache, link_clusters, link_clusters_src,
                            link_clusters_sink, remove_clusters)
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
 
