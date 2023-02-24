@@ -57,7 +57,7 @@ and
 
 How to get fasta from gfa and perform alignment (assuming ONT reads):
 ```
-awk '/^S/{print ">"$2"\n"$3}’ assembly_graph.gfa > assembly_graph.fasta
+awk '/^S/{print ">"$2"\n"$3}' assembly_graph.gfa > assembly_graph.fasta
 minimap2 -ax map-ont assembly_graph.fasta reads.fastq | samtools sort -@4 -t 8 > assembly_graph.bam
 samtools index assembly_graph.bam
 ```
