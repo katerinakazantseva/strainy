@@ -40,14 +40,8 @@ class FlyeConsensus:
         self._consensus_dict = multiproc_manager.dict(consensus_dict)
         self._lock = multiproc_manager.Lock()
 
-        #Can't pickle this...
-        #self._bam_file = pysam.AlignmentFile(bam_file_name, "rb")
-        #self._bam_header = self._bam_file.header.copy()
-        #self._gfa_file = gfapy.Gfa.from_file(gfa_file_name)
-        #self._read_index = pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb"))
-        #self._read_index.build()
-
         self._bam_path = bam_file_name
+        self._read_index = None
         self._unitig_seqs = {}
         for seq in SeqIO.parse(graph_fasta_name, "fasta"):
             self._unitig_seqs[str(seq.id)] = str(seq.seq)
@@ -90,15 +84,15 @@ class FlyeConsensus:
 
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
 
-        ts = time.time()
-        read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
-        read_index.build()
-        te = time.time()
-        logger.debug("Index building time %f", te - ts)
+        #ts = time.time()
+        if self._read_index is None:
+            self._read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
+            self._read_index.build()
+        #te = time.time()
+        #logger.debug("Index building time %f", te - ts)
 
         for name in read_names:
-            #with self._lock:
-            iterator = read_index.find(name)
+            iterator = self._read_index.find(name)
             for x in iterator:
                 if x.reference_name == edge:
                     if x.reference_start < cluster_start or cluster_start == -1:
@@ -132,7 +126,7 @@ class FlyeConsensus:
         consensus_dict_key = f"{cluster}-{edge}"
         with self._lock:
             if consensus_dict_key in self._consensus_dict:
-                self._key_hit.value = 1
+                self._key_hit.value += 1
                 return self._consensus_dict[consensus_dict_key]
             self._key_miss.value += 1
 
@@ -181,6 +175,7 @@ class FlyeConsensus:
         try:
             logger.debug("Running Flye polisher")
             subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
+            logger.debug("Running Flye polisher - finished!")
         except subprocess.CalledProcessError as e:
             logger.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")
             logger.error(e)
@@ -429,34 +424,10 @@ class FlyeConsensus:
             logger.debug(f'Intersection length for clusters is less than 1 for clusters {first_cl}, {second_cl} in {edge}')
             return 1
 
-        """
-        aligner = Align.PairwiseAligner()
-        aligner.mode = 'global'
-        aligner.match_score = 1
-        aligner.mismatch_score = -1
-        aligner.gap_score = -1
-        alignments = aligner.align(first_consensus_clipped, second_consensus_clipped)
-        # get the alignment string consisting of (- . |)
-        try:
-            aligned_first, alignment_string, aligned_second = str(alignments[0]._format_generalized()).replace(' ', '').split('\n')[:3]
-        except AttributeError:
-            aligned_first, alignment_string, aligned_second = str(alignments[0]).format().split('\n')[:3]
-        alignment_string = alignment_string.replace("X", ".")
-        score = self._custom_scoring_function(aligned_first, alignment_string, aligned_second, intersection_start,
-                                              first_cl_dict, second_cl_dict)
-        """
-
         aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, intersection_start,
                                                     first_cl_dict, second_cl_dict)
 
-        """
-        print("Alignment scores", score, edlib_score)
-        if (score == 0 and edlib_score) > 0 or (edlib_score == 0 and score > 0):
-            print("Alignment", len(first_consensus_clipped), len(second_consensus_clipped))
-            print(edge, first_cl, second_cl)
-            print(alignment_string, edlib_aln)
-        """
 
         if debug:
             self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict,score,
