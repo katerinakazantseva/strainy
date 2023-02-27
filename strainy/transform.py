@@ -440,9 +440,14 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
     full_paths = []
     full_clusters = []
 
+    cl = None
     try:
         cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na=False)
+    except(FileNotFoundError, IndexError):
+        logger.debug("%s: No clusters" % edge)
+        clusters = []
 
+    if cl is not None:
         SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
         data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
         bam_cache[edge] = data
@@ -543,12 +548,8 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
             link_clusters_sink[edge] = list(full_clusters) + list(
                 set(full_paths_leafs).intersection(set([j for i in full_paths for j in i])))
 
-        else:
-            change_sec(graph, edge, [clusters[0]], cl, SNP_pos, data, False)
-
-    except(FileNotFoundError, IndexError):
-        logger.debug("%s: No clusters" % edge)
-        clusters = []
+        #else:
+        #    change_sec(graph, edge, [clusters[0]], cl, SNP_pos, data, False)
 
     stats = open('%s/stats_clusters.txt' % StRainyArgs().output, 'a')
     fcN = 0
@@ -556,13 +557,14 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
 
     try:
         fcN = len(full_clusters)
-    except(KeyError):
+    except (KeyError):
         pass
 
     try:
         fpN = len(set([j for i in full_paths for j in i]))
-    except(KeyError,UnboundLocalError):
+    except KeyError:
         pass
+
     logger.info("%s: %s unitigs are created" % (edge,str(fcN+fpN)))
     othercl=len(clusters)-fcN-fpN
     stats.write(edge + "\t" + str(fcN) + "\t" + str(fpN) + "\t" + str(othercl) +"\n")
