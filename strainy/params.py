@@ -72,7 +72,7 @@ cov_ratio = 1.6
 minigraph = False
 
 # alignment filtering
-clipp = 100
+max_clipping = 100
 min_mapping_quality = 20
 min_base_quality = 0
 min_al_len = 1000

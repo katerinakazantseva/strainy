@@ -449,7 +449,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
 
     if cl is not None:
         SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
-        data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
+        data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
         bam_cache[edge] = data
 
         ln = int(pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[4])

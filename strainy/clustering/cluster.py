@@ -65,7 +65,7 @@ def cluster(i, flye_consensus):
     SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
 
     logger.info("### Reading Reads...")
-    data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
+    data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
     cl = pd.DataFrame(data={'ReadName': data.keys()})
     cl['Cluster'] = 'NA'
 
@@ -80,7 +80,7 @@ def cluster(i, flye_consensus):
     if num_reads == 0:
         return
     if len(SNP_pos) == 0:
-        #data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
+        #data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
         cl = pd.DataFrame(data={'ReadName': data.keys()})
         cl['Cluster'] = 1
         cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
