@@ -166,51 +166,6 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error)
                     #    print(a1.reference_name, a1.strand, a2.reference_name, a2.strand)
                     #print("")
 
-            """
-            try:
-                tags = read.get_tags()[9]
-            except (IndexError):
-                tags=""
-
-            left_clip = {}
-            right_clip = {}
-
-            if re.search("SA", str(tags)):
-                if read.cigartuples[0][0]==4 and read.cigartuples[len(read.cigartuples)-1][0]!=4:
-                    for i in tags[1].split(';'):
-                        if len(i)>0 and int(i.split(',')[4])>20:
-                         orient = '+' if read.is_reverse==False else '-'
-                         left_clip[i.split(',')[0]]=[i.split(',')[2], orient]
-                         break
-                if read.cigartuples[0][0] != 4 and read.cigartuples[len(read.cigartuples) - 1][0] == 4:
-                    for i in tags[1].split(';'):
-                        if len(i) > 0 and int(i.split(',')[4])>20:
-                            orient = '+' if read.is_reverse == False else '-'
-                            right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-                else:
-                    for i in tags[1].split(';'):
-                        if len(i) > 0 and int(i.split(',')[4]) > 20:
-                            l=int(re.match('.*?([0-9]+)$', re.sub(r"M.*$", "", str(i.split(',')[3]))).group(1))
-                            if l==read.cigartuples[0][1]:
-                                orient = '+' if read.is_reverse == False else '-'
-                                left_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-                            elif l==read.cigartuples[len(read.cigartuples) - 1][1]:
-                                orient = '+' if read.is_reverse == False else '-'
-                                right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-                            elif l>read.cigartuples[0][1]:
-                                orient = '+' if read.is_reverse == False else '-'
-                                right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-                            elif l> read.cigartuples[len(read.cigartuples) - 1][1]:
-                                orient = '+' if read.is_reverse == False else '-'
-                                left_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-
-            data[read.query_name]["Rclip"]=right_clip
-            data[read.query_name]["Lclip"]=left_clip
-            """
-
-            #if left_clip or right_clip:
-            #    print(edge, data[read.query_name]["Lclip"], data[read.query_name]["Rclip"])
-
     for pos in SNP_pos:
         for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=0,
                                            ignore_overlaps=False, min_mapping_quality=min_mapping_quality,
