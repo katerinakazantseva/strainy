@@ -64,8 +64,8 @@ strong_cluster_min_reads = 2
 
 #adding new links
 max_hops = 10
-min_reads_neighbour = 0
-min_reads_cluster = 2
+min_reads_neighbour = 3
+min_reads_cluster = 3
 
 #simplification
 cov_ratio = 1.6

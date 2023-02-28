@@ -601,6 +601,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
 
     #for each cluster in the initial unitig
     for cur_clust in link_unitigs:
+        #print(f"PROCESSING incoming cluster {cur_clust}")
         cluster_reads = list(cl.loc[cl['Cluster'] == cur_clust, 'ReadName'])
         neighbours = {}
         orient = {}
@@ -608,38 +609,36 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
         #get split reads, identify which unitigs they connect and in which orientation
         read_data = bam_cache[edge]
         for read in cluster_reads:
-            for next_seg, link_orientation in read_data[read]["Rclip"].items():
+            for next_seg, link_orientation in read_data[read]["Rclip"]:
                 try:
                     if len(nx.shortest_path(nx_graph, next_seg, edge)) <= max_hops:
                         neighbours[read] = next_seg
                 except(nx.NetworkXNoPath):
                     pass
 
-                if link_orientation == ['+', '+']:
-                    orient[next_seg] = ['+', '+']
-                elif link_orientation == ['-', '-']:
-                    orient[next_seg] = ['+', '+']
+                if link_orientation == "+":
+                    orient[next_seg] = ("+", "+")
                 else:
-                    orient[next_seg] = ['+', '-']
+                    orient[next_seg] = ("+", "-")
 
-            for next_seg, link_orientation in read_data[read]["Lclip"].items():
+            for next_seg, link_orientation in read_data[read]["Lclip"]:
                 try:
                     if len(nx.shortest_path(nx_graph, next_seg, edge)) <= max_hops:
                         neighbours[read] = next_seg
                 except(nx.NetworkXNoPath):
                     pass
 
-                if link_orientation == ['+', '+']:
-                    orient[next_seg] = ['-', '-']
-                elif link_orientation == ['-', '-']:
-                    orient[next_seg] = ['-', '-']
+                if link_orientation == "+":
+                    orient[next_seg] = ("-", "-")
                 else:
-                    orient[next_seg] = ['-', '+']
+                    orient[next_seg] = ("-", "+")
+
+        #print("Neighbors", neighbours)
 
         #for each "neighbor" (a potential unitig-unitig connection derived from reads)
-        for next_seg in set({k for k, v in Counter(neighbours.values()).items() if v > min_reads_neighbour}):
-            fr_or = orient[next_seg][0]
-            to_or = orient[next_seg][1]
+        for next_seg in set({k for k, v in Counter(neighbours.values()).items() if v >= min_reads_neighbour}):
+            #print(f"\tPROCESSING outgoing segment {next_seg}")
+            fr_or, to_or = orient[next_seg]
             try:
                 cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, next_seg, I, AF), keep_default_na=False)
             except(FileNotFoundError):
@@ -654,6 +653,8 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
             connected_clusters = cl_n.loc[cl_n['ReadName'].isin(connecting_reads), 'Cluster']
             connected_clusters_thld = list(set([x for x in list(Counter(list(connected_clusters)))
                                             if Counter(list(connected_clusters))[x]  >= min_reads_cluster]))
+            #print("Connected clusters", connected_clusters)
+            #print("Clusters thld", connected_clusters_thld)
 
             #make cluster-cluster connections
             link_added = False
@@ -662,7 +663,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                 try:
                     if graph.try_get_segment(f"{next_seg}_{next_clust}"):
                         add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{next_clust}", to_or, w)
-                        print(f"Direct link: {edge}_{cur_clust} to {next_seg}_{next_clust}, {w}")
+                        #print(f"Direct link: {edge}_{cur_clust} to {next_seg}_{next_clust}, {w}")
                         link_added = True
                 except(gfapy.NotFoundError):
                     continue
@@ -704,7 +705,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
             if link_full:
                 if to_or == '+':
                     for src_clust in n_cl_set_src:
-                        print(f"LINK FULL {edge}_{cur_clust} to {next_seg}_{src_clust}")
+                        #print(f"LINK FULL {edge}_{cur_clust} to {next_seg}_{src_clust}")
                         try:
                             if graph.try_get_segment(f"{next_seg}_{src_clust}"):
                                 link_added = True
@@ -715,7 +716,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                 if to_or == '-':
                     for sink_clust in n_cl_set_snk:
                         try:
-                            print(f"LINK FULL {edge}_{cur_clust} to {next_seg}_{sink_clust}")
+                            #print(f"LINK FULL {edge}_{cur_clust} to {next_seg}_{sink_clust}")
                             if graph.try_get_segment(f"{next_seg}_{sink_clust}"):
                                 link_added = True
                                 add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{sink_clust}", to_or, 777)

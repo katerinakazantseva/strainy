@@ -126,8 +126,8 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error)
             data[read.query_name] = {}
             data[read.query_name]["Start"] = read.reference_start
             data[read.query_name]["Stop"] = read.reference_end
-            data[read.query_name]["Rclip"] = {}
-            data[read.query_name]["Lclip"] = {}
+            data[read.query_name]["Rclip"] = []
+            data[read.query_name]["Lclip"] = []
 
             if read.has_tag("SA"):
                 strand = "+" if not read.is_reverse else "-"
@@ -149,16 +149,17 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error)
                         continue
                     if a1.reference_name == read.reference_name:
                         if a1.strand == "+":
-                            data[read.query_name]["Rclip"][a2.reference_name] = [a2.strand, "+"]
+                            data[read.query_name]["Rclip"].append((a2.reference_name, a2.strand))
                         else:
-                            data[read.query_name]["Lclip"][a2.reference_name] = [_neg_strand(a2.strand), "+"]
+                            data[read.query_name]["Lclip"].append((a2.reference_name, _neg_strand(a2.strand)))
                     if a2.reference_name == read.reference_name:
                         if a2.strand == "+":
-                            data[read.query_name]["Lclip"][a1.reference_name] = [a1.strand, "+"]
+                            data[read.query_name]["Lclip"].append((a1.reference_name, a1.strand))
                         else:
-                            data[read.query_name]["Rclip"][a1.reference_name] = [_neg_strand(a1.strand), "+"]
+                            data[read.query_name]["Rclip"].append((a1.reference_name, _neg_strand(a1.strand)))
 
                 #if len(suppl_aln) > 1:
+                    #print(edge, read.query_name)
                     #for a in suppl_aln:
                     #    print(a.reference_name, a.reference_start, a.reference_end, a.query_start, a.query_end)
                     #for (a1, a2) in good_connections:
