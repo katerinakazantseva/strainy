@@ -3,7 +3,7 @@ import networkx as nx
 import pygraphviz as gv
 import re
 import gfapy
-from collections import Counter, deque
+from collections import Counter, deque, defaultdict
 import numpy as np
 import pickle
 import logging
@@ -227,12 +227,6 @@ def add_path_links(graph, edge, paths, G):
     for path in paths:
         for i in range(0, len(path) - 1):
             add_link(graph, f"{edge}_{path[i]}", "+", f"{edge}_{path[i + 1]}", "+", 1)
-            #try:
-            #    line_str='L\tfirst_edge\t+\tsecond_edge\t+\t0M\tix:i:1'.replace('first_edge', "%s_%s" % (edge, path[i])) \
-            #                                                           .replace('second_edge',"%s_%s" % (edge, path[i + 1]))
-            #    graph.add_line(line_str)
-            #except(gfapy.error.NotUniqueError, KeyError):
-            #    continue
 
 
 def add_path_edges ( edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
@@ -375,7 +369,7 @@ def change_cov(g, edge, cons, ln, clusters, othercl, remove_clusters):
         for i in range(cons[i]["Start"],cons[i]["Stop"]):
             len_cl.append(i)
     if (len(set(len_cl)) / ln) < parental_min_len and len(clusters)- len(othercl) != 0:
-        remove_clusters.append(edge)
+        remove_clusters.add(edge)
     cov=cov / ln
     i = g.try_get_segment(edge)
     i.dp = round(cov)
@@ -477,7 +471,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
             link_clusters[edge] = list(clusters)
             link_clusters_sink[edge] = list(clusters)
             link_clusters_src[edge] = list(clusters)
-            remove_clusters.append(edge)
+            remove_clusters.add(edge)
 
         if len(clusters) > 1:
             for cluster in clusters:
@@ -534,7 +528,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
 
             new_cov = change_cov(graph, edge, cons, ln, clusters, othercl, remove_clusters)
             if  new_cov< parental_min_coverage and len(clusters) - len(othercl) != 0:
-                remove_clusters.append(edge)
+                remove_clusters.add(edge)
 
             else:
                 #change_sec(graph, edge, othercl, cl, flye_consensus)
@@ -578,11 +572,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
     logger.info(edge)
     link_added = False
 
-    clusters=[]
-    try:
-        clusters = link_clusters[edge]
-    except(KeyError):
-        pass
+    clusters = link_clusters[edge]
 
     try:
         cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na=False)
@@ -689,57 +679,55 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                     for next_clust in rewire_clusters:
                         try:
                             if graph.try_get_segment(f"{next_seg}_{next_clust}"):
-                                link_added = True
+                                #link_added = True
                                 add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{next_clust}", to_or, 666)
                         except(gfapy.NotFoundError):
                             pass
 
                 else:
                     add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 666)
-                    link_added = True
+                    #link_added = True
             ###### end block of non-connection
+
+
+def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_clusters):
+    def is_right_tip(seg, sign):
+        if graph.segment(seg) is None:
+            return False
+        if sign == "+":
+            return len(graph.segment(seg).dovetails_R) == 0
+        else:
+            return len(graph.segment(seg).dovetails_L) == 0
+
+    def neg_sign(sign):
+        return "+" if sign == "-" else "-"
 
     #if we keeping the parental segment,
     #connect parent segment with all clusters in the adjecent edge.
-    #if link_added == False or edge not in remove_clusters:
-    if edge not in remove_clusters:
+    for edge in StRainyArgs().edges:
+        if edge in remove_clusters:
+            continue
+
         for link in graph.dovetails:
-            repl = []
             if link.from_segment == edge:
-                if link.to_orient == '+':
-                    try:
-                        for next_clust in link_clusters_src[link.to_segment.name]:
-                            repl.append(next_clust)
-                    except(KeyError):
-                        pass
-                else:
-                    try:
-                        for next_clust in link_clusters_sink[link.to_segment.name]:
-                            repl.append(next_clust)
-                    except(KeyError):
-                        pass
+                to_connect = link_clusters_src[link.to_segment.name] if link.to_orient == "+" else \
+                             link_clusters_sink[link.to_segment.name]
+                for next_clust in to_connect:
+                    #logger.debug(str(link).replace(link.to_segment.name, f'{link.to_segment.name}_{next_clust}'))
+                    candidate = f"{link.to_segment.name}_{next_clust}"
+                    if is_right_tip(candidate, neg_sign(link.to_orient)):
+                        add_link(graph, link.from_segment.name, link.from_orient,
+                                 candidate, link.to_orient, 888)
 
-                for next_clust in repl:
-                    logger.debug(str(link).replace(link.to_segment.name, f'{link.to_segment.name}_{next_clust}'))
-                    add_link(graph, link.from_segment.name, link.from_orient, f"{link.to_segment.name}_{next_clust}", link.to_orient, 888)
-
-            if link.to_segment==edge:
-                if link.from_orient == '+':
-                    try:
-                        for next_clust in link_clusters_sink[link.from_segment.name]:
-                            repl.append(next_clust)
-                    except(KeyError):
-                        pass
-                if link.from_orient == '-':
-                    try:
-                        for next_clust in link_clusters_src[link.from_segment.name]:
-                            repl.append(next_clust)
-                    except(KeyError):
-                        pass
-
-                for next_clust in repl:
-                    logger.debug(str(link).replace(link.from_segment.name, f'{link.from_segment.name}_{next_clust}'))
-                    add_link(graph, f"{link.from_segment.name}_{next_clust}", link.from_orient, link.to_segment.name, link.to_orient, 888)
+            if link.to_segment == edge:
+                to_connect = link_clusters_sink[link.from_segment.name] if link.from_orient == "+" else \
+                             link_clusters_src[link.from_segment.name]
+                for next_clust in to_connect:
+                    #logger.debug(str(link).replace(link.from_segment.name, f'{link.from_segment.name}_{next_clust}'))
+                    candidate = f"{link.from_segment.name}_{next_clust}"
+                    if is_right_tip(candidate, link.from_orient):
+                        add_link(graph, candidate, link.from_orient,
+                                 link.to_segment.name, link.to_orient, 888)
 
 
 def clean_g(g):
@@ -786,10 +774,10 @@ def transform_main(args):
     flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, multiprocessing.Manager())
 
     bam_cache = {}
-    link_clusters = {}
-    link_clusters_src = {}
-    link_clusters_sink = {}
-    remove_clusters = []
+    link_clusters = defaultdict(list)
+    link_clusters_src = defaultdict(list)
+    link_clusters_sink = defaultdict(list)
+    remove_clusters = set()
 
     logger.info("### Create unitigs")
     for edge in StRainyArgs().edges:
@@ -801,16 +789,18 @@ def transform_main(args):
     for edge in StRainyArgs().edges:
         graph_link_unitigs(edge, initial_graph, bam_cache, link_clusters, link_clusters_src,
                            link_clusters_sink, remove_clusters)
+    connect_parental_edges(initial_graph, link_clusters_src, link_clusters_sink, remove_clusters)
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
 
     logger.info("### Remove initial segments")
     for ed in initial_graph.segments:
         if ed.name in remove_clusters:
             initial_graph.rm(ed)
-            logger.info(ed.name)
+            #logger.info(ed.name)
     for link in initial_graph.dovetails:
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
+
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
 
     logger.info("### Simplify graph")
