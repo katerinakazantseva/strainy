@@ -670,17 +670,15 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
 
             #in case nothing was connected, either connect it to all starts/ends for the other uinig
             #or, if the partent segment is not deleted, connect to parent segment
-            n_cl_set_src = []
-            n_cl_set_snk = []
-            link_full = False
             if link_added == False:
                 if next_seg in remove_clusters:
                     rewire_clusters = []
                     try:
                         if cur_clust in link_clusters_sink[edge] and cur_clust in link_clusters_src[edge]:
-                           link_full = True
-                           n_cl_set_src = link_clusters_src[next_seg]
-                           n_cl_set_snk = link_clusters_sink[next_seg]
+                            if to_or == '+':
+                                rewire_clusters = link_clusters_src[next_seg]
+                            else:
+                                rewire_clusters = link_clusters_sink[next_seg]
                         elif cur_clust in link_clusters_sink[edge]:
                             rewire_clusters = link_clusters_src[next_seg]  #
                         elif cur_clust in link_clusters_src[edge]:
@@ -701,32 +699,8 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                     link_added = True
             ###### end block of non-connection
 
-            #special case of linking the full clusters (don't know why is it special case)?
-            if link_full:
-                if to_or == '+':
-                    for src_clust in n_cl_set_src:
-                        #print(f"LINK FULL {edge}_{cur_clust} to {next_seg}_{src_clust}")
-                        try:
-                            if graph.try_get_segment(f"{next_seg}_{src_clust}"):
-                                link_added = True
-                                add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{src_clust}", to_or, 777)
-                        except(gfapy.NotFoundError):
-                            continue
-
-                if to_or == '-':
-                    for sink_clust in n_cl_set_snk:
-                        try:
-                            #print(f"LINK FULL {edge}_{cur_clust} to {next_seg}_{sink_clust}")
-                            if graph.try_get_segment(f"{next_seg}_{sink_clust}"):
-                                link_added = True
-                                add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{sink_clust}", to_or, 777)
-                        except(gfapy.NotFoundError):
-                            continue
-            ###
-
-    #if nothing at all was connected OR we keeping the parental segment,
-    #connect paren segment with all clusters in the adjecent edge.
-    #but I think it's an error since it only checks link_added of the last cluster
+    #if we keeping the parental segment,
+    #connect parent segment with all clusters in the adjecent edge.
     #if link_added == False or edge not in remove_clusters:
     if edge not in remove_clusters:
         for link in graph.dovetails:
