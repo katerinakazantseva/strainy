@@ -730,20 +730,23 @@ def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_
                                  link.to_segment.name, link.to_orient, 888)
 
 
-def clean_g(g):
+def clean_graph(g):
     '''
     Remove 0len unitigs, virtual  and self links
     :param g:
     :return:
     '''
     for line in g.dovetails:
-        if line.from_segment==line.to_segment: #TODO do not self links
+        if line.from_segment == line.to_segment: #TODO do not self links
             g.rm(line)
         #if g.segment(line.from_segment).virtual==True or g.segment(line.to_segment).virtual==True:
         #    g.rm(line)
-    for i in g.segments:  #TODO do not create o len unitigs
-        if len(i.sequence) == 0:
-            i.sequence = 'A'
+    for seq in g.segments:  #TODO do not create o len unitigs
+        if len(seq.sequence) == 0:
+            seq.sequence = 'A'
+            #seq.dp = 0
+    for path in g.paths:
+        g.rm(path)
 
 
 def transform_main(args):
@@ -790,7 +793,7 @@ def transform_main(args):
         graph_link_unitigs(edge, initial_graph, bam_cache, link_clusters, link_clusters_src,
                            link_clusters_sink, remove_clusters)
     connect_parental_edges(initial_graph, link_clusters_src, link_clusters_sink, remove_clusters)
-    gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
+    #gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
 
     logger.info("### Remove initial segments")
     for ed in initial_graph.segments:
@@ -801,17 +804,23 @@ def transform_main(args):
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
 
-    gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
+    clean_graph(initial_graph)
+    out_clusters = os.path.join(StRainyArgs().output, "strainy_clusters.gfa")
+    gfapy.Gfa.to_file(initial_graph, out_clusters)
+
+    phased_graph = gfapy.Gfa.from_file(out_clusters)    #parsing again because gfapy can't copy
+    gfapy.GraphOperations.merge_linear_paths(phased_graph)
+    clean_graph(phased_graph)
+    out_merged = os.path.join(StRainyArgs().output, "strainy_phased.gfa")
+    gfapy.Gfa.to_file(phased_graph, out_merged)
 
     logger.info("### Simplify graph")
     simplify_links(initial_graph)
-    gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed1)
-    clean_g(initial_graph)
 
-    logger.info("### Merge graph")
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
-    clean_g(initial_graph)  #removes zero edges created during merge
-    gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed2)
+    clean_graph(initial_graph)
+    out_simplified = os.path.join(StRainyArgs().output, "strainy_simplified.gfa")
+    gfapy.Gfa.to_file(initial_graph, out_simplified)
 
     flye_consensus.print_cache_statistics()
     logger.info("### Done!")
