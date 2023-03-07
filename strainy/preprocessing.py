@@ -120,6 +120,9 @@ def split_long_unitigs(input_graph, output_path):
                 input_graph.rm(e)
             unitig.disconnect()
 
+    for path in input_graph.paths:
+        input_graph.rm(path)
+
     input_graph.to_file(output_path)
 
 
