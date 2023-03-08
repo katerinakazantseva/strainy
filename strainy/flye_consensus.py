@@ -40,14 +40,8 @@ class FlyeConsensus:
         self._consensus_dict = multiproc_manager.dict(consensus_dict)
         self._lock = multiproc_manager.Lock()
 
-        #Can't pickle this...
-        #self._bam_file = pysam.AlignmentFile(bam_file_name, "rb")
-        #self._bam_header = self._bam_file.header.copy()
-        #self._gfa_file = gfapy.Gfa.from_file(gfa_file_name)
-        #self._read_index = pysam.IndexedReads(pysam.AlignmentFile(bam_file_name, "rb"))
-        #self._read_index.build()
-
         self._bam_path = bam_file_name
+        self._read_index = None
         self._unitig_seqs = {}
         for seq in SeqIO.parse(graph_fasta_name, "fasta"):
             self._unitig_seqs[str(seq.id)] = str(seq.seq)
@@ -96,15 +90,15 @@ class FlyeConsensus:
 
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
 
-        ts = time.time()
-        read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
-        read_index.build()
-        te = time.time()
-        logger.debug("Index building time %f", te - ts)
+        #ts = time.time()
+        if self._read_index is None:
+            self._read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
+            self._read_index.build()
+        #te = time.time()
+        #logger.debug("Index building time %f", te - ts)
 
         for name in read_names:
-            #with self._lock:
-            iterator = read_index.find(name)
+            iterator = self._read_index.find(name)
             for x in iterator:
                 if x.reference_name == edge:
                     if x.reference_start < cluster_start or cluster_start == -1:
@@ -186,6 +180,7 @@ class FlyeConsensus:
         try:
             logger.debug("Running Flye polisher")
             subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
+            logger.debug("Running Flye polisher - finished!")
         except subprocess.CalledProcessError as e:
             logger.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")
             logger.error(e)
@@ -360,7 +355,6 @@ class FlyeConsensus:
                 consensuses
                 read start and end positions 
             """
-            # TODO: thread IDs are incorrect
             f.write("ALIGNMENT:\n")
             f.write(alignment_string + '\n')
             mismatch_positions = [i for i in range(len(alignment_string)) if alignment_string.startswith('.', i)]
@@ -490,7 +484,6 @@ class FlyeConsensus:
         if debug:
             self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict, edlib_score,
                                      intersection_start, intersection_end)
-
         # score is not normalized!
         return edlib_score
 

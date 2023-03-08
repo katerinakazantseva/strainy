@@ -22,18 +22,6 @@ from strainy.logging import set_thread_logging
 logger = logging.getLogger()
 
 
-#TODO: get rid of these global variables.
-full_cl = {}
-full_paths = {}
-#paths = {}
-link_clusters = {}
-link_clusters_src = {}
-link_clusters_sink = {}
-remove_clusters = []
-#remove_zeroes = []
-all_data={}
-
-
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
     '''
     The function creates unitiges in the gfa graph
@@ -47,23 +35,17 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         seq=insert+seq
     else:
         seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
+
+    g.add_line("S\t%s_%s\t*" % (edge, clN))
+    new_line = g.try_get_segment("%s_%s" % (edge, clN))
+    new_line.name = str(edge) + "_" + str(clN)
+    new_line.sid = str(edge) + "_" + str(clN)
+    new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
+    #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if len(seq) == 0:
-        g.add_line("S\t%s_%s\t*" % (edge, clN))
-        i = g.try_get_segment("%s_%s" % (edge, clN))
-        new_line = i
-        new_line.name = str(edge) + "_" + str(clN)
-        new_line.sid = str(edge) + "_" + str(clN)
         new_line.sequence = 'A'
-        new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
-        #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
-    if len(seq)>0:
-        g.add_line("S\t%s_%s\t*" % (edge, clN))
-        i = g.try_get_segment("%s_%s" % (edge, clN))
-        new_line = i
-        new_line.name = str(edge) + "_" + str(clN)
-        new_line.sid = str(edge) + "_" + str(clN)
+    else:
         new_line.sequence = seq
-        new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
     logger.debug("unitig added  %s_%s" % (edge, clN))
 
 
@@ -83,14 +65,14 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
     for node in full_paths_leafs:
         neighbors = list(full_paths_leafs)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=5):
+            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=2):
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
 
     for node in full_paths_roots:
         neighbors = list(full_paths_roots)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node, cutoff=5):
+            for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node, cutoff=2):
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
     G = remove_nested(G, cons)
@@ -106,7 +88,7 @@ def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data
     for node in G.nodes():
         neighbors = nx.all_neighbors(G, node)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=5):
+            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=3):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
 
@@ -222,33 +204,38 @@ def find_full_paths(G, paths_roots, paths_leafs):
     return (paths)
 
 
-def add_link(graph, fr, fr_or, to, to_or,w):
+def add_link(graph, fr, fr_or, to, to_or, w):
     '''
      Add gfa links between unitigs
     '''
-    link = 'L	%s	%s	%s	%s	0M	ex:i:%s' % (fr, fr_or, to, to_or, w)
+    #check if segments exist before connecting
+    if graph.segment(fr) is None or graph.segment(to) is None:
+        return
+
+    link = f"L\t{fr}\t{fr_or}\t{to}\t{to_or}\t0M\tex:i:{w}"
     try:
         graph.add_line(link)
-        logger.debug("link added from %s %s to %s %s" % (fr, fr_or, to, to_or))
-    except(gfapy.NotUniqueError): pass
+        logger.debug("link added: " + link)
+    except(gfapy.NotUniqueError):   #link already exists
+        pass
 
 
-def add_path_links(graph, edge, paths,G):
+def add_path_links(graph, edge, paths, G):
     '''
      Add gfa links between newly created unitigs forming 'full path'
     '''
     for path in paths:
         for i in range(0, len(path) - 1):
-                try:
-                    str='L	first_edge	+	second_edge	+	0M	ix:i:%s' % 1
-                    graph.add_line(str.replace('first_edge', "%s_%s" % (edge, path[i])).replace('second_edge',
-                                                                                            "%s_%s" % (
-                                                                               edge, path[i + 1])))
-                except(gfapy.error.NotUniqueError, KeyError):
-                    continue
+            add_link(graph, f"{edge}_{path[i]}", "+", f"{edge}_{path[i + 1]}", "+", 1)
+            #try:
+            #    line_str='L\tfirst_edge\t+\tsecond_edge\t+\t0M\tix:i:1'.replace('first_edge', "%s_%s" % (edge, path[i])) \
+            #                                                           .replace('second_edge',"%s_%s" % (edge, path[i + 1]))
+            #    graph.add_line(line_str)
+            #except(gfapy.error.NotUniqueError, KeyError):
+            #    continue
 
 
-def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
+def add_path_edges ( edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
     '''
     Add gfa nodes (unitigs) forming 'full path', calculating cluster boundaries
     '''
@@ -261,20 +248,20 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
         except:
             pass
 
-    for path in paths[edge].copy():
+    for path in full_paths.copy():
         for member in path:
             if member in full_clusters:
                 try:
-                    paths[edge].remove(path)
+                    full_paths.remove(path)
                 except (ValueError):
                     pass
             if member in paths_leafs and path.index(member)!=len(path)-1:
                 try:
-                    paths[edge].remove(path)
+                    full_paths.remove(path)
                 except (ValueError):
                     pass
 
-    for path in paths[edge]:
+    for path in full_paths:
         for member in path:
             path_cl.append(member)
     cut_l_unsorted = {}
@@ -303,7 +290,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
             Q = deque()
             L = []
             R = []
-            for path in paths[edge]:
+            for path in full_paths:
                 try:
                     L.append(path[path.index(member) + 1])
                     Q.append(path[path.index(member) + 1])
@@ -315,7 +302,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                 n = Q.pop()
                 visited.append(n)
                 if n in L:
-                    for path in paths[edge]:
+                    for path in full_paths:
                         try:
                             if path.index(n)>0:
                                 if path[path.index(n) - 1] not in visited:
@@ -325,7 +312,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
                         except (ValueError, IndexError):
                             continue
                 else:
-                    for path in paths[edge]:
+                    for path in full_paths:
                         try:
                             if path[path.index(n) + 1] not in visited:
                                 L.append(path[path.index(n) + 1])
@@ -351,7 +338,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
             for i in R:
                 cut_r[i] = border
         elif cut_r[member] != None:
-            for path in paths[edge]:
+            for path in full_paths:
                 try:
                     cut_l[path[path.index(member)+1]]=cut_r[member]
                 except:
@@ -360,7 +347,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
     if None in cut_l.values():
         for member in cut_l.keys():
             if cut_l[member] == None:
-                for path in paths[edge]:
+                for path in full_paths:
                     try:
                         cut_l[member]=cut_r[path[path.index(member)-1]]
                     except:
@@ -370,17 +357,17 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, paths, G,paths_roots,paths_le
         if cut_l[path_cluster]!=cut_r[path_cluster]:
             add_child_edge(edge, path_cluster, g,  cl, cut_l[path_cluster], cut_r[path_cluster], cons, flye_consensus)
         else:
-            for i in range(0,len(paths[edge])):
-                if path_cluster in paths[edge][i]:
-                    upd_path=paths[edge][i]
+            for i in range(0,len(full_paths)):
+                if path_cluster in full_paths[i]:
+                    upd_path=full_paths[i]
                     upd_path.remove(path_cluster)
-                    paths[edge][i]=upd_path
+                    full_paths[i]=upd_path
             G.remove_node(path_cluster)
 
     return(path_cl)
 
 
-def change_cov(g, edge, cons, ln, clusters, othercl):
+def change_cov(g, edge, cons, ln, clusters, othercl, remove_clusters):
     cov = 0
     len_cl = []
     for i in othercl:
@@ -443,22 +430,22 @@ def gfa_to_nx(g):
     return(G)
 
 
-def graph_create_unitigs(i, graph, flye_consensus):
+def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
+                         link_clusters_src, link_clusters_sink, remove_clusters):
     '''
     First part of the transformation: creation of all new unitigs from clusters obtained during the phasing stage
     '''
-    edge = StRainyArgs().edges[i]
     full_paths_roots = []
     full_paths_leafs = []
+    full_paths = []
     full_clusters = []
 
     try:
         cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na=False)
 
-
         SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
         data = read_bam(StRainyArgs().bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
-        all_data[edge]=data
+        bam_cache[edge] = data
 
         ln = int(pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[4])
         if len(cl.loc[cl['Cluster'] == 0,'Cluster'].values)>10:
@@ -513,20 +500,20 @@ def graph_create_unitigs(i, graph, flye_consensus):
             G = build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters,
                                   data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
-            full_cl[edge] = full_clusters
+            #full_cl[edge] = full_clusters
             cl_removed = paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl, full_paths_roots,
                                              full_paths_leafs, full_clusters, cluster_distances.copy())
 
             try:
-                full_paths[edge] = find_full_paths(G,full_paths_roots, full_paths_leafs)
+                full_paths = find_full_paths(G,full_paths_roots, full_paths_leafs)
             except(ValueError):
                 pass
 
             add_path_edges(edge, graph, cl, data, SNP_pos, ln, full_paths, G,full_paths_roots,
                            full_paths_leafs,full_clusters,cons, flye_consensus)
-            add_path_links(graph, edge, full_paths[edge], G)
+            add_path_links(graph, edge, full_paths, G)
 
-            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths[edge] for j in i]) - set(cl_removed))
+            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]) - set(cl_removed))
             if len(othercl) > 0:
                 G = nx.from_pandas_adjacency(cluster_distances.copy(), create_using=nx.DiGraph)
 
@@ -534,13 +521,13 @@ def graph_create_unitigs(i, graph, flye_consensus):
             for cluster in othercl.copy():
                 neighbors = nx.all_neighbors(G, cluster)
                 A=set(neighbors)
-                B=set([j for i in full_paths[edge] for j in i])
+                B=set([j for i in full_paths for j in i])
                 if len(A.intersection(set(full_clusters)))>0 or len(A.intersection(B))>0:
                     othercl.remove(cluster)
                     close_to_full.append(cluster)
                     logger.debug("REMOVE " + str(cluster))
 
-            new_cov = change_cov(graph, edge,cons,ln,clusters,othercl)
+            new_cov = change_cov(graph, edge, cons, ln, clusters, othercl, remove_clusters)
             if  new_cov< parental_min_coverage and len(clusters) - len(othercl) != 0:
                 remove_clusters.append(edge)
 
@@ -549,22 +536,18 @@ def graph_create_unitigs(i, graph, flye_consensus):
                 change_sec(graph, edge, othercl, cl, SNP_pos, data, True)
 
             link_clusters[edge] = list(full_clusters) + list(
-                set(full_paths_roots).intersection(set([j for i in full_paths[edge] for j in i]))) + list(
-                set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
+                set(full_paths_roots).intersection(set([j for i in full_paths for j in i]))) + list(
+                set(full_paths_leafs).intersection(set([j for i in full_paths for j in i])))
             link_clusters_src[edge] = list(full_clusters) + list(
-                set(full_paths_roots).intersection(set([j for i in full_paths[edge] for j in i])))
+                set(full_paths_roots).intersection(set([j for i in full_paths for j in i])))
             link_clusters_sink[edge] = list(full_clusters) + list(
-                set(full_paths_leafs).intersection(set([j for i in full_paths[edge] for j in i])))
+                set(full_paths_leafs).intersection(set([j for i in full_paths for j in i])))
 
         else:
             change_sec(graph, edge, [clusters[0]], cl, SNP_pos, data, False)
 
     except(FileNotFoundError, IndexError):
         logger.debug("%s: No clusters" % edge)
-        cov = pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[6]
-        i = graph.try_get_segment(edge)
-        i.dp = round(float(cov))
-        pass
         clusters = []
 
     stats = open('%s/stats_clusters.txt' % StRainyArgs().output, 'a')
@@ -572,12 +555,12 @@ def graph_create_unitigs(i, graph, flye_consensus):
     fpN = 0
 
     try:
-        fcN = len(full_cl[edge])
+        fcN = len(full_clusters)
     except(KeyError):
         pass
 
     try:
-        fpN = len(set([j for i in full_paths[edge] for j in i]))
+        fpN = len(set([j for i in full_paths for j in i]))
     except(KeyError,UnboundLocalError):
         pass
     logger.info("%s: %s unitigs are created" % (edge,str(fcN+fpN)))
@@ -586,11 +569,10 @@ def graph_create_unitigs(i, graph, flye_consensus):
     stats.close()
 
 
-def graph_link_unitigs(i, graph, G):
+def graph_link_unitigs(edge, graph, G, bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters):
     '''
     Second part of the transformation: linkage of all new unitigs created during the first tranforming stage
     '''
-    edge = StRainyArgs().edges[i]
     logger.info(edge)
     link_added = False
 
@@ -619,44 +601,46 @@ def graph_link_unitigs(i, graph, G):
         n_cl_set_src = []
         n_cl_set_snk = []
 
-        data=all_data[edge]
+        #get split reads, identify which unitigs they connect and in which orientation
+        data = bam_cache[edge]
         for read in reads:
-                for n, v in data[read]["Rclip"].items():
-                    try:
-                        if len(nx.shortest_path(G,n,edge))<=max_hops:
-                            neighbours[read]=n
-                            if v[0]=='+' and v[1]=='+':
-                                orient[n] = ['+', '+']
-                            elif v[0] == '-' and v[1] == '-':
-                                orient[n] = ['+', '+']
-                            else:
-                                orient[n] = ['+', '-']
-                    except(nx.NetworkXNoPath):
-                        if v[0] == '+' and v[1] == '+':
+            for n, v in data[read]["Rclip"].items():
+                try:
+                    if len(nx.shortest_path(G,n,edge))<=max_hops:
+                        neighbours[read]=n
+                        if v[0]=='+' and v[1]=='+':
                             orient[n] = ['+', '+']
                         elif v[0] == '-' and v[1] == '-':
                             orient[n] = ['+', '+']
                         else:
                             orient[n] = ['+', '-']
+                except(nx.NetworkXNoPath):
+                    if v[0] == '+' and v[1] == '+':
+                        orient[n] = ['+', '+']
+                    elif v[0] == '-' and v[1] == '-':
+                        orient[n] = ['+', '+']
+                    else:
+                        orient[n] = ['+', '-']
 
-                for n, v in data[read]["Lclip"].items():
-                    try:
-                        if len(nx.shortest_path(G, n, edge)) <= max_hops:
-                            neighbours[read]=n
-                            if v[0]=='+' and v[1]=='+':
-                                orient[n] = ['-', '-']
-                            elif v[0] == '-' and v[1] == '-':
-                                orient[n] = ['-', '-']
-                            else:
-                                orient[n] = ['-', '+']
-                    except(nx.NetworkXNoPath):
-                        if v[0] == '+' and v[1] == '+':
+            for n, v in data[read]["Lclip"].items():
+                try:
+                    if len(nx.shortest_path(G, n, edge)) <= max_hops:
+                        neighbours[read]=n
+                        if v[0]=='+' and v[1]=='+':
                             orient[n] = ['-', '-']
                         elif v[0] == '-' and v[1] == '-':
                             orient[n] = ['-', '-']
                         else:
                             orient[n] = ['-', '+']
+                except(nx.NetworkXNoPath):
+                    if v[0] == '+' and v[1] == '+':
+                        orient[n] = ['-', '-']
+                    elif v[0] == '-' and v[1] == '-':
+                        orient[n] = ['-', '-']
+                    else:
+                        orient[n] = ['-', '+']
 
+        #for each "neighbor", a potential unitig-unitig connection
         for n in set({k for k, v in Counter(neighbours.values()).items() if v > min_reads_neighbour}):
             link_full = False
             fr_or=orient[n][0]
@@ -745,10 +729,11 @@ def graph_link_unitigs(i, graph, G):
                         pass
                 for i in repl:
                     logger.debug(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
-                    try:
-                        graph.add_line(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
-                    except(gfapy.error.NotUniqueError):
-                        pass
+                    add_link(graph, d.from_segment.name, d.from_orient, f"{d.to_segment.name}_{i}", d.to_orient, 1)
+                    #try:
+                    #    graph.add_line(str(d).replace(d.to_segment.name,'%s_%s' % (d.to_segment.name,i)))
+                    #except(gfapy.error.NotUniqueError):
+                    #    pass
             if d.to_segment==edge:
                 if d.from_orient == '+':
                     try:
@@ -764,10 +749,11 @@ def graph_link_unitigs(i, graph, G):
                         pass
                 for i in repl:
                     logger.debug(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
-                    try:
-                        graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
-                    except(gfapy.error.NotUniqueError):
-                        pass
+                    add_link(graph, f"{d.from_segment.name}_{i}", d.from_orient, d.to_segment.name, d.to_orient, 1)
+                    #try:
+                    #    graph.add_line(str(d).replace(d.from_segment.name,'%s_%s' % (d.from_segment.name,i)))
+                    #except(gfapy.error.NotUniqueError):
+                    #    pass
 
 
 def clean_g(g):
@@ -799,7 +785,10 @@ def transform_main(args):
     stats.close()
 
     initial_graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
-    G = gfa_to_nx(initial_graph)
+    #Setting up coverage for all unitigs based on bam alignment depth
+    for edge in StRainyArgs().edges:
+        edge_cov = pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[6]
+        initial_graph.try_get_segment(edge).dp = round(float(edge_cov))
 
     try:
         with open(os.path.join(StRainyArgs().output, consensus_cache_path), 'rb') as f:
@@ -808,16 +797,27 @@ def transform_main(args):
     except FileNotFoundError:
         consensus_dict = {}
 
-    flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, multiprocessing.Manager(), StRainyArgs().spm)
-    logger.info("### Create unitigs")
-    for i in range(0, len(StRainyArgs().edges)):
-        #TODO: this can run in parallel (and probably takes the most time)
-        graph_create_unitigs(i, initial_graph, flye_consensus)
-    logger.info("### Link unitigs")
-    for i in range(0, len(StRainyArgs().edges)):
-        graph_link_unitigs(i, initial_graph, G)
+    flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, multiprocessing.Manager())
 
+    bam_cache = {}
+    link_clusters = {}
+    link_clusters_src = {}
+    link_clusters_sink = {}
+    remove_clusters = []
+
+    logger.info("### Create unitigs")
+    for edge in StRainyArgs().edges:
+        #TODO: this can run in parallel (and probably takes the most time)
+        graph_create_unitigs(edge, initial_graph, flye_consensus, bam_cache,
+                             link_clusters, link_clusters_src, link_clusters_sink, remove_clusters)
+
+    logger.info("### Link unitigs")
+    G = gfa_to_nx(initial_graph)
+    for edge in StRainyArgs().edges:
+        graph_link_unitigs(edge, initial_graph, G, bam_cache, link_clusters, link_clusters_src,
+                           link_clusters_sink, remove_clusters)
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
+
     logger.info("### Remove initial segments")
     for ed in initial_graph.segments:
         if ed.name in remove_clusters:
@@ -826,17 +826,18 @@ def transform_main(args):
     for link in initial_graph.dovetails:
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
-
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
+
     logger.info("### Simplify graph")
     simplify_links(initial_graph)
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed1)
-
     clean_g(initial_graph)
+
     logger.info("### Merge graph")
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
     clean_g(initial_graph)  #removes zero edges created during merge
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed2)
+
     flye_consensus.print_cache_statistics()
     logger.info("### Done!")
 
