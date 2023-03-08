@@ -54,6 +54,15 @@ The two main inputs to stRainy are:
 and
 2. FASTQ file (containing reads to be aligned to the fasta reference generated from the GFA file).
 
+## Improving de novo metagenomic assmbelies
+
+We have tested stRainy using metaFlye metagenoimic assembly graphs as input. The recommended
+set of parameters is `--meta --keep-haplotypes -i 0`. 
+
+Note that `-i 0` disables metaFlye's polishing procedure, which we found to improve read assignemnt
+to bubble branches during `minimap2` realignment. `--keep-haplotypes` retains structural
+variations between strains on the assmebly graph.
+
 ## Usage and outputs
 stRainy has 2 stages: **phase** and **transform**. With the command below, stRainy will phase and transform by default. Please see Parameter Description section for the full list of available arguments:
 
