@@ -25,38 +25,29 @@ def main():
 
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 
-    requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument("-o", "--output", help="output dir",required=True)
-    requiredNamed.add_argument("-b", "--bam", help="bam file",required=True)
+    requiredNamed = parser.add_argument_group('Required named arguments')
+    requiredNamed.add_argument("-o", "--output", help="directory that will contain the output files",required=True)
     requiredNamed.add_argument("-g", "--gfa", help="gfa file",required=True)
-    requiredNamed.add_argument("-m", "--mode", help="", choices=["hifi", "nano"], required=True)
+    requiredNamed.add_argument("-m", "--mode", help="type of reads", choices=["hifi", "nano"], required=True)
+    requiredNamed.add_argument("-fq", "--fastq",
+                    help="fastq file containing reads to perform alignment, used to create a .bam file",
+                    required=True)
     
-    parser.add_argument("stage", help="stage to run: either phase or transform", choices=["phase", "transform"])
+    parser.add_argument("-stage", help="stage to run: either phase, transform or e2e (phase + transform)", choices=["phase", "transform", "e2e"], default="e2e")
     parser.add_argument("-s", "--snp", help="vcf file", default=None)
     parser.add_argument("-t", "--threads", help="number of threads to use", type=int, default=4)
     parser.add_argument("-f", "--fasta", help="fasta file", required=False)
-    parser.add_argument("-splu", "--split-long-unitigs",
-                        help="Split unitigs with long sequences into multiple smaller unitigs for faster processing, requires -fq to be provided",
-                        action='store_true',
-                        required=False)
-    parser.add_argument("-fq", "--fastq",
-                        help="fastq file containing reads to perform alignment, only used if -splu is set",
-                        required=False,
-                        default=False)
+    parser.add_argument("-b", "--bam", help="bam file",required=False)
     parser.add_argument("-splen", "--unitig-split-length",
-                        help="The length (in kb) which the unitigs that are longer will be split, only used if -splu is set",
+                        help="The length (in kb) which the unitigs that are longer will be split, set 0 to disable",
                         required=False,
-                        type=float,
+                        type=int,
                         default=50)
 
 
     args = parser.parse_args()
     args.strainy_root = strainy_root
 
-    bam_index = args.bam + ".bai"
-    bam_index_exist = os.path.exists(bam_index)
-    if bam_index_exist == False:
-        raise Exception("No index file found (%s) Please create index using \"samtools index\"." % bam_index)
 
     #important so that global variables are inherited
     #multiprocessing.set_start_method("fork")
@@ -85,6 +76,11 @@ def main():
         sys.exit(phase_main(args))
     elif args.stage == "transform":
         sys.exit(transform_main(args))
+    elif args.stage == "e2e":
+        phase_main(args)
+        logger.info("Phase stage completed, starting transform now...")
+        transform_main(args)
+        logger.info("Transform stage completed, exiting...")
 
 
 if __name__ == "__main__":
