@@ -2,7 +2,10 @@
 
 import sys
 import os
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import re
+import subprocess
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+import gfapy
 import logging
 import shutil
 
@@ -31,7 +34,7 @@ def main():
     requiredNamed.add_argument("-g", "--gfa", help="gfa file",required=True)
     requiredNamed.add_argument("-m", "--mode", help="", choices=["hifi", "nano"], required=True)
     
-    parser.add_argument("stage", help="stage to run: either phase or transform", choices=["phase", "transform"])
+    parser.add_argument("stage", help="stage to run: phase, transform or e2e", choices=["phase", "transform", "e2e"], default="e2e")
     parser.add_argument("-s", "--snp", help="vcf file", default=None)
     parser.add_argument("-t", "--threads", help="number of threads to use", type=int, default=4)
     parser.add_argument("-f", "--fasta", help="fasta file", required=False)
@@ -85,6 +88,10 @@ def main():
         sys.exit(phase_main(args))
     elif args.stage == "transform":
         sys.exit(transform_main(args))
+    elif args.stage == "e2e":
+        phase_main(args)
+        logger.info("Phasing stage completed, starting transform now...")
+        transform_main(args)
 
 
 if __name__ == "__main__":
