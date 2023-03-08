@@ -81,7 +81,7 @@ variations between strains on the assmebly graph.
 ./strainy.py phase -o output_dir -b bam_file -g gfa_graph -m mode -t threads
 ```
 
-Phasing stage clusters reads and produce csv files with read names and corresponding cluster names and BAM file wich visualise reads clustering
+Phase stage clusters reads and produces csv files with read names, corresponding cluster names and a BAM file. The BAM file visualises the clustering of the reads
 
 <p align="center">
 <img width="500" alt="Screenshot 2023-01-30 at 17 01 47" src="https://user-images.githubusercontent.com/82141791/215484889-6a032cc0-9c90-4a26-9689-7d5cb41a2ab5.png">
@@ -91,7 +91,7 @@ Phasing stage clusters reads and produce csv files with read names and correspon
 ./strainy.py transform -o output_dir -b bam_file -g gfa_graph -m mode -t threads
 ```
 
-Transform stage transform and simplify initial assembly graph, produce the final gfa file: `transformed_after_simplification_merged.gfa`
+Transform stage transforms and simplifies initial assembly graph, producing the final gfa file: `transformed_after_simplification_merged.gfa`
 
 <p align="center">
 <img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
@@ -100,24 +100,33 @@ Transform stage transform and simplify initial assembly graph, produce the final
 ## Parameters desciption
 
 ```
-strainy.py [-h] [-s SNP] [-t THREADS] [-f FASTA] -o OUTPUT -b BAM -g GFA -m {hifi,nano} stage
+usage: strainy.py [-h] -o OUTPUT -b BAM -g GFA -m {hifi,nano} [-s SNP] [-t THREADS] [-f FASTA] [-splu] [-fq FASTQ]
+                  [-splen UNITIG_SPLIT_LENGTH]
+                  {phase,transform}
 
 positional arguments:
-  stage                 stage to run: either phase or transform
+  {phase,transform}     stage to run: either phase or transform
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -s SNP, --snp SNP     vcf file
+  -s SNP, --snp SNP     vcf file (default: None)
   -t THREADS, --threads THREADS
-                        number of threads
+                        number of threads to use (default: 4)
   -f FASTA, --fasta FASTA
-                        fasta file
+                        fasta file (default: None)
+  -splu, --split-long-unitigs
+                        Split unitigs with long sequences into multiple smaller unitigs for faster processing, requires -fq to be
+                        provided (default: False)
+  -fq FASTQ, --fastq FASTQ
+                        fastq file containing reads to perform alignment, only used if -splu is set (default: False)
+  -splen UNITIG_SPLIT_LENGTH, --unitig-split-length UNITIG_SPLIT_LENGTH
+                        The length (in kb) which the unitigs that are longer will be split, only used if -splu is set (default: 50)
 
 required named arguments:
   -o OUTPUT, --output OUTPUT
-                        output dir
-  -b BAM, --bam BAM     bam file
-  -g GFA, --gfa GFA     gfa file
+                        output dir (default: None)
+  -b BAM, --bam BAM     bam file (default: None)
+  -g GFA, --gfa GFA     gfa file (default: None)
   -m {hifi,nano}, --mode {hifi,nano}
 ```
 
