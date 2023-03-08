@@ -111,7 +111,7 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
         d = 1
     elif len(intersect) > I:
-        d = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, len(commonSNP))
+        d = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP)
     else:
         d = 1
     return d

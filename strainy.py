@@ -4,9 +4,8 @@ import sys
 import os
 import re
 import subprocess
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import gfapy
-import multiprocessing
 import logging
 import shutil
 
@@ -26,7 +25,7 @@ def main():
     sys.path.insert(0, strainy_root)
 
     parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter)
-    parser.add_argument("stage", help="stage to run: either phase or transform")
+    parser.add_argument("stage", help="stage to run: phase, transform or e2e", choices=["phase", "transform", "e2e"], default="e2e")
     parser.add_argument("-s", "--snp", help="vcf file", default=None)
     parser.add_argument("-t", "--threads", help="number of threads", type=int, default=4)
     parser.add_argument("-f", "--fasta", help="fasta file", required=False)
@@ -90,8 +89,10 @@ def main():
         sys.exit(phase_main(args))
     elif args.stage == "transform":
         sys.exit(transform_main(args))
-    else:
-        raise Exception("Stage should be either phase or transform!")
+    elif args.stage == "e2e":
+        phase_main(args)
+        logger.info("Phasing stage completed, starting transform now...")
+        transform_main(args)
 
 
 if __name__ == "__main__":

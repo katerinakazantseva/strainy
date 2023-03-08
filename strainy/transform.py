@@ -837,8 +837,10 @@ def transform_main(args):
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
     clean_g(initial_graph)  #removes zero edges created during merge
     gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed2)
+    flye_consensus.print_cache_statistics()
     logger.info("### Done!")
 
 
+
 if __name__ == "__main__":
-    main_transform()
+    transform_main()
