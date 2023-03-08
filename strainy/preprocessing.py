@@ -9,13 +9,13 @@ from strainy.params import StRainyArgs
 
 logger = logging.getLogger()
 
-def create_bam_file(fasta_file, fastq_file, output_path, index=True):
+def create_bam_file(fasta_file, fastq_file, output_path, num_threads, index=True):
     """
     Create a .bam file, requires user provided --fastq argument containing reads.
     """
     logger.info(f"Creating bam file from {fasta_file} and {fastq_file}")
     minimap_mode = "map-ont" if StRainyArgs().mode == "nano" else "map-hifi"
-    subprocess.check_output(f"minimap2 -ax {minimap_mode} {fasta_file} {fastq_file} | " \
+    subprocess.check_output(f"minimap2 -ax {minimap_mode} {fasta_file} {fastq_file} -t {num_threads} | " \
                             f"samtools sort -@4 -t {StRainyArgs().threads} > {output_path}",
                             shell=True)
     if index:
@@ -148,7 +148,8 @@ def preprocess_cmd_args(args, parser):
         args.fasta = os.path.join(args.output,'gfa_converted.fasta')
         create_bam_file(os.path.join(args.output,'gfa_converted.fasta'),
                         StRainyArgs().fq,
-                        os.path.join(StRainyArgs().output, 'long_unitigs_split.bam'))
+                        os.path.join(StRainyArgs().output, 'long_unitigs_split.bam'),
+                        args.threads)
         args.bam = os.path.join(StRainyArgs().output, 'long_unitigs_split.bam')
 
     if StRainyArgs().fa is None:
