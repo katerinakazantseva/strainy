@@ -29,7 +29,7 @@ def main():
     requiredNamed.add_argument("-o", "--output", help="directory that will contain the output files",required=True)
     requiredNamed.add_argument("-g", "--gfa", help="gfa file",required=True)
     requiredNamed.add_argument("-m", "--mode", help="type of reads", choices=["hifi", "nano"], required=True)
-    requiredNamed.add_argument("-fq", "--fastq",
+    requiredNamed.add_argument("-q", "--fastq",
                     help="fastq file containing reads to perform alignment, used to create a .bam file",
                     required=True)
     
@@ -38,7 +38,7 @@ def main():
     parser.add_argument("-t", "--threads", help="number of threads to use", type=int, default=4)
     parser.add_argument("-f", "--fasta", help="fasta file", required=False)
     parser.add_argument("-b", "--bam", help="bam file",required=False)
-    parser.add_argument("-splen", "--unitig-split-length",
+    parser.add_argument("--unitig-split-length",
                         help="The length (in kb) which the unitigs that are longer will be split, set 0 to disable",
                         required=False,
                         type=int,

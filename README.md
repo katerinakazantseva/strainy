@@ -27,7 +27,7 @@ Once installed, you will need to activate the conda environment prior running:
 
 ```
 conda activate strainy
-./strainy
+./strainy.py -h
 ```
 
 ## Quick usage example
@@ -36,7 +36,7 @@ After successful installation, you should be able to run:
 
 ```
 conda activate strainy
-./strainy -g test_set/toy.gfa -fq test_set/toy.fastq.gz -o out_strainy -m hifi 
+./strainy.py -g test_set/toy.gfa -q test_set/toy.fastq -o out_strainy -m hifi 
 ```
 
 ## Limitations
@@ -67,7 +67,7 @@ variations between strains on the assmebly graph.
 stRainy has 2 stages: **phase** and **transform**. With the command below, stRainy will phase and transform by default. Please see Parameter Description section for the full list of available arguments:
 
 ```
-./strainy -g [gfa_file] -fq [fastq_file] -m [mode] -o [output_dir]
+./strainy.py -g [gfa_file] -q [fastq_file] -m [mode] -o [output_dir]
 ```  
 
  **1. phase** stage performs read clustering according to SNP positions using community detection approach and produces csv files with read names, corresponding cluster names and a BAM file. The BAM file visualises the clustering of the reads.
@@ -87,7 +87,7 @@ stRainy has 2 stages: **phase** and **transform**. With the command below, stRai
 ## Parameter desciption
 
 ```
-usage: strainy.py [-h] -o OUTPUT -g GFA -m {hifi,nano} -fq FASTQ [-stage {phase,transform,e2e}] [-s SNP] [-t THREADS] [-f FASTA] [-b BAM] [-splen UNITIG_SPLIT_LENGTH]
+usage: strainy.py [-h] -o OUTPUT -g GFA -m {hifi,nano} -q FASTQ [-stage {phase,transform,e2e}] [-s SNP] [-t THREADS] [-f FASTA] [-b BAM] [--unitig-split-length UNITIG_SPLIT_LENGTH]
 
 options:
   -h, --help            show this help message and exit
@@ -99,7 +99,7 @@ options:
   -f FASTA, --fasta FASTA
                         fasta file (default: None)
   -b BAM, --bam BAM     bam file (default: None)
-  -splen UNITIG_SPLIT_LENGTH, --unitig-split-length UNITIG_SPLIT_LENGTH
+  --unitig-split-length UNITIG_SPLIT_LENGTH
                         The length (in kb) which the unitigs that are longer will be split, set 0 to disable (default: 50)
 
 Required named arguments:
@@ -108,7 +108,7 @@ Required named arguments:
   -g GFA, --gfa GFA     gfa file (default: None)
   -m {hifi,nano}, --mode {hifi,nano}
                         type of reads (default: None)
-  -fq FASTQ, --fastq FASTQ
+  -q FASTQ, --fastq FASTQ
                         fastq file containing reads to perform alignment, used to create a .bam file (default: None)
 ```
 
