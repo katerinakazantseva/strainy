@@ -10,7 +10,7 @@ stRainy is a graph-based phasing algorithm, that takes a de novo assembly graph 
 
 ## Conda Installation
 
-The recommended way of installing is though [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html):
+The recommended way of installing is through [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html):
 
 ```
 git clone https://github.com/katerinakazantseva/stRainy
@@ -27,7 +27,7 @@ Once installed, you will need to activate the conda environemnt prior running:
 
 ```
 conda activate strainy
-./strainy.py
+./strainy
 ```
 
 ## Quick usage example
@@ -36,8 +36,7 @@ After successful installation, you should be able to run:
 
 ```
 conda activate strainy
-./strainy.py phase  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 4 -m hifi 
-./strainy.py transform  -o out_strainy -b test_set/toy.bam -g test_set/toy.gfa -t 4 -m hifi 
+./strainy -g test_set/toy.gfa -fq test_set/toy.fastq -o out_strainy -m hifi 
 ```
 
 ## Limitations
@@ -50,17 +49,10 @@ stRainy to larger metagenomes is a work in progress.
 
 stRainy supports PacBio HiFi and Nanopore (Guppy5+) sequencing. 
 
-The inputs to stRainy are:
+The two main inputs to stRainy are:
 1. GFA file (can be produced with [**metaFlye**](https://github.com/fenderglass/Flye) or minigraph) 
 and
-2. BAM file (reads aligned to the fasta reference generated from the GFA file).
-
-How to get fasta from gfa and perform alignment (assuming ONT reads):
-```
-awk '/^S/{print ">"$2"\n"$3}' assembly_graph.gfa > assembly_graph.fasta
-minimap2 -ax map-ont assembly_graph.fasta reads.fastq | samtools sort -@4 -t 8 > assembly_graph.bam
-samtools index assembly_graph.bam
-```
+2. FASTQ file (containing reads to be aligned to the fasta reference generated from the GFA file).
 
 ## Improving de novo metagenomic assmbelies
 
@@ -72,53 +64,52 @@ to bubble branches during `minimap2` realignment. `--keep-haplotypes` retains st
 variations between strains on the assmebly graph.
 
 ## Usage and outputs
-
-**strainy.py phase** - performs reads clustering according to SNP positions using community detection approach
-
-**strainy.py transfom** - transforms assembly graph 
+stRainy has 2 stages: **phase** and **transform**. With the command below, stRainy will phase and transform by default. Please see Parameter Description section for the full list of available arguments:
 
 ```
-./strainy.py phase -o output_dir -b bam_file -g gfa_graph -m mode -t threads
-```
+./strainy -g [gfa_file] -fq [fastq_file] -m [mode] -o [output_dir]
+```  
 
-Phasing stage clusters reads and produce csv files with read names and corresponding cluster names and BAM file wich visualise reads clustering
+ **1. phase** stage performs read clustering according to SNP positions using community detection approach and produces csv files with read names, corresponding cluster names and a BAM file. The BAM file visualises the clustering of the reads.
 
 <p align="center">
 <img width="500" alt="Screenshot 2023-01-30 at 17 01 47" src="https://user-images.githubusercontent.com/82141791/215484889-6a032cc0-9c90-4a26-9689-7d5cb41a2ab5.png">
 </p>
 
-```
-./strainy.py transform -o output_dir -b bam_file -g gfa_graph -m mode -t threads
-```
+<br>
 
-Transform stage transform and simplify initial assembly graph, produce the final gfa file: `transformed_after_simplification_merged.gfa`
+**2. transform** stage transforms and simplifies the initial assembly graph, producing the final gfa file: `transformed_after_simplification_merged.gfa`
 
 <p align="center">
 <img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
 </p>
 
-## Parameters desciption
+## Parameter desciption
 
 ```
-strainy.py [-h] [-s SNP] [-t THREADS] [-f FASTA] -o OUTPUT -b BAM -g GFA -m {hifi,nano} stage
+usage: strainy.py [-h] -o OUTPUT -g GFA -m {hifi,nano} -fq FASTQ [-stage {phase,transform,e2e}] [-s SNP] [-t THREADS] [-f FASTA] [-b BAM] [-splen UNITIG_SPLIT_LENGTH]
 
-positional arguments:
-  stage                 stage to run: either phase or transform
-
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  -s SNP, --snp SNP     vcf file
+  -stage {phase,transform,e2e}
+                        stage to run: either phase, transform or e2e (phase + transform) (default: e2e)
+  -s SNP, --snp SNP     vcf file (default: None)
   -t THREADS, --threads THREADS
-                        number of threads
+                        number of threads to use (default: 4)
   -f FASTA, --fasta FASTA
-                        fasta file
+                        fasta file (default: None)
+  -b BAM, --bam BAM     bam file (default: None)
+  -splen UNITIG_SPLIT_LENGTH, --unitig-split-length UNITIG_SPLIT_LENGTH
+                        The length (in kb) which the unitigs that are longer will be split, set 0 to disable (default: 50)
 
-required named arguments:
+Required named arguments:
   -o OUTPUT, --output OUTPUT
-                        output dir
-  -b BAM, --bam BAM     bam file
-  -g GFA, --gfa GFA     gfa file
+                        directory that will contain the output files (default: None)
+  -g GFA, --gfa GFA     gfa file (default: None)
   -m {hifi,nano}, --mode {hifi,nano}
+                        type of reads (default: None)
+  -fq FASTQ, --fastq FASTQ
+                        fastq file containing reads to perform alignment, used to create a .bam file (default: None)
 ```
 
 ## Acknowledgements

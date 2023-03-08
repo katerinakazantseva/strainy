@@ -337,7 +337,6 @@ class FlyeConsensus:
                 consensuses
                 read start and end positions 
             """
-            # TODO: thread IDs are incorrect
             f.write("ALIGNMENT:\n")
             f.write(alignment_string + '\n')
             mismatch_positions = [i for i in range(len(alignment_string)) if alignment_string.startswith('.', i)]
@@ -424,14 +423,16 @@ class FlyeConsensus:
             logger.debug(f'Intersection length for clusters is less than 1 for clusters {first_cl}, {second_cl} in {edge}')
             return 1
 
+
         aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, intersection_start,
                                                     first_cl_dict, second_cl_dict)
 
-
         if debug:
-            self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict,score,
-                                     intersection_start, intersection_end)
+            self._log_alignment_info(aligned_first, edlib_aln, aligned_second,
+                                    first_cl_dict, second_cl_dict,
+                                    edlib_score,
+                                    intersection_start, intersection_end)
 
         # score is not normalized!
         return edlib_score
