@@ -36,7 +36,7 @@ After successful installation, you should be able to run:
 
 ```
 conda activate strainy
-./strainy -g test_set/toy.gfa -fq test_set/toy.fastq -o out_strainy -m hifi 
+./strainy -g test_set/toy.gfa -fq test_set/toy.fastq.gz -o out_strainy -m hifi 
 ```
 
 ## Limitations
