@@ -23,7 +23,7 @@ conda env create -f environment.yml -n strainy
 Note that if you use an M1 conda installation, you should run `conda config --add subdirs osx-64` before installation. 
 Find details [**here**](https://github.com/conda/conda/issues/11216)
 
-Once installed, you will need to activate the conda environemnt prior running:
+Once installed, you will need to activate the conda environment prior running:
 
 ```
 conda activate strainy
