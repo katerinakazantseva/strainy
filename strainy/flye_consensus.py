@@ -35,7 +35,7 @@ def calculate_coverage(position, bed_file_content):
 
 class FlyeConsensus:
     def __init__(self, bam_file_name, graph_fasta_name, num_processes, consensus_dict, multiproc_manager,
-                mismatch_forgiveness_rate=50, indel_block_length_leniency=5):
+                indel_block_length_leniency=5):
 
         self._consensus_dict = multiproc_manager.dict(consensus_dict)
         self._lock = multiproc_manager.Lock()
@@ -48,7 +48,6 @@ class FlyeConsensus:
 
         self._num_processes = num_processes
         self._indel_block_length_leniency = indel_block_length_leniency
-        self._mismatch_forgiveness_rate = mismatch_forgiveness_rate
         if StRainyArgs().mode == "hifi":
             self._coverage_limit = 3
             self._platform = "pacbio"
