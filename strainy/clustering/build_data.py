@@ -2,7 +2,7 @@ import subprocess
 import pysam
 import os
 import re
-from collections import Counter
+from collections import Counter, namedtuple
 from Bio import SeqIO
 
 from strainy.params import *
@@ -38,67 +38,133 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
     return SNP_pos
 
 
-def read_bam(bam, edge, SNP_pos, clipp, min_mapping_quality, min_al_len, max_aln_error):
+ReadSegment = namedtuple("ReadSegment", ["query_start", "query_end", "reference_start", "reference_end", "query_name", "reference_name",
+                                         "strand", "reference_length", "query_length", "mapq"])
+cigar_parser = re.compile("[0-9]+[MIDNSHP=X]")
+def _parse_cigar(read_id, ref_id, ref_start, strand, cigar, mapq, ref_length):
+    """
+    Parses cigar and generate ReadSegment structure with alignment coordinates
+    """
+    first_clip = True
+    read_start = 0
+    read_aligned = 0
+    read_length = 0
+    ref_aligned = 0
+
+    ref_start = int(ref_start)
+    mapq = int(mapq)
+
+    for token in cigar_parser.findall(cigar):
+        op = token[-1]
+        op_len = int(token[:-1])
+
+        if op == "H" or op == "S":
+            if first_clip:
+                read_start = op_len
+            read_length += op_len
+        first_clip = False
+
+        if op == "M" or op == "=" or op == "X":
+            read_aligned += op_len
+            ref_aligned += op_len
+            read_length += op_len
+        if op == "D":
+            ref_aligned += op_len
+        if op == "I":
+            read_aligned += op_len
+            read_length += op_len
+
+    ref_end = ref_start + ref_aligned
+    read_end = read_start + read_aligned
+
+    if strand == "-":
+        read_start, read_end = read_length - read_end, read_length - read_start
+
+    return ReadSegment(read_start, read_end, ref_start, ref_end, read_id,
+                       ref_id, strand, ref_length, read_length, mapq)
+
+
+def _parse_sa(read_id, sa_str, ref_lengths):
+    ref_id, ref_start, strand, cigar, mapq, _nm = sa_str.split(",")
+    return _parse_cigar(read_id, ref_id, ref_start, strand, cigar, mapq, ref_lengths[ref_id])
+
+
+def _neg_strand(strand):
+    return "-" if strand == "+" else "+"
+
+
+def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error):
     bamfile = pysam.AlignmentFile(bam, "rb")
     data = {}
-    edge_len = int(pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4])
+    ref_lengths = dict(zip(bamfile.references, bamfile.lengths))
+
+    CIGAR_SOFT = 4
+    CIGAR_HARD = 5
+
     for read in bamfile.fetch(edge):
         clipping = False
-        start = int(read.get_reference_positions()[0])
-        stop = int(read.get_reference_positions()[-1])
-        aln_len = stop - start
-        de = float(re.sub(".*de',\s", "", str(str(read).split('\t')[11]), count=0, flags=0).split(')')[0])
-        for i in read.cigartuples:
-            if i[0] == 4 or i[0] == 5:
-                if i[1] > clipp:
-                    clipping = True
+        aln_len = read.reference_end - read.reference_start
+        aln_divergence = 0
+        edge_len = ref_lengths[edge]
 
-        if read.mapping_quality >= min_mapping_quality and de < max_aln_error and \
-                ((not clipping and aln_len > min_al_len and start != 0 and stop != edge_len - 1) or \
-                    start < start_end_gap or edge_len - stop < start_end_gap):
+        if read.has_tag("de"):
+            aln_divergence = read.get_tag("de")
+        for (op, size) in read.cigartuples:
+            if op in [CIGAR_SOFT, CIGAR_HARD] and size > max_clipping:
+                clipping = True
 
-            data[read.query_name] = {}
-            data[read.query_name]["Start"] = start
-            data[read.query_name]["Stop"] = stop
-            try:
-                tags = read.get_tags()[9]
-            except (IndexError):
-                tags=""
-            left_clip = {}
-            right_clip = {}
-
-            if re.search("SA", str(tags)):
-                if read.cigartuples[0][0]==4 and read.cigartuples[len(read.cigartuples)-1][0]!=4:
-                    for i in tags[1].split(';'):
-                        if len(i)>0 and int(i.split(',')[4])>20:
-                         orient = '+' if read.is_reverse==False else '-'
-                         left_clip[i.split(',')[0]]=[i.split(',')[2], orient]
-                         break
-                if read.cigartuples[0][0] != 4 and read.cigartuples[len(read.cigartuples) - 1][0] == 4:
-                    for i in tags[1].split(';'):
-                        if len(i) > 0 and int(i.split(',')[4])>20:
-                            orient = '+' if read.is_reverse == False else '-'
-                            right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-                else:
-                    for i in tags[1].split(';'):
-                        if len(i) > 0 and int(i.split(',')[4]) > 20:
-                            l=int(re.match('.*?([0-9]+)$', re.sub(r"M.*$", "", str(i.split(',')[3]))).group(1))
-                            if l==read.cigartuples[0][1]:
-                                orient = '+' if read.is_reverse == False else '-'
-                                left_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-                            elif l==read.cigartuples[len(read.cigartuples) - 1][1]:
-                                orient = '+' if read.is_reverse == False else '-'
-                                right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-                            elif l>read.cigartuples[0][1]:
-                                orient = '+' if read.is_reverse == False else '-'
-                                right_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-                            elif l> read.cigartuples[len(read.cigartuples) - 1][1]:
-                                orient = '+' if read.is_reverse == False else '-'
-                                left_clip[i.split(',')[0]] = [i.split(',')[2], orient]
-            data[read.query_name]["Rclip"]=right_clip
-            data[read.query_name]["Lclip"]=left_clip
-        else:
+        if read.mapping_quality < min_mapping_quality or aln_divergence > max_aln_error:
             continue
+
+        #only allow single read alignment per unitig
+        if read.query_name in data:
+            continue
+
+        ALN_GAP = 100
+        if (not clipping and aln_len > min_al_len) or \
+                (min(read.reference_start, edge_len - read.reference_end) < start_end_gap):
+            data[read.query_name] = {}
+            data[read.query_name]["Start"] = read.reference_start
+            data[read.query_name]["Stop"] = read.reference_end
+            data[read.query_name]["Rclip"] = []
+            data[read.query_name]["Lclip"] = []
+
+            if read.has_tag("SA"):
+                strand = "+" if not read.is_reverse else "-"
+                suppl_aln = [_parse_cigar(read.query_name, edge, read.reference_start, strand,
+                                          read.cigarstring, read.mapping_quality, edge_len)]
+                suppl_aln += [_parse_sa(read.query_name, sa_str, ref_lengths)
+                              for sa_str in read.get_tag("SA").split(";") if sa_str]
+                suppl_aln.sort(key=lambda a: a.query_start)
+
+                good_connections = []
+                for a1, a2 in zip(suppl_aln[:-1], suppl_aln[1:]):
+                    if abs(a1.query_end - a2.query_start) < ALN_GAP and \
+                            min(a1.reference_start, a1.reference_length - a1.reference_end) < ALN_GAP and \
+                            min(a2.reference_start, a2.reference_length - a2.reference_end) < ALN_GAP:
+                        good_connections.append((a1, a2))
+
+                for (a1, a2) in good_connections:
+                    if a1.reference_name == a2.reference_name:
+                        continue
+                    if a1.reference_name == read.reference_name:
+                        if a1.strand == "+":
+                            data[read.query_name]["Rclip"].append((a2.reference_name, a2.strand))
+                        else:
+                            data[read.query_name]["Lclip"].append((a2.reference_name, _neg_strand(a2.strand)))
+                    if a2.reference_name == read.reference_name:
+                        if a2.strand == "+":
+                            data[read.query_name]["Lclip"].append((a1.reference_name, a1.strand))
+                        else:
+                            data[read.query_name]["Rclip"].append((a1.reference_name, _neg_strand(a1.strand)))
+
+                #if len(suppl_aln) > 1:
+                    #print(edge, read.query_name)
+                    #for a in suppl_aln:
+                    #    print(a.reference_name, a.reference_start, a.reference_end, a.query_start, a.query_end)
+                    #for (a1, a2) in good_connections:
+                    #    print(a1.reference_name, a1.strand, a2.reference_name, a2.strand)
+                    #print("")
 
     for pos in SNP_pos:
         for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=0,

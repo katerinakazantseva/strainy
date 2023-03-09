@@ -19,9 +19,9 @@ def init_global_args_storage(args):
     _glob_args.snp = args.snp
     _glob_args.threads = args.threads
     _glob_args.flye = os.path.join(args.strainy_root, "submodules", "Flye", "bin", "flye")
-    _glob_args.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
-    _glob_args.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
-    _glob_args.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
+    #_glob_args.gfa_transformed = "%s/transformed_before_simplification.gfa" % args.output
+    #_glob_args.gfa_transformed1 =  "%s/transformed_after_simplification.gfa" % args.output
+    #_glob_args.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
     _glob_args.log_phase = os.path.join(args.output, "log_phase")
     _glob_args.log_transform = os.path.join(args.output, "log_transform")
     _glob_args.edges = args.graph_edges
@@ -67,15 +67,15 @@ strong_cluster_min_reads = 2
 
 #adding new links
 max_hops = 10
-min_reads_neighbour = 0
-min_reads_cluster = 2
+min_reads_neighbour = 3
+min_reads_cluster = 3
 
 #simplification
 cov_ratio = 1.6
 minigraph = False
 
 # alignment filtering
-clipp = 100
+max_clipping = 100
 min_mapping_quality = 20
 min_base_quality = 0
 min_al_len = 1000
