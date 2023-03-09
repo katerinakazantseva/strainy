@@ -827,7 +827,8 @@ def transform_main(args):
     clean_graph(initial_graph)
     out_simplified = os.path.join(graph_dir, "30_links_simplification.gfa")
     gfapy.Gfa.to_file(initial_graph, out_simplified)
-    shutil.copyfile(out_merged, strainy_final)
+    if args.link_simplify:
+        shutil.copyfile(out_merged, strainy_final)
 
     flye_consensus.print_cache_statistics()
     logger.info("### Done!")
