@@ -78,7 +78,7 @@ stRainy has 2 stages: **phase** and **transform**. With the command below, stRai
 
 <br>
 
-**2. transform** stage transforms and simplifies the initial assembly graph, producing the final gfa file: `transformed_after_simplification_merged.gfa`
+**2. transform** stage transforms and simplifies the initial assembly graph, producing the final gfa file: `strainy_final.gfa`
 
 <p align="center">
 <img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
