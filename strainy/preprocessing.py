@@ -131,23 +131,26 @@ def preprocess_cmd_args(args, parser):
     or transforming. Accessing arguments via args.XX instead of stRainyArguments.XX
     as some arguments may not be initialized yet.
     """
-        
+
+    preprocessing_dir = os.path.join(args.output, 'preprocessing_data')
+    if not os.path.isdir(preprocessing_dir):
+        os.mkdir(preprocessing_dir)
+
     if args.unitig_split_length != 0:
         input_graph = gfapy.Gfa.from_file(args.gfa)
         split_long_unitigs(input_graph,
-                           os.path.join(args.output, 'long_unitigs_split.gfa'))
-        args.gfa = os.path.join(args.output, 'long_unitigs_split.gfa')
+                           os.path.join(preprocessing_dir, 'long_unitigs_split.gfa'))
+        args.gfa = os.path.join(preprocessing_dir, 'long_unitigs_split.gfa')
         args.graph_edges = input_graph.segment_names
-    
+
     if args.fasta is None or args.unitig_split_length != 0:
         gfa_to_fasta(args.gfa,
-                     os.path.join(args.output,'gfa_converted.fasta'))
-        args.fasta = os.path.join(args.output,'gfa_converted.fasta')   
+                     os.path.join(preprocessing_dir,'gfa_converted.fasta'))
+        args.fasta = os.path.join(preprocessing_dir,'gfa_converted.fasta')   
 
     create_bam_file(args.fasta,
                     args.fastq,
-                    os.path.join(args.output, 'long_unitigs_split.bam'),
+                    os.path.join(preprocessing_dir, 'long_unitigs_split.bam'),
                     args.threads)
-    args.bam = os.path.join(args.output, 'long_unitigs_split.bam')
+    args.bam = os.path.join(preprocessing_dir, 'long_unitigs_split.bam')
 
-    

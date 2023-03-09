@@ -804,23 +804,30 @@ def transform_main(args):
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
 
+    graph_dir = os.path.join(StRainyArgs().output, "intermediate_gfa")
+    if not os.path.isdir(graph_dir):
+        os.mkdir(graph_dir)
+    strainy_final = os.path.join(StRainyArgs().output, "strainy_final.gfa")
+
     clean_graph(initial_graph)
-    out_clusters = os.path.join(StRainyArgs().output, "strainy_clusters.gfa")
+    out_clusters = os.path.join(graph_dir, "10_fine_clusters.gfa")
     gfapy.Gfa.to_file(initial_graph, out_clusters)
 
     phased_graph = gfapy.Gfa.from_file(out_clusters)    #parsing again because gfapy can't copy
     gfapy.GraphOperations.merge_linear_paths(phased_graph)
     clean_graph(phased_graph)
-    out_merged = os.path.join(StRainyArgs().output, "strainy_phased.gfa")
+    out_merged = os.path.join(graph_dir, "20_extended_haplotypes.gfa")
     gfapy.Gfa.to_file(phased_graph, out_merged)
+    shutil.copyfile(out_merged, strainy_final)
 
     logger.info("### Simplify graph")
     simplify_links(initial_graph)
 
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
     clean_graph(initial_graph)
-    out_simplified = os.path.join(StRainyArgs().output, "strainy_simplified.gfa")
+    out_simplified = os.path.join(graph_dir, "30_links_simplification.gfa")
     gfapy.Gfa.to_file(initial_graph, out_simplified)
+    shutil.copyfile(out_merged, strainy_final)
 
     flye_consensus.print_cache_statistics()
     logger.info("### Done!")
