@@ -44,20 +44,15 @@ def main():
                         type=int,
                         default=50)
 
-
     args = parser.parse_args()
     args.strainy_root = strainy_root
-
-
-    #important so that global variables are inherited
-    #multiprocessing.set_start_method("fork")
 
     #setting up global arguments storage
     input_graph = gfapy.Gfa.from_file(args.gfa)
     args.graph_edges = input_graph.segment_names
     init_global_args_storage(args)
 
-    BIN_TOOLS = ["samtools", "bcftools", StRainyArgs().flye]
+    BIN_TOOLS = ["samtools", "bcftools", "minimap2", StRainyArgs().flye]
     for tool in BIN_TOOLS:
         if not shutil.which(tool):
             print("{} not installed".format(tool), file=sys.stderr)
