@@ -33,8 +33,8 @@ def main():
                     help="fastq file containing reads to perform alignment, used to create a .bam file",
                     required=True)
     
-    parser.add_argument("-stage", help="stage to run: either phase, transform or e2e (phase + transform)", choices=["phase", "transform", "e2e"], default="e2e")
-    parser.add_argument("-s", "--snp", help="vcf file", default=None)
+    parser.add_argument("-s", "--stage", help="stage to run: either phase, transform or e2e (phase + transform)", choices=["phase", "transform", "e2e"], default="e2e")
+    parser.add_argument("--snp", help="vcf file", default=None)
     parser.add_argument("-t", "--threads", help="number of threads to use", type=int, default=4)
     parser.add_argument("-f", "--fasta", help="fasta file", required=False)
     parser.add_argument("-b", "--bam", help="bam file",required=False)
