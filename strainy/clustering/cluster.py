@@ -126,7 +126,7 @@ def cluster(i, flye_consensus):
     else:
         counts = cl['Cluster'].value_counts(dropna=False)
         cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]
-    clN = len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
+    #clN = len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
     logger.info(str(clN) + " clusters after post-processing")
     cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
     logger.info("### Graph viz...")

@@ -267,18 +267,29 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
         split_all2(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq)
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 1000000
     cluster_consensuns(cl, 1000000, SNP_pos, data, cons, edge, reference_seq)
+
     clSNP = cons[1000000]["clSNP"]
-    split_all(cl, 1000000, data, cons, bam, edge, R, I, SNP_pos, reference_seq)
-    cl = cl[cl['Cluster'] != 'NA']
-    cl = cl[cl['Cluster'] != 1000000]
+
+    #UNCOMMIT HERE
+    #split_all(cl, 1000000, data, cons, bam, edge, R, I, SNP_pos, reference_seq)
+    split_cluster(cl, 1000000, data, cons, clSNP, bam, edge, R, I)
+
+
+
+    #cl = cl[cl['Cluster'] != 'NA']
+    #cl = cl[cl['Cluster'] != 1000000]
     counts = cl['Cluster'].value_counts(dropna=False)
     cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
-    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
+    #clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     for cluster in clusters:
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
+
+
+
+
     cl = join_clusters(cons, cl, R, edge, flye_consensus)
-    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
+    #clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     for cluster in clusters:
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
