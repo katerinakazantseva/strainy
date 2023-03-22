@@ -70,6 +70,7 @@ def split_long_unitigs(input_graph, output_path):
             n_new_unitigs = -(unitig.length // -split_length)
             # length of the each new unitig
             new_unitig_len = unitig.length // n_new_unitigs
+            new_unitig_dp='dp:i:%s' % unitig.dp
             # edges of the original unitig that will be removed 
             to_remove = [] 
             for i in range(n_new_unitigs):
@@ -81,7 +82,7 @@ def split_long_unitigs(input_graph, output_path):
                     # all other unitigs get new_unitig_len number of bases
                     new_unitig_seq = unitig.sequence[i*new_unitig_len : (i+1) * new_unitig_len]
 
-                add_gfa_line(input_graph, 'S', new_unitig_name, new_unitig_seq)
+                add_gfa_line(input_graph, 'S', new_unitig_name, new_unitig_seq,new_unitig_dp)
 
                 # leftmost new unitigs inherits the L edges
                 if i == 0:
@@ -143,6 +144,7 @@ def preprocess_cmd_args(args, parser):
         args.gfa = os.path.join(args.output, 'long_unitigs_split.gfa')
         # need to overwrite the following StRainyArgs
         args.graph_edges = input_graph.segment_names
+        #args.graph_edges = ['edge_722_s1', 'edge_722_s2']
         gfa_to_fasta(os.path.join(args.output, 'long_unitigs_split.gfa'),
                      os.path.join(args.output,'gfa_converted.fasta'))
         args.fasta = os.path.join(args.output,'gfa_converted.fasta')
@@ -153,4 +155,4 @@ def preprocess_cmd_args(args, parser):
         args.bam = os.path.join(StRainyArgs().output, 'long_unitigs_split.bam')
 
     if StRainyArgs().fa is None:
-        gfa_to_fasta(StRainyArgs().gfa)
+        gfa_to_fasta(StRainyArgs().gfa,StRainyArgs().output)
