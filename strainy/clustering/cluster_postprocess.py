@@ -183,6 +183,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
             continue
 
     groups = list(nx.connected_components(G))
+    print(groups)
     if only_nested==True:
         for k,v in nested.items():
             if len(v)==1:
@@ -191,8 +192,12 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     else:
         for group in groups:
             if len(group) > 1:
+                сlusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
+                new_cl_id=int(list(group)[0])+10000000
+                while new_cl_id in сlusters:
+                    new_cl_id=new_cl_id+1
                 for i in range(0, len(group)):
-                    cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = int(list(group)[0])+10000000
+                    cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = new_cl_id
     return cl
 
 def split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq):
@@ -244,7 +249,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
     cl.to_csv("%s/clusters/1.csv" % StRainyArgs().output)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA','Cluster'].values))
-    cl.loc[cl['Cluster'] == 1000000, 'Cluster'] = 'NA'
+    #cl.loc[cl['Cluster'] == 1000000, 'Cluster'] = 'NA'
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     prev_clusters=clusters
     for cluster in clusters:
@@ -259,7 +264,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             if cluster not in cons:
                 cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
-    cl.to_csv("%s/clusters/2.csv" % StRainyArgs().output)
+    cl.to_csv("%s/clusters/1.1.csv" % StRainyArgs().output)
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
 
     logging.info("Split stage2: Break regions of low heterozygosity")
@@ -270,22 +275,28 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
 
     clSNP = cons[1000000]["clSNP"]
 
+    cl.to_csv("%s/clusters/1.2.csv" % StRainyArgs().output)
+
     #UNCOMMIT HERE
     #split_all(cl, 1000000, data, cons, bam, edge, R, I, SNP_pos, reference_seq)
-    split_cluster(cl, 1000000, data, cons, clSNP, bam, edge, R, I)
+    splitna=split_cluster(cl, 1000000, data, cons, clSNP, bam, edge, R, I,False)
 
-
+    #Remove unclustered reads after splitting NA cluster
+    splitna[0]
+    cl = cl[cl['Cluster'] != splitna[0]]
+    clusters = sorted(set(cl.loc[cl['Cluster'] != splitna[0], 'Cluster'].values))
 
     #cl = cl[cl['Cluster'] != 'NA']
     #cl = cl[cl['Cluster'] != 1000000]
     counts = cl['Cluster'].value_counts(dropna=False)
-    cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
+    cl.to_csv("%s/clusters/1.3.csv" % StRainyArgs().output)
+    #cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
     #clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     for cluster in clusters:
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
-
+    cl.to_csv("%s/clusters/2.csv" % StRainyArgs().output)
 
 
     cl = join_clusters(cons, cl, R, edge, flye_consensus)
@@ -295,4 +306,5 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
     cl=join_clusters(cons, cl, R, edge, flye_consensus, False)
     cl = join_clusters(cons, cl, R, edge, flye_consensus, False,only_nested=True)
+    #cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
     return cl
