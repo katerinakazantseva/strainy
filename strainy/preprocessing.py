@@ -69,7 +69,6 @@ def split_long_unitigs(input_graph, output_path):
             n_new_unitigs = -(unitig.length // -split_length)
             # length of the each new unitig
             new_unitig_len = unitig.length // n_new_unitigs
-            new_unitig_dp='dp:i:%s' % unitig.dp
             # edges of the original unitig that will be removed 
             to_remove = [] 
             for i in range(n_new_unitigs):
@@ -81,7 +80,7 @@ def split_long_unitigs(input_graph, output_path):
                     # all other unitigs get new_unitig_len number of bases
                     new_unitig_seq = unitig.sequence[i*new_unitig_len : (i+1) * new_unitig_len]
 
-                add_gfa_line(input_graph, 'S', new_unitig_name, new_unitig_seq,new_unitig_dp)
+                add_gfa_line(input_graph, 'S', new_unitig_name, new_unitig_seq)
 
                 # leftmost new unitigs inherits the L edges
                 if i == 0:
