@@ -17,3 +17,4 @@ dependencies:
   - numpy
   - pandas
   - pysam
+  - minimap2

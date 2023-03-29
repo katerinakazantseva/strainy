@@ -16,7 +16,7 @@ def create_bam_file(fasta_file, fastq_file, output_path, num_threads, index=True
     logger.info(f"Creating bam file from {fasta_file} and {fastq_file}")
     minimap_mode = "map-ont" if StRainyArgs().mode == "nano" else "map-hifi"
     subprocess.check_output(f"minimap2 -ax {minimap_mode} {fasta_file} {fastq_file} -t {num_threads} | " \
-                            f"samtools sort -@4 -t {StRainyArgs().threads} > {output_path}",
+                            f"samtools sort -@4 -t {num_threads} > {output_path}",
                             shell=True)
     if index:
         pysam.samtools.index(f"{output_path}", f"{output_path}.bai")
@@ -33,7 +33,6 @@ def gfa_to_fasta(gfa_path, output_path):
     try:
         logger.info(f'Creating fasta file from the gfa file {gfa_path}')
         subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
-        StRainyArgs().fa = output_path
         logger.info('Done!')
 
     except subprocess.CalledProcessError as e:
@@ -130,29 +129,28 @@ def split_long_unitigs(input_graph, output_path):
 def preprocess_cmd_args(args, parser):
     """
     Do preprocessing based on the input cmd arguments before starting phasing
-    or transforming
+    or transforming. Accessing arguments via args.XX instead of stRainyArguments.XX
+    as some arguments may not be initialized yet.
     """
-    if bool(StRainyArgs().fq) != StRainyArgs().splu:
-        parser.error("To split long unitigs, --fastq should be provided together" \
-                    "with the --split-long-unitigs flag. Alternatively, you can omit both" \
-                    "to run stRainy without without splitting the long unitigs.")
-        
-    if StRainyArgs().splu:
+
+    preprocessing_dir = os.path.join(args.output, 'preprocessing_data')
+    if not os.path.isdir(preprocessing_dir):
+        os.mkdir(preprocessing_dir)
+
+    if args.unitig_split_length != 0:
         input_graph = gfapy.Gfa.from_file(args.gfa)
         split_long_unitigs(input_graph,
-                           os.path.join(args.output, 'long_unitigs_split.gfa'))
-        args.gfa = os.path.join(args.output, 'long_unitigs_split.gfa')
-        # need to overwrite the following StRainyArgs
+                           os.path.join(preprocessing_dir, 'long_unitigs_split.gfa'))
+        args.gfa = os.path.join(preprocessing_dir, 'long_unitigs_split.gfa')
         args.graph_edges = input_graph.segment_names
-        #args.graph_edges = ['edge_722_s1', 'edge_722_s2']
-        gfa_to_fasta(os.path.join(args.output, 'long_unitigs_split.gfa'),
-                     os.path.join(args.output,'gfa_converted.fasta'))
-        args.fasta = os.path.join(args.output,'gfa_converted.fasta')
-        create_bam_file(os.path.join(args.output,'gfa_converted.fasta'),
-                        StRainyArgs().fq,
-                        os.path.join(StRainyArgs().output, 'long_unitigs_split.bam'),
-                        args.threads)
-        args.bam = os.path.join(StRainyArgs().output, 'long_unitigs_split.bam')
 
-    if StRainyArgs().fa is None:
-        gfa_to_fasta(StRainyArgs().gfa,StRainyArgs().output)
+    if args.fasta is None or args.unitig_split_length != 0:
+        gfa_to_fasta(args.gfa,
+                     os.path.join(preprocessing_dir,'gfa_converted.fasta'))
+        args.fasta = os.path.join(preprocessing_dir,'gfa_converted.fasta')   
+
+    create_bam_file(args.fasta,
+                    args.fastq,
+                    os.path.join(preprocessing_dir, 'long_unitigs_split.bam'),
+                    args.threads)
+    args.bam = os.path.join(preprocessing_dir, 'long_unitigs_split.bam')
