@@ -183,7 +183,6 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
             continue
 
     groups = list(nx.connected_components(G))
-    print(groups)
     if only_nested==True:
         for k,v in nested.items():
             if len(v)==1:
@@ -285,26 +284,23 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     splitna[0]
     cl = cl[cl['Cluster'] != splitna[0]]
     clusters = sorted(set(cl.loc[cl['Cluster'] != splitna[0], 'Cluster'].values))
-
+    cluster_consensuns(cl, 1000000, SNP_pos, data, cons, edge, reference_seq)
     #cl = cl[cl['Cluster'] != 'NA']
     #cl = cl[cl['Cluster'] != 1000000]
     counts = cl['Cluster'].value_counts(dropna=False)
-    cl.to_csv("%s/clusters/1.3.csv" % StRainyArgs().output)
     #cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
     #clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     for cluster in clusters:
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
-
-    cl.to_csv("%s/clusters/2.csv" % StRainyArgs().output)
-
-
     cl = join_clusters(cons, cl, R, edge, flye_consensus)
-    #clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     for cluster in clusters:
         if cluster not in cons:
             cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
     cl=join_clusters(cons, cl, R, edge, flye_consensus, False)
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     cl = join_clusters(cons, cl, R, edge, flye_consensus, False,only_nested=True)
-    #cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
+    clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
+    cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
     return cl
