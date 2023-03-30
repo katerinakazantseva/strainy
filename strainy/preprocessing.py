@@ -45,6 +45,7 @@ def add_gfa_line(input_graph, *args):
     """
     Add a gfa line to the input graph. Works for S and L lines.
     """
+    args = [a for a in args if a is not None]
     line = '\t'.join(args)
     input_graph.add_line(line)
 
@@ -69,7 +70,10 @@ def split_long_unitigs(input_graph, output_path):
             n_new_unitigs = -(unitig.length // -split_length)
             # length of the each new unitig
             new_unitig_len = unitig.length // n_new_unitigs
-            new_unitig_dp='dp:i:%s' % unitig.dp
+            try:
+                new_unitig_dp='dp:i:%s' % unitig.dp
+            except gfapy.error.FormatError:
+                new_unitig_dp = None
             # edges of the original unitig that will be removed 
             to_remove = [] 
             for i in range(n_new_unitigs):
@@ -81,7 +85,7 @@ def split_long_unitigs(input_graph, output_path):
                     # all other unitigs get new_unitig_len number of bases
                     new_unitig_seq = unitig.sequence[i*new_unitig_len : (i+1) * new_unitig_len]
 
-                add_gfa_line(input_graph, 'S', new_unitig_name, new_unitig_seq,new_unitig_dp)
+                add_gfa_line(input_graph, 'S', new_unitig_name, new_unitig_seq)
 
                 # leftmost new unitigs inherits the L edges
                 if i == 0:
@@ -117,7 +121,10 @@ def split_long_unitigs(input_graph, output_path):
                 prev_unitig = new_unitig_name
             # remove the original unitig and its connections from the graph
             for e in to_remove:
-                input_graph.rm(e)
+                try:
+                    input_graph.rm(e)
+                except gfapy.error.RuntimeError:   #in case of self-loops
+                    pass
             unitig.disconnect()
 
     for path in input_graph.paths:
