@@ -95,6 +95,8 @@ def _neg_strand(strand):
 
 def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error):
     bamfile = pysam.AlignmentFile(bam, "rb")
+    duplicates=[]
+    all_reads=[]
     data = {}
     ref_lengths = dict(zip(bamfile.references, bamfile.lengths))
 
@@ -117,6 +119,10 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error)
             continue
 
         #only allow single read alignment per unitig
+        if read.query_name in all_reads:
+            duplicates.append(read.query_name)
+
+        all_reads.append(read.query_name)
         if read.query_name in data:
             continue
 
@@ -177,6 +183,11 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error)
 
                     except (KeyError):
                         continue
+    for readname in duplicates:
+        try:
+            data.pop(readname)
+        except:
+            pass
     bamfile.close()
 
     return data
