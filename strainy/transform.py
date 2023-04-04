@@ -153,9 +153,9 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
         pass
 
     cluster_colors = {}
-    for i, row in cl.iterrows():
-        if row["Cluster"] not in cluster_colors:
-            cluster_colors[row["Cluster"]] = row["Color"]
+    #for i, row in cl.iterrows():
+        #if row["Cluster"] not in cluster_colors:
+            #cluster_colors[row["Cluster"]] = row["Color"]
 
     """
     path_remove = []
@@ -176,8 +176,8 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
 
     for n in G_vis.nodes():
         clust_len = cons[n]["Stop"] - cons[n]["Start"]
-        color = cluster_colors[n]
-        G_vis.nodes[n]["label"] = f"{color} len:{clust_len}"
+        #color = cluster_colors[n]
+        #G_vis.nodes[n]["label"] = f"{color} len:{clust_len}"
 
     G_vis.add_node("Src",style='filled',fillcolor='gray',shape='square')
     G_vis.add_node("Sink",style='filled',fillcolor='gray',shape='square')
