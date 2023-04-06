@@ -36,8 +36,6 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     for index in cl.index:
         cl.loc[index, 'Color'] = colors[int(cl.loc[index, 'Cluster'])]
         G.remove_edges_from(list(nx.selfloop_edges(G)))
-    #[G.remove_node(i) for i in set(G.nodes) if i not in set(cl['ReadName'])]
-
     try:
         nx.draw(G, nodelist=G.nodes(), with_labels=True, width=0.03, node_size=10, font_size=10,node_color=cl['Color'])
     except:
