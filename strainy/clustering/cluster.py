@@ -36,14 +36,10 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     for index in cl.index:
         cl.loc[index, 'Color'] = colors[int(cl.loc[index, 'Cluster'])]
         G.remove_edges_from(list(nx.selfloop_edges(G)))
-
-    #[G.remove_node(i) for i in set(G.nodes) if i not in set(cl['ReadName'])]
-
     try:
-        nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5,node_color=cl['Color'])
+        nx.draw(G, nodelist=G.nodes(), with_labels=True, width=0.03, node_size=10, font_size=10,node_color=cl['Color'])
     except:
-        nx.draw(G, nodelist=G.nodes(), with_labels=False, width=0.03, node_size=10, font_size=5)
-
+        nx.draw(G, nodelist=G.nodes(), with_labels=True, width=0.03, node_size=10, font_size=10)
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
     plt.suptitle(str(edge) + " coverage:" + str(cov) + " length:" + str(ln) + " clN:" + str(clN))
@@ -63,6 +59,7 @@ def cluster(i, flye_consensus):
     edge = StRainyArgs().edges[i]
     logger.info("### Reading SNPs...")
     SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
+
 
     logger.info("### Reading Reads...")
     data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])

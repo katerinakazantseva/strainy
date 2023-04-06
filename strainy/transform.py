@@ -21,13 +21,25 @@ from strainy.logging import set_thread_logging
 
 logger = logging.getLogger()
 
+def test(consensus):
+    fasta=consensus['reference_path']
+    fastq=consensus['polished']
+    minimap_mode = "map-ont" if StRainyArgs().mode == "nano" else "map-hifi"
+    subprocess.check_output(f"minimap2 -ax {minimap_mode} {fasta} {fastq} -t 1| " \
+                            f"samtools sort -@4 -t {StRainyArgs().threads} > test.bam",
+                            shell=True)
+    logger.info(".bam file created!")
+    pysam.samtools.view('test.bam')
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
     '''
     The function creates unitiges in the gfa graph
     '''
     consensus = flye_consensus.flye_consensus(clN, edge, cl)
+
     consensus_start = consensus['start']
+
+    '''
     if consensus_start>left:
         main_seq=g.try_get_segment(edge)
         insert=main_seq.sequence[left:consensus_start]
@@ -35,7 +47,9 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
         seq=insert+seq
     else:
         seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
-
+ 
+    '''
+    seq = str(consensus['consensus'])
     g.add_line("S\t%s_%s\t*" % (edge, clN))
     new_line = g.try_get_segment("%s_%s" % (edge, clN))
     new_line.name = str(edge) + "_" + str(clN)
@@ -139,9 +153,9 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
         pass
 
     cluster_colors = {}
-    for i, row in cl.iterrows():
-        if row["Cluster"] not in cluster_colors:
-            cluster_colors[row["Cluster"]] = row["Color"]
+    #for i, row in cl.iterrows():
+        #if row["Cluster"] not in cluster_colors:
+            #cluster_colors[row["Cluster"]] = row["Color"]
 
     """
     path_remove = []
@@ -162,8 +176,8 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
 
     for n in G_vis.nodes():
         clust_len = cons[n]["Stop"] - cons[n]["Start"]
-        color = cluster_colors[n]
-        G_vis.nodes[n]["label"] = f"{color} len:{clust_len}"
+        #color = cluster_colors[n]
+        #G_vis.nodes[n]["label"] = f"{color} len:{clust_len}"
 
     G_vis.add_node("Src",style='filled',fillcolor='gray',shape='square')
     G_vis.add_node("Sink",style='filled',fillcolor='gray',shape='square')
@@ -204,29 +218,38 @@ def find_full_paths(G, paths_roots, paths_leafs):
     return (paths)
 
 
-def add_link(graph, fr, fr_or, to, to_or, w):
+def add_link(graph, fr, fr_or, to, to_or, w, l=0):
     '''
      Add gfa links between unitigs
     '''
     #check if segments exist before connecting
     if graph.segment(fr) is None or graph.segment(to) is None:
         return
-
-    link = f"L\t{fr}\t{fr_or}\t{to}\t{to_or}\t0M\tex:i:{w}"
+    L='%sM'%l
+    L=gfapy.Alignment(L)
+    link = f"L\t{fr}\t{fr_or}\t{to}\t{to_or}\t{L}\tex:i:{w}"
     try:
         graph.add_line(link)
-        logger.debug("link added: " + link)
+        logger.info("link added: " + link)
     except(gfapy.NotUniqueError):   #link already exists
         pass
 
 
-def add_path_links(graph, edge, paths, G):
+def add_path_links(graph, edge, paths, G, cons, flye_consensus, cl):
     '''
      Add gfa links between newly created unitigs forming 'full path'
     '''
     for path in paths:
         for i in range(0, len(path) - 1):
-            add_link(graph, f"{edge}_{path[i]}", "+", f"{edge}_{path[i + 1]}", "+", 1)
+            consensusA = flye_consensus.flye_consensus(path[i], edge, cl)
+            startA = consensusA['start']
+            endA=startA+len(str(consensusA['consensus']))
+            consensusB = flye_consensus.flye_consensus(path[i + 1], edge, cl)
+            startB = consensusB['start']
+            endB=startB+len(str(consensusB['consensus']))
+            overlap = len(set(range(startA, endA)).intersection(set(range(startB, endB))))
+            #overlap=len(set(range(cons[path[i]]["Start"],cons[path[i]]["Stop"])).intersection(set(range(cons[path[i+1]]["Start"],cons[path[i+1]]["Stop"]))))
+            add_link(graph, f"{edge}_{path[i]}", "+", f"{edge}_{path[i + 1]}", "+", 1,overlap)
 
 
 def add_path_edges ( edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
@@ -346,7 +369,7 @@ def add_path_edges ( edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,pat
                         cut_l[member]=cut_r[path[path.index(member)-1]]
                     except:
                         pass
-
+    
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!=cut_r[path_cluster]:
             add_child_edge(edge, path_cluster, g,  cl, cut_l[path_cluster], cut_r[path_cluster], cons, flye_consensus)
@@ -510,7 +533,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
 
             add_path_edges(edge, graph, cl, data, SNP_pos, ln, full_paths, G,full_paths_roots,
                            full_paths_leafs,full_clusters,cons, flye_consensus)
-            add_path_links(graph, edge, full_paths, G)
+            add_path_links(graph, edge, full_paths, G, cons, flye_consensus, cl)
 
             othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]) - set(cl_removed))
             if len(othercl) > 0:
