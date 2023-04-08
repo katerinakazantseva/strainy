@@ -7,6 +7,8 @@ import subprocess
 from multiprocessing.managers import BaseManager
 import logging
 import shutil
+import traceback
+import time
 
 from strainy.clustering.cluster import cluster
 from strainy.color_bam import color
@@ -23,14 +25,14 @@ def _thread_fun(i, shared_flye_consensus, args):
 
     set_thread_logging(StRainyArgs().log_phase, "phase", multiprocessing.current_process().pid)
     logger.info("\n\n\t==== Processing uniting " + str(StRainyArgs().edges[i]) + " ====")
-    cluster(i, shared_flye_consensus)
+
+    try:
+        cluster(i, shared_flye_consensus)
+    except Exception as e:
+        logger.error("Worker thread exception! " + str(e) + "\n" + traceback.format_exc())
+        raise e
+
     logger.debug("Thread worker function finished!")
-
-
-def _error_callback(pool, e):
-    logger.error("Worker thread exception! " + str(e))
-    pool.terminate()
-    raise e
 
 
 def phase(edges, args):
@@ -44,9 +46,17 @@ def phase(edges, args):
     shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, empty_consensus_dict, default_manager)
     pool = multiprocessing.Pool(StRainyArgs().threads)
     init_args = [(i, shared_flye_consensus, args) for i in range(len(edges))]
-    pool.starmap_async(_thread_fun, init_args, error_callback=lambda e: _error_callback(pool, e))
+
+    results = pool.starmap_async(_thread_fun, init_args)
+    while not results.ready():
+        time.sleep(0.01)
+        if not results._success:
+            pool.terminate()
+            raise Exception("Error in worker thread, exiting")
+
     pool.close()
     pool.join()
+
     shared_flye_consensus.print_cache_statistics()
     return shared_flye_consensus.get_consensus_dict()
 
