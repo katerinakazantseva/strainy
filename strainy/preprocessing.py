@@ -13,6 +13,9 @@ def create_bam_file(fasta_file, fastq_file, output_path, num_threads, index=True
     """
     Create a .bam file, requires user provided --fastq argument containing reads.
     """
+    if not os.path.isfile(fastq_file):
+        raise Exception("Reads file not found")
+
     logger.info(f"Creating bam file from {fasta_file} and {fastq_file}")
     minimap_mode = "map-ont" if StRainyArgs().mode == "nano" else "map-hifi"
     subprocess.check_output(f"minimap2 -ax {minimap_mode} {fasta_file} {fastq_file} -t {num_threads} | " \
