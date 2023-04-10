@@ -62,7 +62,7 @@ split_id = 10000
 #creating new unitigs
 parental_min_coverage = 6
 parental_min_len = 0.7
-start_end_gap = 50
+start_end_gap = 500
 strong_cluster_min_reads = 2
 
 #adding new links
