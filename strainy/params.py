@@ -81,6 +81,7 @@ min_base_quality = 0
 min_al_len = 1000
 # extended_aln_flank = 50
 de_max = {"hifi": 0.05, "nano": 0.10}
+min_consensus_cov = {"hifi": 3, "nano": 5}
 
 # SNP allele frequency
 AF = 0.1
