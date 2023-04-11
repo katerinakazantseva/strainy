@@ -28,13 +28,15 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
     '''
     consensus = flye_consensus.flye_consensus(clN, edge, cl)
     consensus_start = consensus['start']
+    cons_length_diff = len(consensus['consensus']) - (consensus['end'] - consensus['start'])
+    logger.debug(f"Consensus length difference: {cons_length_diff}")
     if consensus_start>left:
         main_seq=g.try_get_segment(edge)
         insert=main_seq.sequence[left:consensus_start]
-        seq = str(consensus['consensus'])[0:right - consensus_start + 1]
+        seq = str(consensus['consensus'])[0 : right - consensus_start + cons_length_diff + 1]
         seq=insert+seq
     else:
-        seq = str(consensus['consensus'])[left - consensus_start:right - consensus_start + 1]
+        seq = str(consensus['consensus'])[left - consensus_start : right - consensus_start + cons_length_diff + 1]
 
     g.add_line("S\t%s_%s\t*" % (edge, clN))
     new_line = g.try_get_segment("%s_%s" % (edge, clN))
