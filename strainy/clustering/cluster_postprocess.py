@@ -109,8 +109,15 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
             M = build_adj_matrix_clusters(edge, cons, cl, consensus, True, set_clusters)
 
     M=change_w(M,R)
+    
 
-    G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
+    try:
+        G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
+    except nx.NetworkXUnfeasible:
+        M.index=M.index.astype(str)
+        M.columns=M.columns.astype(str)
+        G_vis = nx.from_pandas_adjacency(M, create_using=nx.DiGraph)
+
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
 
     if max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
@@ -167,7 +174,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
         try:
             neighbors = nx.all_neighbors(G, node)
             for neighbor in list(neighbors):
-                if cons[node]["Start"] < cons[neighbor]["Start"] and cons[node]["Stop"] > cons[neighbor]["Stop"]:
+                if cons[int(node)]["Start"] < cons[int(neighbor)]["Start"] and cons[int(node)]["Stop"] > cons[int(neighbor)]["Stop"]:
                     try:
                         G.remove_edge(node, neighbor)
                         logger.debug("REMOVE NESTED" + str(neighbor))
@@ -186,7 +193,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     if only_nested==True:
         for k,v in nested.items():
             if len(v)==1:
-                cl.loc[cl['Cluster'] == k, 'Cluster'] = v[0]
+                cl.loc[cl['Cluster'] == int(k), 'Cluster'] = int(v[0])
 
     else:
         for group in groups:
@@ -196,7 +203,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
                 while new_cl_id in сlusters:
                     new_cl_id=new_cl_id+1
                 for i in range(0, len(group)):
-                    cl.loc[cl['Cluster'] == list(group)[i], 'Cluster'] = new_cl_id
+                    cl.loc[cl['Cluster'] == int(list(group)[i]), 'Cluster'] = new_cl_id
     return cl
 
 def split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq):
