@@ -41,7 +41,8 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     except AttributeError:  #incompatability with scipy < 1.8
         pass
     except:
-        nx.draw(G, nodelist=G.nodes(), with_labels=True, width=0.03, node_size=10, font_size=10)
+        pass
+        #nx.draw(G, nodelist=G.nodes(), with_labels=True, width=0.03, node_size=10, font_size=10)
 
     ln = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[4]
     cov = pysam.samtools.coverage("-r", edge, bam, "--no-header").split()[6]
