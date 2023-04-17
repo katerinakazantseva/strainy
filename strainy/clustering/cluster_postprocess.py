@@ -4,6 +4,7 @@ import logging
 from strainy.clustering.community_detection import find_communities
 from strainy.clustering.build_adj_matrix import *
 from strainy.clustering.build_data import *
+from strainy.clustering.trim import *
 
 
 logger = logging.getLogger()
@@ -322,4 +323,5 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     #cl.to_csv("%s/clusters/%s_6.csv" % (StRainyArgs().output,edge))
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA', 'Cluster'].values))
     cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]  # change for cov*01.
+    cl = trim(cl, data)
     return cl
