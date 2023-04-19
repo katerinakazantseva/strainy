@@ -1,7 +1,6 @@
 import subprocess
 import os
 import logging
-
 import pysam
 import gfapy
 
@@ -34,9 +33,9 @@ def gfa_to_fasta(gfa_path, output_path):
     """
     fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {gfa_path} > {output_path}"""
     try:
-        logger.info(f'Creating fasta file from the gfa file {gfa_path}')
+        logger.info(f"Creating fasta file from the gfa file {gfa_path}")
         subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
-        logger.info('Done!')
+        logger.info("Done!")
 
     except subprocess.CalledProcessError as e:
         logger.error(e)
@@ -49,7 +48,7 @@ def add_gfa_line(input_graph, *args):
     Add a gfa line to the input graph. Works for S and L lines.
     """
     args = [a for a in args if a is not None]
-    line = '\t'.join(args)
+    line = "\t".join(args)
     input_graph.add_line(line)
 
 def split_long_unitigs(input_graph, output_path):
@@ -62,8 +61,8 @@ def split_long_unitigs(input_graph, output_path):
     (dovetails_R) edges. Other unitigs in between form a chain from one end to
     the other.
     The modified graph is saved to a new file and used for the rest of the
-    stRainy pipeline inestead of the original graph. New bam and fasta files 
-    need to be generated. 
+    stRainy pipeline inestead of the original graph. New bam and fasta files
+    need to be generated.
     """
     # Convert user provided -splen from kb to b
     split_length = int(StRainyArgs().splen * 1000)
@@ -74,11 +73,11 @@ def split_long_unitigs(input_graph, output_path):
             # length of the each new unitig
             new_unitig_len = unitig.length // n_new_unitigs
             try:
-                new_unitig_dp='dp:i:%s' % unitig.dp
+                new_unitig_dp="dp:i:%s" % unitig.dp
             except gfapy.error.FormatError:
                 new_unitig_dp = None
-            # edges of the original unitig that will be removed 
-            to_remove = [] 
+            # edges of the original unitig that will be removed
+            to_remove = []
             for i in range(n_new_unitigs):
                 new_unitig_name = f"{unitig.name}_s{i+1}"
                 if i == n_new_unitigs - 1:
@@ -88,14 +87,14 @@ def split_long_unitigs(input_graph, output_path):
                     # all other unitigs get new_unitig_len number of bases
                     new_unitig_seq = unitig.sequence[i*new_unitig_len : (i+1) * new_unitig_len]
 
-                add_gfa_line(input_graph, 'S', new_unitig_name, new_unitig_seq)
+                add_gfa_line(input_graph, "S", new_unitig_name, new_unitig_seq)
 
                 # leftmost new unitigs inherits the L edges
                 if i == 0:
                     for edge in unitig.dovetails_L:
                         # new_edge_str[1]: from_name
                         # new_edge_str[3]: to_name
-                        new_edge_str = str(edge).split('\t')
+                        new_edge_str = str(edge).split("\t")
                         if edge.from_name == unitig.name:
                             new_edge_str[1] = new_unitig_name
                         else:
@@ -106,14 +105,14 @@ def split_long_unitigs(input_graph, output_path):
                 else:
                     # connect the new unitigs to one another
                     add_gfa_line(input_graph,
-                                 'L',
-                                 prev_unitig, '+',
-                                 new_unitig_name, '+',
-                                 '0M')
+                                 "L",
+                                 prev_unitig, "+",
+                                 new_unitig_name, "+",
+                                 "0M")
                 # The rightmost unitig inherits the R edges
                 if i == n_new_unitigs - 1:
                     for edge in unitig.dovetails_R:
-                        new_edge_str = str(edge).split('\t')
+                        new_edge_str = str(edge).split("\t")
                         if edge.from_name == unitig.name:
                             new_edge_str[1] = new_unitig_name
                         else:
@@ -143,24 +142,24 @@ def preprocess_cmd_args(args, parser):
     as some arguments may not be initialized yet.
     """
 
-    preprocessing_dir = os.path.join(args.output, 'preprocessing_data')
+    preprocessing_dir = os.path.join(args.output, "preprocessing_data")
     if not os.path.isdir(preprocessing_dir):
         os.mkdir(preprocessing_dir)
 
     if args.unitig_split_length != 0:
         input_graph = gfapy.Gfa.from_file(args.gfa)
         split_long_unitigs(input_graph,
-                           os.path.join(preprocessing_dir, 'long_unitigs_split.gfa'))
-        args.gfa = os.path.join(preprocessing_dir, 'long_unitigs_split.gfa')
+                           os.path.join(preprocessing_dir, "long_unitigs_split.gfa"))
+        args.gfa = os.path.join(preprocessing_dir, "long_unitigs_split.gfa")
         args.graph_edges = input_graph.segment_names
 
     if args.fasta is None or args.unitig_split_length != 0:
         gfa_to_fasta(args.gfa,
-                     os.path.join(preprocessing_dir,'gfa_converted.fasta'))
-        args.fasta = os.path.join(preprocessing_dir,'gfa_converted.fasta')   
+                     os.path.join(preprocessing_dir,"gfa_converted.fasta"))
+        args.fasta = os.path.join(preprocessing_dir,"gfa_converted.fasta")
 
     create_bam_file(args.fasta,
                     args.fastq,
-                    os.path.join(preprocessing_dir, 'long_unitigs_split.bam'),
+                    os.path.join(preprocessing_dir, "long_unitigs_split.bam"),
                     args.threads)
-    args.bam = os.path.join(preprocessing_dir, 'long_unitigs_split.bam')
+    args.bam = os.path.join(preprocessing_dir, "long_unitigs_split.bam")

@@ -120,7 +120,7 @@ def cluster(i, flye_consensus):
     logger.info(str(clN)+" clusters found")
     cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
 
-    cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = unclustered_group_N
+    cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = UNCLUSTERED_GROUP_N
     if clN != 0:
         logger.info("### Cluster post-processing...")
         cl = postprocess(StRainyArgs().bam, cl, SNP_pos, data, edge, R, I, flye_consensus)

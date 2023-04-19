@@ -55,9 +55,9 @@ R = 1 # reads max mismatch count
 I = 1000 # reads min intersection
 unseparated_cluster_min_reads = 3
 min_cluster_size = 2
-unclustered_group_N = 1000000
-unclustered_group_N2 = 3000000
-split_id = 10000
+UNCLUSTERED_GROUP_N = 1000000
+UNCLUSTERED_GROUP_N2 = 3000000
+SPLIT_ID = 10000
 
 #creating new unitigs
 parental_min_coverage = 6
