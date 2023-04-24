@@ -55,14 +55,14 @@ R = 1 # reads max mismatch count
 I = 1000 # reads min intersection
 unseparated_cluster_min_reads = 3
 min_cluster_size = 2
-unclustered_group_N = 1000000
-unclustered_group_N2 = 3000000
-split_id = 10000
+UNCLUSTERED_GROUP_N = 1000000
+UNCLUSTERED_GROUP_N2 = 3000000
+SPLIT_ID = 10000
 
 #creating new unitigs
 parental_min_coverage = 6
 parental_min_len = 0.7
-start_end_gap = 50
+start_end_gap = 500
 strong_cluster_min_reads = 2
 
 #adding new links
@@ -81,6 +81,7 @@ min_base_quality = 0
 min_al_len = 1000
 # extended_aln_flank = 50
 de_max = {"hifi": 0.05, "nano": 0.10}
+min_consensus_cov = {"hifi": 3, "nano": 5}
 
 # SNP allele frequency
 AF = 0.1

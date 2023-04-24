@@ -8,4 +8,4 @@ def find_communities(G):
     model = LabelPropagation()
     model.fit(G)
     cluster_membership = model.get_memberships()
-    return (cluster_membership)
+    return cluster_membership

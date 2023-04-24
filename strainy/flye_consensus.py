@@ -48,13 +48,12 @@ class FlyeConsensus:
 
         self._num_processes = num_processes
         self._indel_block_length_leniency = indel_block_length_leniency
+        self._coverage_limit = min_consensus_cov[StRainyArgs().mode]
         if StRainyArgs().mode == "hifi":
-            self._coverage_limit = 3
             self._platform = "pacbio"
             self._read_type = "hifi"
             self._mode = "--pacbio-hifi"
         elif StRainyArgs().mode == "nano":
-            self._coverage_limit = 5
             self._platform = "nano"
             self._read_type = "raw"
             self._mode = "--nano-raw"
