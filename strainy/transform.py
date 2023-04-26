@@ -5,19 +5,22 @@ import re
 import gfapy
 from collections import Counter, deque, defaultdict
 import numpy as np
+import pandas as pd
 import pickle
 import logging
 import multiprocessing
 import shutil
+import pysam
 
-from strainy.clustering.build_adj_matrix import *
-from strainy.clustering.cluster_postprocess import *
-from strainy.simplification.simplify_links import *
+import strainy.clustering.build_adj_matrix as matrix
+import strainy.clustering.cluster_postprocess as postprocess
+import strainy.simplification.simplify_links as smpl
+import strainy.gfa_operations.gfa_ops as gfa_ops
 from strainy.flye_consensus import FlyeConsensus
-from strainy.clustering.build_data  import *
+import strainy.clustering.build_data as build_data
 from strainy.params import *
 from strainy.logging import set_thread_logging
-from strainy.gfa_operations.gfa_ops import *
+
 
 
 logger = logging.getLogger()
@@ -114,7 +117,7 @@ def remove_nested(G, cons):
         try:
             neighbors = nx.all_neighbors(G, node)
             for neighbor in list(neighbors):
-                if cons[node]["Start"] < cons[neighbor]["Start"] and cons[node]["Stop"] > cons[neighbor]["Stop"]:
+                if cons[node]["Start"] < cons[neighbor]["Start"] and cons[node]["End"] > cons[neighbor]["End"]:
                     try:
                         G.remove_edge(node, neighbor)
                         G.remove_edge(neighbor,node)
@@ -150,12 +153,12 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
 
     for e in G_vis.edges():
         first_cl, second_cl = e
-        intersect = min(cons[first_cl]["Stop"], cons[second_cl]["Stop"]) - \
+        intersect = min(cons[first_cl]["End"], cons[second_cl]["End"]) - \
                     max(cons[first_cl]["Start"], cons[second_cl]["Start"])
         G_vis[first_cl][second_cl]["label"] = f"Ovlp:{intersect}"
 
     for n in G_vis.nodes():
-        clust_len = cons[n]["Stop"] - cons[n]["Start"]
+        clust_len = cons[n]["End"] - cons[n]["Start"]
         color = cluster_colors[n]
         G_vis.nodes[n]["label"] = f"{color} len:{clust_len}"
 
@@ -204,7 +207,7 @@ def add_path_links(graph, edge, paths, G):
     """
     for path in paths:
         for i in range(0, len(path) - 1):
-            add_link(graph, f"{edge}_{path[i]}", "+", f"{edge}_{path[i + 1]}", "+", 1)
+            gfa_ops.add_link(graph, f"{edge}_{path[i]}", "+", f"{edge}_{path[i + 1]}", "+", 1)
 
 
 def add_path_edges(edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
@@ -247,7 +250,7 @@ def add_path_edges(edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,paths
             cut_r_unsorted[path_cluster] = ln - 1
     stop_pos = {}
     for i in cut_r_unsorted.keys():
-        stop_pos[i] = cons[i]["Stop"]
+        stop_pos[i] = cons[i]["End"]
 
     order_by_stop_pos = list(dict(sorted(stop_pos.items(), key = lambda item: item[1])).keys())
 
@@ -300,7 +303,7 @@ def add_path_edges(edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,paths
                 l_borders.append(int(cons[i]["Start"]))
 
             for i in R:
-                r_borders.append(int(cons[i]["Stop"]))
+                r_borders.append(int(cons[i]["End"]))
             if member in paths_leafs:
                 border = cut_r[member]
             else:
@@ -343,8 +346,8 @@ def change_cov(g, edge, cons, ln, clusters, othercl, remove_clusters):
     cov = 0
     len_cl = []
     for i in othercl:
-        cov += cons[i]["Cov"] * (cons[i]["Stop"] - cons[i]["Start"])
-        for i in range(cons[i]["Start"],cons[i]["Stop"]):
+        cov += cons[i]["Cov"] * (cons[i]["End"] - cons[i]["Start"])
+        for i in range(cons[i]["Start"],cons[i]["End"]):
             len_cl.append(i)
     if (len(set(len_cl)) / ln) < parental_min_len and len(clusters)- len(othercl) != 0:
         remove_clusters.add(edge)
@@ -360,8 +363,8 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut = True):
     for cluster in othercl:
         other_cl.loc[cl["Cluster"] == cluster, "Cluster"] = "OTHER_%s" %edge
 
-    reference_seq = read_fasta_seq(StRainyArgs().fa, edge)
-    cl_consensuns = cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp, edge, reference_seq)
+    reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
+    cl_consensuns = build_data.cluster_consensuns(other_cl, "OTHER_%s" %edge, SNP_pos, data, temp, edge, reference_seq)
     i = g.try_get_segment(edge)
     seq = i.sequence
     seq = list(seq)
@@ -382,7 +385,7 @@ def strong_tail(cluster, cl, ln, data):
             if count_start == None:
                 count_start = 0
             count_start = count_start+1
-        if data[read]["Stop"] > ln - start_end_gap:
+        if data[read]["End"] > ln - start_end_gap:
             if count_stop == None:
                 count_stop = 0
             count_stop = count_stop + 1
@@ -411,8 +414,8 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
         clusters = []
 
     if cl is not None:
-        SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
-        data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
+        SNP_pos = build_data.read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
+        data = build_data.read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
         bam_cache[edge] = data
 
         ln = int(pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[4])
@@ -425,13 +428,13 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
         except:
             pass
 
-        reference_seq = read_fasta_seq(StRainyArgs().fa, edge)
-        cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
+        reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
+        cons = build_data.build_data_cons(cl, SNP_pos, data, edge, reference_seq)
 
         if len(clusters) == 1:
             for cluster in clusters:
                 clStart = cons[cluster]["Start"]
-                clStop = cons[cluster]["Stop"]
+                clStop = cons[cluster]["End"]
                 if clStart < start_end_gap and clStop > ln - start_end_gap:
                     full_paths_roots.append(cluster)
                     full_paths_leafs.append(cluster)
@@ -445,7 +448,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
         if len(clusters) > 1:
             for cluster in clusters:
                 clStart = cons[cluster]["Start"]
-                clStop = cons[cluster]["Stop"]
+                clStop = cons[cluster]["End"]
                 if clStart < start_end_gap and clStop > ln - start_end_gap:
                     if strong_tail(cluster, cl, ln, data)[0] == True and strong_tail(cluster, cl, ln,data)[1] == True:
                         consensus = flye_consensus.flye_consensus(cluster, edge, cl)
@@ -455,14 +458,14 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
                     elif strong_tail(cluster, cl, ln, data)[0] != True:
                         cons[cluster]["Start"] = cons[cluster]["Start"] + start_end_gap+1
                     else:
-                        cons[cluster]["Stop"] = cons[cluster]["Stop"] - start_end_gap-1
+                        cons[cluster]["End"] = cons[cluster]["End"] - start_end_gap-1
                 if clStart < start_end_gap and strong_tail(cluster, cl, ln, data)[0] == True :
                     full_paths_roots.append(cluster)
                 if clStop > ln - start_end_gap and strong_tail(cluster, cl, ln, data)[1] == True:
                     full_paths_leafs.append(cluster)
 
-            cluster_distances = build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
-            cluster_distances = change_w(cluster_distances, 1)
+            cluster_distances = postprocess.build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
+            cluster_distances = matrix.change_w(cluster_distances, 1)
 
             G = build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters,
                                   data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
@@ -555,7 +558,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
         except:
             continue
 
-    nx_graph = gfa_to_nx(graph)
+    nx_graph = gfa_ops.gfa_to_nx(graph)
 
     #for each cluster in the initial unitig
     for cur_clust in link_unitigs:
@@ -600,7 +603,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
             try:
                 cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, next_seg, I, AF), keep_default_na = False)
             except(FileNotFoundError):
-                add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 555)
+                gfa_ops.add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 555)
                 continue
 
             #for each neighbor, identify which clusters should be connected
@@ -620,7 +623,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                 w = Counter(list(connected_clusters))[next_clust]
                 try:
                     if graph.try_get_segment(f"{next_seg}_{next_clust}"):
-                        add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{next_clust}", to_or, w)
+                        gfa_ops.add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{next_clust}", to_or, w)
                         #print(f"Direct link: {edge}_{cur_clust} to {next_seg}_{next_clust}, {w}")
                         link_added = True
                 except(gfapy.NotFoundError):
@@ -648,12 +651,12 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                         try:
                             if graph.try_get_segment(f"{next_seg}_{next_clust}"):
                                 #link_added = True
-                                add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{next_clust}", to_or, 666)
+                                gfa_ops.add_link(graph, f"{edge}_{cur_clust}", fr_or, f"{next_seg}_{next_clust}", to_or, 666)
                         except(gfapy.NotFoundError):
                             pass
 
                 else:
-                    add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 666)
+                    gfa_ops.add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 666)
                     #link_added = True
             ###### end block of non-connection
 
@@ -684,7 +687,7 @@ def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_
                     #logger.debug(str(link).replace(link.to_segment.name, f"{link.to_segment.name}_{next_clust}"))
                     candidate = f"{link.to_segment.name}_{next_clust}"
                     if is_right_tip(candidate, neg_sign(link.to_orient)):
-                        add_link(graph, link.from_segment.name, link.from_orient,
+                        gfa_ops.add_link(graph, link.from_segment.name, link.from_orient,
                                  candidate, link.to_orient, 888)
 
             if link.to_segment == edge:
@@ -694,7 +697,7 @@ def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_
                     #logger.debug(str(link).replace(link.from_segment.name, f"{link.from_segment.name}_{next_clust}"))
                     candidate = f"{link.from_segment.name}_{next_clust}"
                     if is_right_tip(candidate, link.from_orient):
-                        add_link(graph, candidate, link.from_orient,
+                        gfa_ops.add_link(graph, candidate, link.from_orient,
                                  link.to_segment.name, link.to_orient, 888)
 
 
@@ -789,7 +792,7 @@ def transform_main(args):
     shutil.copyfile(out_merged, strainy_final)
 
     logger.info("### Simplify graph")
-    simplify_links(initial_graph)
+    smpl.simplify_links(initial_graph)
 
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
     clean_graph(initial_graph)

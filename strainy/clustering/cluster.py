@@ -5,11 +5,13 @@ import matplotlib.pyplot as plt
 import matplotlib as mt
 logging.getLogger('matplotlib.font_manager').disabled = True
 import multiprocessing
+import pandas as pd
+import pysam
 
 from strainy.clustering.community_detection import find_communities
 from strainy.clustering.cluster_postprocess import postprocess
-from strainy.clustering.build_adj_matrix import *
-from strainy.clustering.build_data import *
+import strainy.clustering.build_adj_matrix as matrix
+import strainy.clustering.build_data as build_data
 from strainy.params import *
 
 
@@ -62,26 +64,26 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
 def cluster(i, flye_consensus):
     edge = StRainyArgs().edges[i]
     logger.info("### Reading SNPs...")
-    SNP_pos = read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
+    SNP_pos = build_data.read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
 
 
     logger.info("### Reading Reads...")
-    data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
+    data = build_data.read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
     cl = pd.DataFrame(data={'ReadName': data.keys()})
     cl['Cluster'] = 'NA'
 
     total_coverage = 0
-    edge_length = len(read_fasta_seq(StRainyArgs().fa, edge))
+    edge_length = len(build_data.read_fasta_seq(StRainyArgs().fa, edge))
     num_reads = len(data)
     for read in data:
-        total_coverage += data[read]["Stop"] - data[read]["Start"]
+        total_coverage += data[read]["End"] - data[read]["Start"]
     mean_edge_cov = total_coverage // edge_length
     logger.debug(f"num reads: {num_reads}. edge length: {edge_length}, coverage: {mean_edge_cov}")
 
     if num_reads == 0:
         return
     if len(SNP_pos) == 0:
-        #data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
+        #data = build_data.read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
         cl = pd.DataFrame(data={'ReadName': data.keys()})
         cl['Cluster'] = 1
         cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
@@ -92,18 +94,18 @@ def cluster(i, flye_consensus):
     #try:
     #    m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), index_col='ReadName')
     #except FileNotFoundError:
-    m = build_adj_matrix(cl, data, SNP_pos, I, StRainyArgs().bam, edge, R)
+    m = matrix.build_adj_matrix(cl, data, SNP_pos, I, StRainyArgs().bam, edge, R)
     m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
 
     logger.info("### Removing overweighed egdes...")
-    m = remove_edges(m, R)
+    m = matrix.remove_edges(m, R)
 
     # BUILD graph and find clusters
     logger.info("### Creating graph...")
     m1 = m
     m1.columns = range(0,len(cl['ReadName']))
     m1.index=range(0,len(cl['ReadName']))
-    G = nx.from_pandas_adjacency(change_w(m.transpose(), R))
+    G = nx.from_pandas_adjacency(matrix.change_w(m.transpose(), R))
     logger.info("### Searching clusters...")
     cluster_membership = find_communities(G)
     clN = 0

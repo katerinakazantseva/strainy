@@ -1,10 +1,11 @@
 import networkx as nx
 import logging
+import pandas as pd
 
 from strainy.clustering.community_detection import find_communities
-from strainy.clustering.build_adj_matrix import *
-from strainy.clustering.build_data import *
-
+import strainy.clustering.build_adj_matrix as matrix
+import strainy.clustering.build_data as build_data
+from strainy.params import *
 
 logger = logging.getLogger()
 
@@ -14,13 +15,13 @@ def split_cluster(cl,cluster, data,cons,clSNP, bam, edge, R, I,only_with_common_
     child_clusters = []
     reads = sorted(set(cl.loc[cl["Cluster"] == cluster,"ReadName"].values))
     if cluster == UNCLUSTERED_GROUP_N or cluster==UNCLUSTERED_GROUP_N2  or only_with_common_snip==False: #NA cluster
-        m = build_adj_matrix(cl[cl["Cluster"] == cluster], data, clSNP, I, bam, edge, R, only_with_common_snip=False)
+        m = matrix.build_adj_matrix(cl[cl["Cluster"] == cluster], data, clSNP, I, bam, edge, R, only_with_common_snip=False)
     else:
-        m = build_adj_matrix(cl[cl["Cluster"] == cluster], data, clSNP, I, bam,edge,R)
-    m = remove_edges(m, 1)
+        m = matrix.build_adj_matrix(cl[cl["Cluster"] == cluster], data, clSNP, I, bam,edge,R)
+    m = matrix.remove_edges(m, 1)
     m.columns = range(0,len(cl[cl["Cluster"] == cluster]["ReadName"]))
     m.index = range(0,len(cl[cl["Cluster"] == cluster]["ReadName"]))
-    m = change_w(m, R)
+    m = matrix.change_w(m, R)
     G_sub = nx.from_pandas_adjacency(m)
     cl_exist = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))+list(cons.keys())
     cluster_membership = find_communities(G_sub)
@@ -71,8 +72,8 @@ def build_adj_matrix_clusters(edge,cons,cl,flye_consensus, only_with_common_snip
     for k,v in cons.items():
         X.append(k)
         Y.append(int(v["Start"]))
-        Z.append(int(v["Stop"]))
-        sort.append([k,int(v["Start"]),int(v["Stop"])])
+        Z.append(int(v["End"]))
+        sort.append([k,int(v["Start"]),int(v["End"])])
     sorted_by_pos = []
 
     for i in sorted(sort, key = lambda sort: [sort[2], sort[1]]):
@@ -86,7 +87,7 @@ def build_adj_matrix_clusters(edge,cons,cl,flye_consensus, only_with_common_snip
             second_cl = m.index[k]
 
             if m[second_cl][first_cl] == -1:
-                m[second_cl][first_cl] = distance_clusters(edge, first_cl, second_cl, cons, cl,flye_consensus, only_with_common_snip)
+                m[second_cl][first_cl] = matrix.distance_clusters(edge, first_cl, second_cl, cons, cl,flye_consensus, only_with_common_snip)
     return m
 
 
@@ -104,7 +105,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
         else:
             M = build_adj_matrix_clusters(edge, cons, cl, consensus, True, set_clusters)
 
-    M = change_w(M,R)
+    M = matrix.change_w(M,R)
 
     try:
         G_vis = nx.from_pandas_adjacency(M, create_using = nx.DiGraph)
@@ -169,7 +170,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
         try:
             neighbors = nx.all_neighbors(G, node)
             for neighbor in list(neighbors):
-                if cons[int(node)]["Start"] < cons[int(neighbor)]["Start"] and cons[int(node)]["Stop"] > cons[int(neighbor)]["Stop"]:
+                if cons[int(node)]["Start"] < cons[int(neighbor)]["Start"] and cons[int(node)]["End"] > cons[int(neighbor)]["End"]:
                     try:
                         G.remove_edge(node, neighbor)
                         logger.debug("REMOVE NESTED" + str(neighbor))
@@ -202,52 +203,37 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
     return cl
 
 
-def split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq):
-    if cons[cluster]["Strange"] == 1:
-        clSNP = cons[cluster]["clSNP"]
+def split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,type):
+    if type=="unclustered":
+        factor="Strange"
+        snp_set="clSNP"
+    if type=="lowheterozygosity":
+        factor="Strange2"
+        snp_set="clSNP2"
+
+    if cons[cluster][factor] == 1:
+        clSNP = cons[cluster][snp_set]
         res = split_cluster(cl, cluster, data,cons, clSNP, bam, edge, R, I)
         new_cl_id_na=res[0]
         clN =res[1]
-        cluster_consensuns(cl, new_cl_id_na, SNP_pos, data, cons, edge, reference_seq)
+        build_data.cluster_consensuns(cl, new_cl_id_na, SNP_pos, data, cons, edge, reference_seq)
 
         if clN != 0: #if clN==0 we dont need split NA cluster
-            split_cluster(cl, new_cl_id_na, data, cons,cons[new_cl_id_na]["clSNP"], bam, edge, R, I, False)
+            split_cluster(cl, new_cl_id_na, data, cons,cons[new_cl_id_na][snp_set], bam, edge, R, I, False)
         clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
 
         if clN == 1: #STOP LOOP IF EXIST
-            cluster_consensuns(cl, new_cl_id_na + clN, SNP_pos, data, cons, edge, reference_seq)
+            build_data.cluster_consensuns(cl, new_cl_id_na + clN, SNP_pos, data, cons, edge, reference_seq)
 
         for cluster in clusters:
             if cluster not in cons:
-                cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
-                split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq)
-
-
-def split_all2(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq):
-    #TODO merge with previous function
-    if cons[cluster]["Strange2"] == 1:
-        clSNP = cons[cluster]["clSNP2"]
-        res = split_cluster(cl, cluster, data, cons,clSNP, bam, edge, R, I)
-        new_cl_id_na = res[0]
-        clN = res[1]
-        cluster_consensuns(cl, new_cl_id_na, SNP_pos, data, cons, edge, reference_seq)
-
-        if clN != 0: #if clN==0 we dont need split NA cluster
-            split_cluster(cl, new_cl_id_na, data,cons, cons[new_cl_id_na]["clSNP2"], bam, edge, R, I, False)
-        clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
-
-        if clN == 1: #STOP LOOP IF EXIST
-            cluster_consensuns(cl, new_cl_id_na + clN, SNP_pos, data, cons, edge, reference_seq)
-
-        for cluster in clusters:
-            if cluster not in cons:
-                cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
-                split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq)
+                build_data.cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
+                split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,"unclustered")
 
 
 def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
-    reference_seq = read_fasta_seq(StRainyArgs().fa, edge)
-    cons = build_data_cons(cl, SNP_pos, data, edge, reference_seq)
+    reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
+    cons = build_data.build_data_cons(cl, SNP_pos, data, edge, reference_seq)
     cl.to_csv("%s/clusters/%s_1.csv" % (StRainyArgs().output,edge))
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))
     #cl.loc[cl["Cluster"] == UNCLUSTERED_GROUP_N, "Cluster"] = "NA"
@@ -255,7 +241,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
 
     prev_clusters = clusters
     for cluster in clusters:
-        split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq)
+        split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,"unclustered")
         clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
         new_clusters = list(set(clusters) - set(prev_clusters))
         prev_clusters = clusters
@@ -264,14 +250,14 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
 
         for cluster in clusters:
             if cluster not in cons:
-                cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
+                build_data.cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
 
     logging.info("Split stage2: Break regions of low heterozygosity")
     for cluster in clusters:
-        split_all2(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq)
+        split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,"lowheterozygosity")
     cl.loc[cl["Cluster"] == "NA", "Cluster"] = UNCLUSTERED_GROUP_N
-    cluster_consensuns(cl, UNCLUSTERED_GROUP_N, SNP_pos, data, cons, edge, reference_seq)
+    build_data.cluster_consensuns(cl, UNCLUSTERED_GROUP_N, SNP_pos, data, cons, edge, reference_seq)
 
     clSNP = cons[UNCLUSTERED_GROUP_N]["clSNP2"]
     splitna = split_cluster(cl, UNCLUSTERED_GROUP_N, data, cons, clSNP, bam, edge, R, I,False)
@@ -283,19 +269,19 @@ def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     cl = cl[cl["Cluster"] != UNCLUSTERED_GROUP_N]
     clusters = sorted(set(cl.loc[cl["Cluster"] != splitna[0], "Cluster"].values))
     clusters = sorted(set(cl.loc[cl["Cluster"] != UNCLUSTERED_GROUP_N, "Cluster"].values))
-    cluster_consensuns(cl, UNCLUSTERED_GROUP_N, SNP_pos, data, cons, edge, reference_seq)
+    build_data.cluster_consensuns(cl, UNCLUSTERED_GROUP_N, SNP_pos, data, cons, edge, reference_seq)
     counts = cl["Cluster"].value_counts(dropna = False)
 
     for cluster in clusters:
         if cluster not in cons:
-            cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
+            build_data.cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
     cl = join_clusters(cons, cl, R, edge, flye_consensus)
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
 
     for cluster in clusters:
         if cluster not in cons:
-            cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
+            build_data.cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
     cl = join_clusters(cons, cl, R, edge, flye_consensus, False)
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
     cl = join_clusters(cons, cl, R, edge, flye_consensus, False,only_nested=True)

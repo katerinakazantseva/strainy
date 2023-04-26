@@ -21,7 +21,7 @@ def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=
             first_read = m.index[i]
             bamfile = pysam.AlignmentFile(file, "rb")
             border1 = data[first_read]["Start"] + I
-            border2 = data[first_read]["Stop"] - I
+            border2 = data[first_read]["End"] - I
             if border2 <= 0:
                 border2 = 1
             if border1 <= 0:
@@ -74,8 +74,8 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
             else:
                 continue
     if len(commonSNP) == 0 and only_with_common_snip == False:
-        intersect = set(range(data[read1]["Start"], data[read1]["Stop"])).intersection(
-            set(range(data[read2]["Start"], data[read2]["Stop"])))
+        intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
+            set(range(data[read2]["Start"], data[read2]["End"])))
         if len(intersect) > 0:
             d = 0
         else:
@@ -105,7 +105,7 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     firstSNPs = [key for key in firstSNPs if key not in keys]
     secondSNPs = [key for key in secondSNPs if key not in keys]
     commonSNP = sorted(set(firstSNPs).intersection(secondSNPs))
-    intersect = set(range(cons[first_cl]["Start"],cons[first_cl]["Stop"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["Stop"])))
+    intersect = set(range(cons[first_cl]["Start"],cons[first_cl]["End"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["End"])))
     if only_with_common_snip == False and len(commonSNP) == 0 and len(intersect) > I:
         d = 0
     elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
