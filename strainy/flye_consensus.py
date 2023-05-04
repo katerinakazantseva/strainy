@@ -88,12 +88,9 @@ class FlyeConsensus:
 
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
 
-        #ts = time.time()
         if self._read_index is None:
             self._read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
             self._read_index.build()
-        #te = time.time()
-        #logger.debug("Index building time %f", te - ts)
 
         for name in read_names:
             iterator = self._read_index.find(name)
@@ -106,7 +103,6 @@ class FlyeConsensus:
                     read_list.append(x)
                     read_limits.append((x.reference_start, x.reference_end))
 
-        #out = pysam.Samfile(output_file, "wb", header=self._bam_header)
         out = pysam.Samfile(output_file, "wb", template=pysam.AlignmentFile(self._bam_path, "rb"))
         for x in read_list:
             temp_dict = x.to_dict()
@@ -218,7 +214,7 @@ class FlyeConsensus:
                 'read_limits': read_limits,
                 'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
                 'reference_path': f"{fname}.fa",
-                'reference_seq': ref_seq_cut,
+                'reference_seq': self._unitig_seqs[edge],
                 'bed_path': f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
                             f"base_coverage.bed.gz"
             }
@@ -254,6 +250,7 @@ class FlyeConsensus:
                                 first_to_ref, reference_to_first,
                                 intersection_start, first_cl_dict, second_cl_dict,
                                 commonSNPs):
+        info_printed = False
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
         alignment_string: a string consisting of '-', '.', '|' characters which correspond to indel, mismatch, match,
@@ -312,7 +309,7 @@ class FlyeConsensus:
                     else:
                         indel_length += 1
 
-            # a contiguous gap ends if the previous base was a bot not this one
+            # a contiguous gap ends if the previous base was a gap but not this one
             elif i != 0 and alignment_list[i - 1] == '-':
                 if (indel_length >= self._indel_block_length_leniency and
                         indel_block_start != 0):
@@ -321,16 +318,23 @@ class FlyeConsensus:
 
             # mismatch
             if base == '.':
-                mismatch_position = intersection_start + self._get_true_mismatch_position(
+                if info_printed == False:
+                    info_printed = True
+                    # logger.info(f"common SNP positions for the unitig: {commonSNPs}")
+
+                mismatch_position = self._get_true_mismatch_position(
                     aligned_first,
                     first_to_ref,
                     reference_to_first,
                     i)
                 if str(mismatch_position) in commonSNPs:
+                    # logger.info(f"HIT!, {mismatch_position}")
                     self._position_match.value += 1
                     score += 1
                 else:
+                    # logger.info(f"MISS!, {mismatch_position}")
                     self._position_miss.value += 1
+                
         return score
 
     def _log_alignment_info(self, aligned_first, alignment_string, aligned_second, first_cl_dict, second_cl_dict,
