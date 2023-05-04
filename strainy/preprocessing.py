@@ -18,7 +18,7 @@ def create_bam_file(fasta_file, fastq_file, output_file, num_threads, index=True
     logger.info(f"Creating bam file from {fasta_file} and {fastq_file}")
     minimap_mode = "map-ont" if StRainyArgs().mode == "nano" else "map-hifi"
     subprocess.check_output(f"minimap2 -ax {minimap_mode} {fasta_file} {fastq_file} -t {num_threads} | " \
-                            f"samtools sort -@4 -t {num_threads} > {output_path}",
+                            f"samtools sort -@4 -t {num_threads} > {output_file}",
                             shell=True)
     if index:
         pysam.samtools.index(f"{output_file}", f"{output_file}.bai")
@@ -33,7 +33,7 @@ def gfa_to_fasta(gfa_file, output_file):
     """
     fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {gfa_file} > {output_file}"""
     try:
-        logger.info(f"Creating fasta file from the gfa file {gfa_path}")
+        logger.info(f"Creating fasta file from the gfa file {gfa_file}")
         subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
         logger.info("Done!")
 
