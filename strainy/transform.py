@@ -377,7 +377,7 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut = True):
             seq[int(key) - 1] = val
         except (ValueError):
             continue
-    #i.sequence=''.join(seq)
+    i.sequence=''.join(seq)
 
 
 
