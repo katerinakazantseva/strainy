@@ -26,7 +26,7 @@ from strainy.logging import set_thread_logging
 logger = logging.getLogger()
 
 
-def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
+def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True):
     """
     The function creates unitiges in the gfa graph
     """
@@ -50,10 +50,14 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
     new_line.sid = str(edge) + "_" + str(clN)
     new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
     #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
-    if len(seq) == 0:
-        new_line.sequence = "A"
+    if change_seq==True:
+        if len(seq) == 0:
+            new_line.sequence = "A"
+        else:
+            new_line.sequence = seq
     else:
-        new_line.sequence = seq
+        new_line.sequence = g.try_get_segment("%s" % edge).sequence
+
     logger.debug("unitig added  %s_%s" % (edge, clN))
 
 
@@ -373,6 +377,8 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut = True):
             seq[int(key) - 1] = val
         except (ValueError):
             continue
+    #i.sequence=''.join(seq)
+
 
 
 def strong_tail(cluster, cl, ln, data):
@@ -439,7 +445,8 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
                     full_paths_roots.append(cluster)
                     full_paths_leafs.append(cluster)
                 consensus = flye_consensus.flye_consensus(cluster, edge, cl)
-                add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus)
+                #add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus)
+                add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus,change_seq = False)
             link_clusters[edge] = list(clusters)
             link_clusters_sink[edge] = list(clusters)
             link_clusters_src[edge] = list(clusters)
