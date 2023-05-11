@@ -8,7 +8,7 @@ from strainy.params import StRainyArgs
 
 logger = logging.getLogger()
 
-def create_bam_file(fasta_file, fastq_file, output_path, num_threads, index=True):
+def create_bam_file(fasta_file, fastq_file, output_file, num_threads, index=True):
     """
     Create a .bam file, requires user provided --fastq argument containing reads.
     """
@@ -18,28 +18,28 @@ def create_bam_file(fasta_file, fastq_file, output_path, num_threads, index=True
     logger.info(f"Creating bam file from {fasta_file} and {fastq_file}")
     minimap_mode = "map-ont" if StRainyArgs().mode == "nano" else "map-hifi"
     subprocess.check_output(f"minimap2 -ax {minimap_mode} {fasta_file} {fastq_file} -t {num_threads} | " \
-                            f"samtools sort -@4 -t {num_threads} > {output_path}",
+                            f"samtools sort -@4 -t {num_threads} > {output_file}",
                             shell=True)
     if index:
-        pysam.samtools.index(f"{output_path}", f"{output_path}.bai")
+        pysam.samtools.index(f"{output_file}", f"{output_file}.bai")
     logger.info(".bam file created!")
 
 
-def gfa_to_fasta(gfa_path, output_path):
+def gfa_to_fasta(gfa_file, output_file):
     """
     Creates a fasta file from the input gfa file. This is needed if the user
     omitted the optional -f argument or if the input graph is modified as a
     result of --split-long-unitigs argument.
     """
-    fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {gfa_path} > {output_path}"""
+    fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {gfa_file} > {output_file}"""
     try:
-        logger.info(f"Creating fasta file from the gfa file {gfa_path}")
+        logger.info(f"Creating fasta file from the gfa file {gfa_file}")
         subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
         logger.info("Done!")
 
     except subprocess.CalledProcessError as e:
         logger.error(e)
-        raise Exception(f'Error while creating fasta file from the gfa file: {gfa_path} ' \
+        raise Exception(f'Error while creating fasta file from the gfa file: {gfa_file} ' \
                         f'Optionally, you can create a fasta file yourself and provide it with "-f file.fasta"')
 
 
@@ -51,7 +51,7 @@ def add_gfa_line(input_graph, *args):
     line = "\t".join(args)
     input_graph.add_line(line)
 
-def split_long_unitigs(input_graph, output_path):
+def split_long_unitigs(input_graph, output_file):
     """
     Replaces unitigs with lengths greater than StRainyArgs().splen with multiple
     shorter unitigs for better load balancing accross threads. The number of new
@@ -132,7 +132,7 @@ def split_long_unitigs(input_graph, output_path):
     for path in input_graph.paths:
         input_graph.rm(path)
 
-    input_graph.to_file(output_path)
+    input_graph.to_file(output_file)
 
 
 def preprocess_cmd_args(args, parser):

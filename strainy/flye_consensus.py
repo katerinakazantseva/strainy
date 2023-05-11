@@ -64,12 +64,17 @@ class FlyeConsensus:
         self._debug_count = multiproc_manager.Value("i", 0)
         self._call_count = multiproc_manager.Value("i", 0)
 
+        self._position_match = multiproc_manager.Value("i", 0)
+        self._position_miss = multiproc_manager.Value("i", 0)
+
     def get_consensus_dict(self):
         return self._consensus_dict.copy()
 
     def print_cache_statistics(self):
         logger.info(f"Total number of key hits and misses for consensus computation:")
         logger.info(f" H:{self._key_hit.value}, M:{self._key_miss.value}")
+        logger.info(f"Position hit/miss")
+        logger.info(f" H:{self._position_match.value}, M:{self._position_miss.value}")
 
 
     def extract_reads(self, read_names, output_file, edge=""):
@@ -83,12 +88,9 @@ class FlyeConsensus:
 
         read_list = []  # stores the reads to be written after the cluster start/end is calculated
 
-        #ts = time.time()
         if self._read_index is None:
             self._read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
             self._read_index.build()
-        #te = time.time()
-        #logger.debug("Index building time %f", te - ts)
 
         for name in read_names:
             iterator = self._read_index.find(name)
@@ -101,7 +103,6 @@ class FlyeConsensus:
                     read_list.append(x)
                     read_limits.append((x.reference_start, x.reference_end))
 
-        #out = pysam.Samfile(output_file, "wb", header=self._bam_header)
         out = pysam.Samfile(output_file, "wb", template=pysam.AlignmentFile(self._bam_path, "rb"))
         for x in read_list:
             temp_dict = x.to_dict()
@@ -120,7 +121,6 @@ class FlyeConsensus:
         cl: dataframe with columns read_name and cluster(id)
         edge: edge name (str)
         """
-
         # check if the output for this cluster-edge pair exists in the cache
         consensus_dict_key = f"{cluster}-{edge}"
         with self._lock:
@@ -142,10 +142,10 @@ class FlyeConsensus:
 
         # access the edge in the graph and cut its sequence according to the cluster start and end positions
         # this sequence is written to a fasta file to be used by the Flye polisher
-        edge_seq_cut = self._unitig_seqs[edge][cluster_start:cluster_end]
+        ref_seq_cut = self._unitig_seqs[edge][cluster_start:cluster_end]
         fname = f"{fprefix}{edge}-cluster{cluster}-{salt}"
         record = SeqRecord(
-            Seq(edge_seq_cut),
+            Seq(ref_seq_cut),
             id=f"{edge}",
             name=f"{edge} sequence cut for cluster {cluster}",
             description=""
@@ -214,6 +214,7 @@ class FlyeConsensus:
                 'read_limits': read_limits,
                 'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
                 'reference_path': f"{fname}.fa",
+                'reference_seq': self._unitig_seqs[edge],
                 'bed_path': f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
                             f"base_coverage.bed.gz"
             }
@@ -245,14 +246,19 @@ class FlyeConsensus:
                     pass
         return contents
 
-    def _custom_scoring_function(self, aligned_first, alignment_string, aligned_second, intersection_start, first_cl_dict, second_cl_dict):
+    def _custom_scoring_function(self, aligned_first, alignment_string, aligned_second,
+                                first_to_ref, reference_to_first,
+                                intersection_start, first_cl_dict, second_cl_dict,
+                                commonSNPs):
+        info_printed = False
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
         alignment_string: a string consisting of '-', '.', '|' characters which correspond to indel, mismatch, match,
         respectively.
-        Mismatches are worth 1 point, indels are 1 point each if there are more than 5 of them in a contiguous block.
-        Except for the indel blocks start at the beginning or finish at the end, those indels are ignored.
-        Moreover, variants that are covered by less than self._coverage_limits are ignored (assumed match)
+        Mismatches are penalized if they appear in commonSNPs.
+        Indels are 1 point each if there are more than 5 of them in a contiguous block.
+        Indel blocks start at the beginning or finish at the end are ignored.
+        Variants that are covered by less than self._coverage_limits are assumed matches.
         """
         score = 0
         indel_length = 0
@@ -263,12 +269,12 @@ class FlyeConsensus:
         second_shift = intersection_start - second_cl_dict['start']
 
         # read the contents of the bed.gz files that contain coverage information for each coordinate
-        # list containing lists with (start, end, coverage) for each coordinate interval
+        # list of lists with (start, end, coverage) for each coordinate interval
         cl1_bed_contents = self._parse_bed_coverage(first_cl_dict['bed_path'])
         cl2_bed_contents = self._parse_bed_coverage(second_cl_dict['bed_path'])
 
-        for i in range(len(alignment_list)):
-            if alignment_list[i] not in "-.|":
+        for i, base in enumerate(alignment_list):
+            if base not in "-.|":
                 raise Exception("Unknown alignment sybmol!")
 
             # true coordinate = current coordinate on the alignment_string
@@ -278,46 +284,61 @@ class FlyeConsensus:
             cl2_true_coor = second_shift + i - aligned_second[:i].count('-')
 
             # ignore variants with low coverage
-            if ((alignment_list[i] == '-' or alignment_list[i] == '.')
+            if ((base == '-' or base == '.')
                     and (calculate_coverage(cl1_true_coor, cl1_bed_contents) < self._coverage_limit
                     or calculate_coverage(cl2_true_coor, cl2_bed_contents) < self._coverage_limit)):
-                alignment_list[i] = '|'
+                # TODO: this makes it a problem to calculate the true coordinate later on
+                base = '|'
 
-            if alignment_list[i] == '-':
-                # igonre the indels at the first or last position
+            if base == '-':
+                # ignore the indels at the first or last position
                 if i == 0:
                     indel_length = 1
                     indel_block_start = i
                     continue
                 elif i == (len(alignment_list) - 1):
-                    continue
+                    # trailing gaps are ignored
+                    # break out of the loop without increasing the score
+                    break
                 else:
-                    # start of an indel block
+                    # start of an indel block if previous base was not a gap
                     if alignment_list[i - 1] != '-':
-                        # an indel blocks starting at position 0 will be ignored
                         indel_block_start = i
                         indel_length = 1
-                    # continuing indel block
+                    # extend the indel block
                     else:
                         indel_length += 1
 
-            # a contiguous gap ends
-            elif alignment_list[i - 1] == '-':
-                if indel_length >= self._indel_block_length_leniency and indel_block_start != 0:
+            # a contiguous gap ends if the previous base was a gap but not this one
+            elif i != 0 and alignment_list[i - 1] == '-':
+                if (indel_length >= self._indel_block_length_leniency and
+                        indel_block_start != 0):
                     score += indel_length
                 indel_length = 0
 
             # mismatch
-            if alignment_list[i] == '.':
-                score += 1
+            if base == '.':
+                if info_printed == False:
+                    info_printed = True
+                    # logger.info(f"common SNP positions for the unitig: {commonSNPs}")
+
+                mismatch_position = self._get_true_mismatch_position(
+                    aligned_first,
+                    first_to_ref,
+                    reference_to_first,
+                    i)
+                if str(mismatch_position) in commonSNPs:
+                    # logger.info(f"HIT!, {mismatch_position}")
+                    self._position_match.value += 1
+                    score += 1
+                else:
+                    # logger.info(f"MISS!, {mismatch_position}")
+                    self._position_miss.value += 1
+                
         return score
 
     def _log_alignment_info(self, aligned_first, alignment_string, aligned_second, first_cl_dict, second_cl_dict,
                             score, intersection_start, intersection_end):
-        #if self._num_processes == 1:
-        #    pid = 0
-        #else:
-        #    pid = int(re.split('\'|-', str(multiprocessing.current_process()))[2]) - 1
         pid = int(multiprocessing.current_process().pid)
         fname = f"{StRainyArgs().output}/distance_inconsistency-{pid}.log"
 
@@ -390,7 +411,41 @@ class FlyeConsensus:
             f.write("**********-------************\n\n")
 
 
-    def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, debug=False):
+    def _get_true_mismatch_position(self, cons_to_cons, cons_to_ref, reference, mismatch_index):
+        """ 
+        The following three are outputs of alignments and contain gaps:
+        cons_to_cons: consensus sequence aligned to another consensus sequence
+        cons_to_ref: same consensus sequence aligned to reference
+        reference: reference aligned to cons_to_ref
+        mismatch_index: index of the mismatch in cons_to_cons
+        """
+
+        # TODO: this function may return a position that corresponds to a gap
+        # in reference. Is this valid?
+
+        # Find how many bases are there up to and including the mismatch_index
+        true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + 1
+        
+        # Find the index of base from cons_to_cons in cons_to_ref
+        true_pos_cons_to_ref = -1
+        bases = 0 # number of bases so far
+        for i, b in enumerate(cons_to_ref):
+            if b != '-':
+                bases += 1
+            if bases == true_pos_cons_to_cons:
+                true_pos_cons_to_ref = i
+                break
+
+        # -1 indicates error
+        if true_pos_cons_to_ref == -1:
+            return true_pos_cons_to_ref
+        
+        # Find the true position of base matched with cons_to_ref in reference
+        return true_pos_cons_to_ref - reference[:true_pos_cons_to_ref].count('-') + 1
+
+    
+
+    def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, commonSNPs, debug=False):
         """
         Computes the distance between two clusters consensus'. The distance is based on the global alignment between the
         intersecting parts of the consensus'.
@@ -422,16 +477,17 @@ class FlyeConsensus:
             logger.debug(f'Intersection length for clusters is less than 1 for clusters {first_cl}, {second_cl} in {edge}')
             return 1
 
-
+        reference_seq = first_cl_dict['reference_seq']
         aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
-        edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, intersection_start,
-                                                    first_cl_dict, second_cl_dict)
-
+        first_cl_to_ref, reference_aligned, _ = self._edlib_align(first_consensus_clipped, reference_seq)
+        edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, first_cl_to_ref, reference_aligned, intersection_start,
+                                                    first_cl_dict, second_cl_dict, commonSNPs)
+                
         if debug:
-            self._log_alignment_info(aligned_first, edlib_aln, aligned_second,
-                                    first_cl_dict, second_cl_dict,
-                                    edlib_score,
-                                    intersection_start, intersection_end)
-
+            self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict, edlib_score,
+                                     intersection_start, intersection_end)
         # score is not normalized!
         return edlib_score
+
+
+
