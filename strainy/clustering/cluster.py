@@ -58,7 +58,6 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     logger.debug(cl['Cluster'].value_counts(dropna=False))
 
 
-
 def cluster(i, flye_consensus):
     edge = StRainyArgs().edges[i]
     logger.info("### Reading SNPs...")
