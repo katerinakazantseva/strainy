@@ -47,7 +47,7 @@ def phase(edges, args):
     pool = multiprocessing.Pool(StRainyArgs().threads)
     init_args = [(i, shared_flye_consensus, args) for i in range(len(edges))]
 
-    results = pool.starmap_async(_thread_fun, init_args)
+    results = pool.starmap_async(_thread_fun, init_args, chunksize=1)
     while not results.ready():
         time.sleep(0.01)
         if not results._success:
