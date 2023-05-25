@@ -434,7 +434,7 @@ class FlyeConsensus:
 
         # TODO: count mismatches too?
         # Find how many bases are there up to and including the mismatch_index
-        true_pos_cons_to_cons = mismatch_index - (cons_to_cons[:mismatch_index].count('-') + cons_to_cons[:mismatch_index].count('.')) + 1 + first_cl_start
+        true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + 1 + first_cl_start
         
         # Find the index of base from cons_to_cons in cons_to_ref
         true_pos_cons_to_ref = -1
