@@ -508,7 +508,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
             if  new_cov < parental_min_coverage and len(clusters) - len(othercl) != 0:
                 remove_clusters.add(edge)
 
-            else:
+            elif len(othercl)==1:
                 #change_sec(graph, edge, othercl, cl, flye_consensus)
                 change_sec(graph, edge, othercl, cl, SNP_pos, data, True)
 
