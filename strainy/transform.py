@@ -26,7 +26,7 @@ from strainy.logging import set_thread_logging
 logger = logging.getLogger()
 
 
-def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True):
+def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus):
     """
     The function creates unitiges in the gfa graph
     """
@@ -50,14 +50,10 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
     new_line.sid = str(edge) + "_" + str(clN)
     new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
     #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
-    if change_seq==True:
-        if len(seq) == 0:
-            new_line.sequence = "A"
-        else:
-            new_line.sequence = seq
+    if len(seq) == 0:
+        new_line.sequence = "A"
     else:
-        new_line.sequence = g.try_get_segment("%s" % edge).sequence
-
+        new_line.sequence = seq
     logger.debug("unitig added  %s_%s" % (edge, clN))
 
 
@@ -377,8 +373,6 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut = True):
             seq[int(key) - 1] = val
         except (ValueError):
             continue
-    i.sequence=''.join(seq)
-
 
 
 def strong_tail(cluster, cl, ln, data):
@@ -445,8 +439,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
                     full_paths_roots.append(cluster)
                     full_paths_leafs.append(cluster)
                 consensus = flye_consensus.flye_consensus(cluster, edge, cl)
-                #add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus)
-                add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus,change_seq = False)
+                add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus)
             link_clusters[edge] = list(clusters)
             link_clusters_sink[edge] = list(clusters)
             link_clusters_src[edge] = list(clusters)
@@ -508,7 +501,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
             if  new_cov < parental_min_coverage and len(clusters) - len(othercl) != 0:
                 remove_clusters.add(edge)
 
-            elif len(othercl)==1:
+            else:
                 #change_sec(graph, edge, othercl, cl, flye_consensus)
                 change_sec(graph, edge, othercl, cl, SNP_pos, data, True)
 
@@ -810,7 +803,6 @@ def transform_main(args):
 
     flye_consensus.print_cache_statistics()
     logger.info("### Done!")
-
 
 
 if __name__ == "__main__":
