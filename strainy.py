@@ -2,7 +2,10 @@
 
 import sys
 import os
+import re
+import subprocess
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+import gfapy
 import logging
 import shutil
 
