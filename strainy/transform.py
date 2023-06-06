@@ -26,7 +26,7 @@ from strainy.logging import set_thread_logging
 logger = logging.getLogger()
 
 
-def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True):
+def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True,insertmain=True):
     """
     The function creates unitiges in the gfa graph
     """
@@ -36,7 +36,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
     cons_length_diff = len(consensus["consensus"]) - (consensus["end"] - consensus["start"])
     logger.debug(f'Consensus length difference: {cons_length_diff}')
 
-    if consensus_start > left:
+    if consensus_start > left and insertmain==True:
         main_seq = g.try_get_segment(edge)
         insert = main_seq.sequence[left:consensus_start]
         seq = str(consensus["consensus"])[0 : right - consensus_start + cons_length_diff + 1]
@@ -495,22 +495,46 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
                 G = nx.from_pandas_adjacency(cluster_distances.copy(), create_using = nx.DiGraph)
 
             close_to_full = []
-            for cluster in othercl.copy():
+            othercl_len=[cons[i]['End']-cons[i]['Start'] for i in othercl]
+            othercl_sorted=[i[1] for i  in sorted(zip(othercl_len, othercl), reverse=True)]
+            removed=[]
+            for cluster in othercl_sorted:
                 neighbors = nx.all_neighbors(G, cluster)
                 A = set(neighbors)
                 B = set([j for i in full_paths for j in i])
-                if len(A.intersection(set(full_clusters))) > 0 or len(A.intersection(B)) > 0:
-                    othercl.remove(cluster)
-                    close_to_full.append(cluster)
-                    logger.debug("REMOVE " + str(cluster))
+                if len(A.intersection(set(full_clusters))) > 0 or len(A.intersection(B)) > 0: #remove close-to full to avoid duplication
+                    try:
+                        othercl.remove(cluster)
+                        close_to_full.append(cluster)
+                        removed.append(cluster)
+                    except (ValueError):
+                        pass
+                if len(A)>0 and cluster not in removed: #leave longest and remove their neighbors
+                    for i in A:
+                        try:
+                            othercl.remove(i)
+                            removed.append(i)
+                            logger.debug("REMOVE " + str(cluster))
+                        except (ValueError):
+                            pass
+
 
             new_cov = change_cov(graph, edge, cons, ln, clusters, othercl, remove_clusters)
             if  new_cov < parental_min_coverage and len(clusters) - len(othercl) != 0:
                 remove_clusters.add(edge)
 
-            elif len(othercl)==1:
+            #else:
                 #change_sec(graph, edge, othercl, cl, flye_consensus)
-                change_sec(graph, edge, othercl, cl, SNP_pos, data, True)
+                #change_sec(graph, edge, othercl, cl, SNP_pos, data, True)
+            #elif len(othercl)==1:
+                #change_sec(graph, edge, othercl, cl, flye_consensus)
+                #change_sec(graph, edge, othercl, cl, SNP_pos, data, True)
+
+            else:
+                for cluster in othercl:
+                    consensus = flye_consensus.flye_consensus(cluster, edge, cl)
+                    add_child_edge(edge, cluster, graph, cl, cons[cluster]["Start"], cons[cluster]["End"], cons, flye_consensus,insertmain=False)
+                remove_clusters.add(edge)
 
             link_clusters[edge] = list(full_clusters) + list(
                 set(full_paths_roots).intersection(set([j for i in full_paths for j in i]))) + list(
@@ -777,7 +801,7 @@ def transform_main(args):
     for ed in initial_graph.segments:
         if ed.name in remove_clusters:
             initial_graph.rm(ed)
-            #logger.info(ed.name)
+            logger.info(ed.name)
     for link in initial_graph.dovetails:
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
