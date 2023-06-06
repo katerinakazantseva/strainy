@@ -26,6 +26,7 @@ from strainy.logging import set_thread_logging
 logger = logging.getLogger()
 
 
+
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True,insertmain=True):
     """
     The function creates unitiges in the gfa graph
@@ -522,6 +523,7 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
             new_cov = change_cov(graph, edge, cons, ln, clusters, othercl, remove_clusters)
             if  new_cov < parental_min_coverage and len(clusters) - len(othercl) != 0:
                 remove_clusters.add(edge)
+
 
             #else:
                 #change_sec(graph, edge, othercl, cl, flye_consensus)
