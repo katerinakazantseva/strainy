@@ -66,8 +66,11 @@ def cluster(i, flye_consensus):
 
     logger.info("### Reading Reads...")
     data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
-    cl = pd.DataFrame(data={'ReadName': data.keys()})
-    cl['Cluster'] = 'NA'
+    cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Start'])
+    for key, value in data.items():
+        row = pd.DataFrame({'ReadName':[key], 'Cluster':['NA'], 'Start':[value['Start']]})
+        cl = pd.concat([cl, row])
+    cl = cl.reset_index(drop=True)
 
     total_coverage = 0
     edge_length = len(read_fasta_seq(StRainyArgs().fa, edge))
@@ -81,7 +84,11 @@ def cluster(i, flye_consensus):
         return
     if len(SNP_pos) == 0:
         #data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
-        cl = pd.DataFrame(data={'ReadName': data.keys()})
+        cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Start'])
+        for key, value in data.items():
+            row = pd.DataFrame({'ReadName':[key], 'Cluster':['NA'], 'Start':[value['Start']]})
+            cl = pd.concat([cl, row])
+        cl = cl.reset_index(drop=True)
         cl['Cluster'] = 1
         cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
         return
