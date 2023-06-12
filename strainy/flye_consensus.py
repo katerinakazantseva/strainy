@@ -72,6 +72,8 @@ class FlyeConsensus:
         self._alignment_cache_hit = multiproc_manager.Value("i", 0)
         self._alignment_cache_miss = multiproc_manager.Value("i", 0)
 
+        self._unitig_snp_hits = multiproc_manager.Value("i", 0)
+
     def get_consensus_dict(self):
         return self._consensus_dict.copy()
 
@@ -82,6 +84,8 @@ class FlyeConsensus:
         logger.info(f" H:{self._position_hit.value}, M:{self._position_miss.value}")
         logger.info(f"Alignment cache hit/miss")
         logger.info(f" H:{self._alignment_cache_hit.value}, M:{self._alignment_cache_miss.value}")
+        logger.info(f"SNPs not in commonSNPs but in unitigSNPs:")
+        logger.info(f"{self._unitig_snp_hits.value}")
 
 
     def _extract_reads(self, read_names, start_pos, output_file, edge=""):
@@ -102,16 +106,13 @@ class FlyeConsensus:
         for i, name in enumerate(read_names):
             iterator = self._read_index.find(name)
             for x in iterator:
-                if x.reference_name == edge:
-                    if x.reference_start == start_pos[i]:
-                        if x.reference_start < cluster_start or cluster_start == -1:
-                            cluster_start = x.reference_start
-                        if x.reference_end > cluster_end or cluster_end == -1:
-                            cluster_end = x.reference_end
-                        read_list.append(x)
-                        read_limits.append((x.reference_start, x.reference_end))
-                    else:
-                        logger.info('investigate')
+                if x.reference_name == edge and x.reference_start == start_pos[i]:
+                    if x.reference_start < cluster_start or cluster_start == -1:
+                        cluster_start = x.reference_start
+                    if x.reference_end > cluster_end or cluster_end == -1:
+                        cluster_end = x.reference_end
+                    read_list.append(x)
+                    read_limits.append((x.reference_start, x.reference_end))
 
         out = pysam.Samfile(output_file, "wb", template=pysam.AlignmentFile(self._bam_path, "rb"))
         for x in read_list:
@@ -280,7 +281,7 @@ class FlyeConsensus:
     def _custom_scoring_function(self, aligned_first, alignment_string, aligned_second,
                                 first_to_ref, reference_to_first,
                                 intersection_start, first_cl_dict, second_cl_dict,
-                                commonSNPs, first_cl_start):
+                                commonSNPs, first_cl_start, unitigSNPs):
         info_printed = False
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
@@ -360,14 +361,14 @@ class FlyeConsensus:
                     i,
                     intersection_start - first_cl_start
                     )
-                if mismatch_position in commonSNPs:
+                if mismatch_position in commonSNPs or mismatch_position in unitigSNPs:
                     # logger.info(f"HIT!, {mismatch_position}")
+                    if mismatch_position in  unitigSNPs:
+                        self._unitig_snp_hits.value += 1
                     self._position_hit.value += 1
                     score += 1
                 else:
                     # logger.info(f"MISS!, {mismatch_position}")
-                    if mismatch_position < first_cl_start:
-                        logger.info("This shouldn't happen")
                     self._position_miss.value += 1
 
         return score
@@ -480,7 +481,7 @@ class FlyeConsensus:
         return true_pos_cons_to_ref - reference[:true_pos_cons_to_ref].count('-') + 1
 
 
-    def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, commonSNPs, debug=False):
+    def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, commonSNPs, unitigSNPs, debug=False):
         """
         Computes the distance between two clusters consensus'. The distance is based on the global alignment between the
         intersecting parts of the consensus'.
@@ -529,7 +530,7 @@ class FlyeConsensus:
             self._alignment_cache[f"{edge}-{first_cl}"] = [first_cl_to_ref, reference_aligned]
 
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, first_cl_to_ref, reference_aligned, intersection_start,
-                                                    first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'])
+                                                    first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'], unitigSNPs)
                 
         if debug:
             self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict, edlib_score,
