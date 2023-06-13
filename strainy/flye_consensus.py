@@ -73,7 +73,6 @@ class FlyeConsensus:
         self._alignment_cache_hit = multiproc_manager.Value("i", 0)
         self._alignment_cache_miss = multiproc_manager.Value("i", 0)
 
-        self._unitig_snp_hits = multiproc_manager.Value("i", 0)
 
     def get_consensus_dict(self):
         return self._consensus_dict.copy()
@@ -82,9 +81,9 @@ class FlyeConsensus:
         logger.info(f"Total number of key hits and misses for consensus computation:")
         logger.info(f" H:{self._key_hit.value}, M:{self._key_miss.value}")
         logger.info(f"Position hit/miss")
-
-        logger.info(f" H:{self._position_match.value}, M:{self._position_miss.value}")
-
+        logger.info(f" H:{self._position_hit.value}, M:{self._position_miss.value}")
+        logger.info(f"Alignment cache hit/miss")
+        logger.info(f" H:{self._alignment_cache_hit.value}, M:{self._alignment_cache_miss.value}")
 
 
     def _extract_reads(self, read_names, start_pos, output_file, edge=""):
@@ -281,8 +280,7 @@ class FlyeConsensus:
     def _custom_scoring_function(self, aligned_first, alignment_string, aligned_second,
                                 first_to_ref, reference_to_first,
                                 intersection_start, first_cl_dict, second_cl_dict,
-                                commonSNPs, first_cl_start, unitigSNPs):
-
+                                commonSNPs, first_cl_start):
         info_printed = False
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
@@ -362,15 +360,20 @@ class FlyeConsensus:
                     reference_to_first,
                     i,
                     intersection_start - first_cl_start
-                    )
-                if mismatch_position in commonSNPs or mismatch_position in unitigSNPs:
+                    ) + first_cl_start
+                if mismatch_position in commonSNPs:
                     # logger.info(f"HIT!, {mismatch_position}")
-                    if mismatch_position in  unitigSNPs:
-                        self._unitig_snp_hits.value += 1
                     self._position_hit.value += 1
                     score += 1
                 else:
                     # logger.info(f"MISS!, {mismatch_position}")
+                    _ = self._get_true_mismatch_position(
+                        aligned_first,
+                        first_to_ref,
+                        reference_to_first,
+                        i,
+                        intersection_start - first_cl_start
+                    )
                     self._position_miss.value += 1
 
         return score
@@ -487,8 +490,7 @@ class FlyeConsensus:
         return true_pos_cons_to_ref - reference[:true_pos_cons_to_ref].count('-') + 1
 
 
-    def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, commonSNPs, unitigSNPs, debug=False):
-
+    def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, commonSNPs, debug=False):
         """
         Computes the distance between two clusters consensus'. The distance is based on the global alignment between the
         intersecting parts of the consensus'.
@@ -525,21 +527,18 @@ class FlyeConsensus:
 
         
         # check if alignment to reference is already computed
-        if f"{edge}-{first_cl}" in self._alignment_cache:
+        cache_key = f"{edge}-{first_cl}-{first_cl_dict['start']}-{first_cl_dict['end']}"
+        if cache_key in self._alignment_cache:
             self._alignment_cache_hit.value += 1
-            first_cl_to_ref, reference_aligned =  self._alignment_cache[f"{edge}-{first_cl}"]
-            x, y, _ = self._edlib_align(first_cl_dict['consensus'], reference_seq)
-            if x != first_cl_to_ref or y != reference_aligned:
-                print("issue")
+            first_cl_to_ref, reference_aligned =  self._alignment_cache[cache_key]
         # cache the reference alignment for re-use
         else:
             self._alignment_cache_miss.value += 1
-            first_cl_to_ref, reference_aligned, _ = self._edlib_align(first_cl_dict['consensus'], reference_seq)
-            self._alignment_cache[f"{edge}-{first_cl}"] = [first_cl_to_ref, reference_aligned]
+            first_cl_to_ref, reference_aligned, _ = self._edlib_align(first_cl_dict['consensus'], reference_seq[first_cl_dict['start']:first_cl_dict['end']])
+            self._alignment_cache[cache_key] = [first_cl_to_ref, reference_aligned]
 
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, first_cl_to_ref, reference_aligned, intersection_start,
-                                                    first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'], unitigSNPs)
-
+                                                    first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'])
                 
         if debug:
             self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict, edlib_score,
