@@ -131,7 +131,7 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error)
                 (min(read.reference_start, edge_len - read.reference_end) < start_end_gap):
             data[read.query_name] = {}
             data[read.query_name]["Start"] = read.reference_start
-            data[read.query_name]["Stop"] = read.reference_end
+            data[read.query_name]["End"] = read.reference_end
             data[read.query_name]["Rclip"] = []
             data[read.query_name]["Lclip"] = []
 
@@ -179,7 +179,7 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error)
             for pileupread in pileupcolumn.pileups:
                 if not pileupread.is_del and not pileupread.is_refskip:
                     try:
-                        if int(pos) >= data[pileupread.alignment.query_name]["Start"] and int(pos) <= data[pileupread.alignment.query_name]["Stop"]:
+                        if int(pos) >= data[pileupread.alignment.query_name]["Start"] and int(pos) <= data[pileupread.alignment.query_name]["End"]:
                             data[pileupread.alignment.query_name][pos] = pileupread.alignment.query_sequence[pileupread.query_position]
 
                     except (KeyError):
@@ -265,7 +265,7 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
         try:
             start=int(data[read]["Start"])
-            stop=data[read]["Stop"]
+            stop=data[read]["End"]
             starts.append(start)
             ends.append(stop)
             clCov = clCov + (stop - start)
@@ -291,7 +291,7 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     val["Strange"] = int(strange == 1)
     val["Strange2"] = int(strange2 == 1)
     clCov = clCov / (clStop - clStart) if clStop > clStart else 0
-    val["Stop"] = clStop
+    val["End"] = clStop
     val["Start"] = clStart
     val["Cov"] = clCov
     cons[cluster] = val

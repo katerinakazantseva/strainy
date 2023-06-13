@@ -66,6 +66,7 @@ class FlyeConsensus:
         self._debug_count = multiproc_manager.Value("i", 0)
         self._call_count = multiproc_manager.Value("i", 0)
 
+
         self._position_hit = multiproc_manager.Value("i", 0)
         self._position_miss = multiproc_manager.Value("i", 0)
 
@@ -81,11 +82,9 @@ class FlyeConsensus:
         logger.info(f"Total number of key hits and misses for consensus computation:")
         logger.info(f" H:{self._key_hit.value}, M:{self._key_miss.value}")
         logger.info(f"Position hit/miss")
-        logger.info(f" H:{self._position_hit.value}, M:{self._position_miss.value}")
-        logger.info(f"Alignment cache hit/miss")
-        logger.info(f" H:{self._alignment_cache_hit.value}, M:{self._alignment_cache_miss.value}")
-        logger.info(f"SNPs not in commonSNPs but in unitigSNPs:")
-        logger.info(f"{self._unitig_snp_hits.value}")
+
+        logger.info(f" H:{self._position_match.value}, M:{self._position_miss.value}")
+
 
 
     def _extract_reads(self, read_names, start_pos, output_file, edge=""):
@@ -249,6 +248,7 @@ class FlyeConsensus:
                 'reference_path': f"{fname}.fa",
                 'reference_seq': self._unitig_seqs[edge],
                 'bed_content': bed_content
+
             }
         return self._consensus_dict[consensus_dict_key]
 
@@ -282,6 +282,7 @@ class FlyeConsensus:
                                 first_to_ref, reference_to_first,
                                 intersection_start, first_cl_dict, second_cl_dict,
                                 commonSNPs, first_cl_start, unitigSNPs):
+
         info_printed = False
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
@@ -304,6 +305,7 @@ class FlyeConsensus:
         # list of lists with (start, end, coverage) for each coordinate interval
         cl1_bed_contents = first_cl_dict['bed_content']
         cl2_bed_contents = second_cl_dict['bed_content']
+
 
         for i, base in enumerate(alignment_list):
             if base not in "-.|":
@@ -447,7 +449,9 @@ class FlyeConsensus:
             f.write("**********-------************\n\n")
 
 
+
     def _get_true_mismatch_position(self, cons_to_cons, cons_to_ref, reference, mismatch_index, first_cl_start):
+
         """ 
         The following three are outputs of alignments and contain gaps:
         cons_to_cons: consensus sequence aligned to another consensus sequence
@@ -459,9 +463,11 @@ class FlyeConsensus:
         # TODO: this function may return a position that corresponds to a gap
         # in reference. Is this valid?
 
+
         # TODO: count mismatches too?
         # Find how many bases are there up to and including the mismatch_index
         true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + 1 + first_cl_start
+
         
         # Find the index of base from cons_to_cons in cons_to_ref
         true_pos_cons_to_ref = -1
@@ -482,6 +488,7 @@ class FlyeConsensus:
 
 
     def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, commonSNPs, unitigSNPs, debug=False):
+
         """
         Computes the distance between two clusters consensus'. The distance is based on the global alignment between the
         intersecting parts of the consensus'.
@@ -515,6 +522,7 @@ class FlyeConsensus:
 
         reference_seq = first_cl_dict['reference_seq']
         aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
+
         
         # check if alignment to reference is already computed
         if f"{edge}-{first_cl}" in self._alignment_cache:
@@ -531,9 +539,13 @@ class FlyeConsensus:
 
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, first_cl_to_ref, reference_aligned, intersection_start,
                                                     first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'], unitigSNPs)
+
                 
         if debug:
             self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict, edlib_score,
                                      intersection_start, intersection_end)
         # score is not normalized!
         return edlib_score
+
+
+
