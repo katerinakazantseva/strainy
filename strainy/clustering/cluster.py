@@ -60,7 +60,6 @@ def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
     logger.debug(cl['Cluster'].value_counts(dropna=False))
 
 
-
 def cluster(i, flye_consensus):
     edge = StRainyArgs().edges[i]
     logger.info("### Reading SNPs...")
@@ -68,9 +67,14 @@ def cluster(i, flye_consensus):
 
 
     logger.info("### Reading Reads...")
+
     data = build_data.read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
-    cl = pd.DataFrame(data={'ReadName': data.keys()})
-    cl['Cluster'] = 'NA'
+    cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Start'])
+    for key, value in data.items():
+        row = pd.DataFrame({'ReadName':[key], 'Cluster':['NA'], 'Start':[value['Start']]})
+        cl = pd.concat([cl, row])
+    cl = cl.reset_index(drop=True)
+
 
     total_coverage = 0
     edge_length = len(build_data.read_fasta_seq(StRainyArgs().fa, edge))
@@ -83,8 +87,13 @@ def cluster(i, flye_consensus):
     if num_reads == 0:
         return
     if len(SNP_pos) == 0:
-        #data = build_data.read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
-        cl = pd.DataFrame(data={'ReadName': data.keys()})
+        #data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
+        cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Start'])
+        for key, value in data.items():
+            row = pd.DataFrame({'ReadName':[key], 'Cluster':['NA'], 'Start':[value['Start']]})
+            cl = pd.concat([cl, row])
+        cl = cl.reset_index(drop=True)
+
         cl['Cluster'] = 1
         cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
         return
