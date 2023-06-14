@@ -68,7 +68,7 @@ def cluster(i, flye_consensus):
 
     logger.info("### Reading Reads...")
 
-    data = read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
+    data = build_data.read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality, min_al_len, de_max[StRainyArgs().mode])
     cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Start'])
     for key, value in data.items():
         row = pd.DataFrame({'ReadName':[key], 'Cluster':['NA'], 'Start':[value['Start']]})
