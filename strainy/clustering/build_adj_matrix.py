@@ -101,9 +101,9 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     d = -1
     firstSNPs = list(cons[first_cl].keys())
     secondSNPs = list(cons[second_cl].keys())
-    keys=('clSNP','clSNP2', 'Strange', 'Strange2','Stop','Start','Cov')
-    firstSNPs = [key for key in firstSNPs if key not in keys]
-    secondSNPs = [key for key in secondSNPs if key not in keys]
+    keys=('clSNP','clSNP2', 'Strange', 'Strange2','End','Start','Cov')
+    firstSNPs = [int(key) for key in firstSNPs if key not in keys]
+    secondSNPs = [int(key) for key in secondSNPs if key not in keys]
     commonSNP = sorted(set(firstSNPs).intersection(secondSNPs))
     intersect = set(range(cons[first_cl]["Start"],cons[first_cl]["End"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["End"])))
     if only_with_common_snip == False and len(commonSNP) == 0 and len(intersect) > I:
