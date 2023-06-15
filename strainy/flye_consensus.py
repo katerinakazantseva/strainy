@@ -113,6 +113,21 @@ class FlyeConsensus:
         out.close()
 
         return cluster_start, cluster_end, read_limits
+    
+
+    def _clip_consensus_seq(self, sequence, read_limits, curr_start, coverage_limit):
+        start_pos = sorted([start for (start, _) in read_limits])
+        end_pos = sorted([end for (_, end) in read_limits], reverse=True)
+
+        try:
+            new_start_pos = start_pos[coverage_limit - 1]
+            new_end_pos = end_pos[coverage_limit - 1]
+        except IndexError:
+            new_start_pos = start_pos[0]
+            new_end_pos = end_pos[0]
+
+        return new_start_pos, new_end_pos, sequence[new_start_pos - curr_start:new_end_pos - curr_start]
+    
 
     def flye_consensus(self, cluster, edge, cl, debug=False):
         """
@@ -206,17 +221,23 @@ class FlyeConsensus:
             os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
             shutil.rmtree(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
 
+        bed_content = self._parse_bed_coverage(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
+                            f"base_coverage.bed.gz")
+        start, end, consensus_clipped = self._clip_consensus_seq(consensus.seq, 
+                                                                 read_limits, 
+                                                                 cluster_start,
+                                                                 2)
         with self._lock:
             self._consensus_dict[consensus_dict_key] = {
-                'consensus': consensus.seq,
-                'start': cluster_start,
-                'end': cluster_end,
+                'cluster': cluster,
+                'consensus': consensus_clipped,
+                'start': start,
+                'end': end,
                 'read_limits': read_limits,
                 'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
                 'reference_path': f"{fname}.fa",
                 'reference_seq': self._unitig_seqs[edge],
-                'bed_path': f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
-                            f"base_coverage.bed.gz"
+                'bed_content': bed_content
             }
             return self._consensus_dict[consensus_dict_key]
 
@@ -270,8 +291,8 @@ class FlyeConsensus:
 
         # read the contents of the bed.gz files that contain coverage information for each coordinate
         # list of lists with (start, end, coverage) for each coordinate interval
-        cl1_bed_contents = self._parse_bed_coverage(first_cl_dict['bed_path'])
-        cl2_bed_contents = self._parse_bed_coverage(second_cl_dict['bed_path'])
+        cl1_bed_contents = first_cl_dict['bed_content']
+        cl2_bed_contents = second_cl_dict['bed_content']
 
         for i, base in enumerate(alignment_list):
             if base not in "-.|":
@@ -344,8 +365,8 @@ class FlyeConsensus:
 
         first_shift = intersection_start - first_cl_dict['start']
         second_shift = intersection_start - second_cl_dict['start']
-        cl1_bed_contents = self._parse_bed_coverage(first_cl_dict['bed_path'])
-        cl2_bed_contents = self._parse_bed_coverage(second_cl_dict['bed_path'])
+        cl1_bed_contents = first_cl_dict['bed_content']
+        cl2_bed_contents = second_cl_dict['bed_content']
 
         with open(fname, 'a+') as f:
             """
