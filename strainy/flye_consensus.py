@@ -29,7 +29,7 @@ def calculate_coverage(position, bed_file_content):
         # row = [interval_start, interval_end, coverage]
         if row[0] <= position <= row[1]:
             return row[2]
-    logger.warning("Coordinate not found in .bed file, assuming coverage is 0")
+    logger.debug("Coordinate not found in .bed file, assuming coverage is 0")
     return 0
 
 
@@ -37,8 +37,9 @@ class FlyeConsensus:
     def __init__(self, bam_file_name, graph_fasta_name, num_processes, consensus_dict, multiproc_manager,
                 indel_block_length_leniency=5):
 
-        self._consensus_dict = multiproc_manager.dict(consensus_dict)
         self._lock = multiproc_manager.Lock()
+
+        self._consensus_dict = multiproc_manager.dict(consensus_dict)
 
         self._bam_path = bam_file_name
         self._read_index = None
@@ -64,7 +65,7 @@ class FlyeConsensus:
         self._debug_count = multiproc_manager.Value("i", 0)
         self._call_count = multiproc_manager.Value("i", 0)
 
-        self._position_match = multiproc_manager.Value("i", 0)
+        self._position_hit = multiproc_manager.Value("i", 0)
         self._position_miss = multiproc_manager.Value("i", 0)
 
     def get_consensus_dict(self):
@@ -74,7 +75,7 @@ class FlyeConsensus:
         logger.info(f"Total number of key hits and misses for consensus computation:")
         logger.info(f" H:{self._key_hit.value}, M:{self._key_miss.value}")
         logger.info(f"Position hit/miss")
-        logger.info(f" H:{self._position_match.value}, M:{self._position_miss.value}")
+        logger.info(f" H:{self._position_hit.value}, M:{self._position_miss.value}")
 
 
     def extract_reads(self, read_names, output_file, edge=""):
@@ -199,7 +200,7 @@ class FlyeConsensus:
                     'start': cluster_start,
                     'end': cluster_end
                 }
-                return self._consensus_dict[consensus_dict_key]
+            return self._consensus_dict[consensus_dict_key]
 
         try:
             # read back the output of the Flye polisher
@@ -239,7 +240,7 @@ class FlyeConsensus:
                 'reference_seq': self._unitig_seqs[edge],
                 'bed_content': bed_content
             }
-            return self._consensus_dict[consensus_dict_key]
+        return self._consensus_dict[consensus_dict_key]
 
     def _edlib_align(self, seq_a, seq_b):
         band_size = 32
@@ -270,7 +271,7 @@ class FlyeConsensus:
     def _custom_scoring_function(self, aligned_first, alignment_string, aligned_second,
                                 first_to_ref, reference_to_first,
                                 intersection_start, first_cl_dict, second_cl_dict,
-                                commonSNPs):
+                                commonSNPs, first_cl_start):
         info_printed = False
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
@@ -347,15 +348,22 @@ class FlyeConsensus:
                     aligned_first,
                     first_to_ref,
                     reference_to_first,
-                    i)
-                if str(mismatch_position) in commonSNPs:
+                    i,
+                    ) + intersection_start
+                if mismatch_position in commonSNPs:
                     # logger.info(f"HIT!, {mismatch_position}")
-                    self._position_match.value += 1
+                    self._position_hit.value += 1
                     score += 1
                 else:
                     # logger.info(f"MISS!, {mismatch_position}")
+                    _ = self._get_true_mismatch_position(
+                        aligned_first,
+                        first_to_ref,
+                        reference_to_first,
+                        i,
+                    ) + intersection_start
                     self._position_miss.value += 1
-                
+
         return score
 
     def _log_alignment_info(self, aligned_first, alignment_string, aligned_second, first_cl_dict, second_cl_dict,
@@ -444,6 +452,7 @@ class FlyeConsensus:
         # TODO: this function may return a position that corresponds to a gap
         # in reference. Is this valid?
 
+        # TODO: count mismatches too?
         # Find how many bases are there up to and including the mismatch_index
         true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + 1
         
@@ -464,7 +473,6 @@ class FlyeConsensus:
         # Find the true position of base matched with cons_to_ref in reference
         return true_pos_cons_to_ref - reference[:true_pos_cons_to_ref].count('-') + 1
 
-    
 
     def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, commonSNPs, debug=False):
         """
@@ -500,15 +508,14 @@ class FlyeConsensus:
 
         reference_seq = first_cl_dict['reference_seq']
         aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
-        first_cl_to_ref, reference_aligned, _ = self._edlib_align(first_consensus_clipped, reference_seq)
+        first_cl_to_ref, reference_aligned, _ = self._edlib_align(first_consensus_clipped, reference_seq[intersection_start:intersection_end])
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, first_cl_to_ref, reference_aligned, intersection_start,
-                                                    first_cl_dict, second_cl_dict, commonSNPs)
+                                                    first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'])
                 
         if debug:
             self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict, edlib_score,
                                      intersection_start, intersection_end)
         # score is not normalized!
         return edlib_score
-
 
 
