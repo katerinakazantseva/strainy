@@ -231,7 +231,7 @@ class FlyeConsensus:
             shutil.rmtree(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
 
         bed_content = self._parse_bed_coverage(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
-                            f"base_coverage.bed.gz")
+                                               f"base_coverage.bed.gz")
         start, end, consensus_clipped = self._clip_consensus_seq(consensus.seq, 
                                                                  read_limits, 
                                                                  bed_content,
@@ -361,96 +361,14 @@ class FlyeConsensus:
                     i,
                     intersection_start - first_cl_start
                     ) + first_cl_start
+                
                 if mismatch_position in commonSNPs:
-                    # logger.info(f"HIT!, {mismatch_position}")
                     self._position_hit.value += 1
                     score += 1
                 else:
-                    # logger.info(f"MISS!, {mismatch_position}")
-                    _ = self._get_true_mismatch_position(
-                        aligned_first,
-                        first_to_ref,
-                        reference_to_first,
-                        i,
-                        intersection_start - first_cl_start
-                    )
                     self._position_miss.value += 1
 
         return score
-
-    def _log_alignment_info(self, aligned_first, alignment_string, aligned_second, first_cl_dict, second_cl_dict,
-                            score, intersection_start, intersection_end):
-        pid = int(multiprocessing.current_process().pid)
-        fname = f"{StRainyArgs().output}/distance_inconsistency-{pid}.log"
-
-        first_shift = intersection_start - first_cl_dict['start']
-        second_shift = intersection_start - second_cl_dict['start']
-        cl1_bed_contents = first_cl_dict['bed_content']
-        cl2_bed_contents = second_cl_dict['bed_content']
-
-        with open(fname, 'a+') as f:
-            """
-            Things to write to the file:
-            A different file for each process (filename{pid}.log)
-            Alignment string,
-            calculated score
-            for each cluster:
-                consensuses
-                read start and end positions 
-            """
-            f.write("ALIGNMENT:\n")
-            f.write(alignment_string + '\n')
-            mismatch_positions = [i for i in range(len(alignment_string)) if alignment_string.startswith('.', i)]
-            ref_mismatch = [i + intersection_start for i in mismatch_positions]
-            f.write(f"# OF MISMATCHES: {len(mismatch_positions)}\n")
-            f.write(f"MISMATCH POSITIONS: {mismatch_positions}\n")
-            f.write(f"MISMATCH POSITIONS IN REF (APPROXIMATE): {ref_mismatch}\n")
-            f.write(f"SCORE:{score}\n")
-            length = intersection_end - intersection_start
-            f.write(f"INTERSECTION AREA:({intersection_start}, {intersection_end}),"
-                    f"LENGTH:{length}\n")
-
-            # Calculate coverages of mismatches for both clusters
-            first_cl_mismatch_coverages = []
-            second_cl_mismatch_coverages = []
-            for i in mismatch_positions:
-                # i is relative to the alignment string
-                cl1_true_coor = first_shift + i - aligned_first[:i].count('-')
-                cl2_true_coor = second_shift + i - aligned_second[:i].count('-')
-
-                first_cl_mismatch_coverages.append(
-                    calculate_coverage(cl1_true_coor, cl1_bed_contents)
-                )
-                second_cl_mismatch_coverages.append(
-                    calculate_coverage(cl2_true_coor, cl2_bed_contents)
-                )
-
-            f.write("FIRST CLUSTER:\n")
-            f.write("\tREADS:\n")
-            f.write(f"\t{first_cl_dict['read_limits']}\n")
-            f.write(f"\tMISMATCH COVERAGES: {first_cl_mismatch_coverages}\n")
-            avg_coverage = 0
-            for read in first_cl_dict['read_limits']:
-                avg_coverage += read[1] - read[0]
-            avg_coverage = "{:.2f}".format(avg_coverage / len(first_cl_dict['consensus']))
-            f.write(f"\tAVERAGE COVERAGE:{avg_coverage}\n")
-            f.write(f"\tBAM FILE PATH:{first_cl_dict['bam_path']}\n")
-            f.write(f"\tREFERENCE FILE PATH:{first_cl_dict['reference_path']}\n")
-
-            f.write("SECOND CLUSTER:\n")
-            f.write("\tREADS:\n")
-            f.write(f"\t{second_cl_dict['read_limits']}\n")
-            f.write(f"\tMISMATCH COVERAGES: {second_cl_mismatch_coverages}\n")
-            avg_coverage = 0
-            for read in second_cl_dict['read_limits']:
-                avg_coverage += read[1] - read[0]
-            avg_coverage = "{:.2f}".format(avg_coverage / len(second_cl_dict['consensus']))
-            f.write(f"\tAVERAGE COVERAGE:{avg_coverage}\n")
-            f.write(f"\tBAM FILE PATH:{second_cl_dict['bam_path']}\n")
-            f.write(f"\tREFERENCE FILE PATH:{second_cl_dict['reference_path']}\n")
-
-            f.write("**********-------************\n\n")
-
 
 
     def _get_true_mismatch_position(self, cons_to_cons, cons_to_ref, reference, mismatch_index, first_cl_start):
@@ -469,7 +387,7 @@ class FlyeConsensus:
 
         # TODO: count mismatches too?
         # Find how many bases are there up to and including the mismatch_index
-        true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + 1 + first_cl_start
+        true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + first_cl_start + 1
 
         
         # Find the index of base from cons_to_cons in cons_to_ref
