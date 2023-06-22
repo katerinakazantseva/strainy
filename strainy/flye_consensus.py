@@ -29,7 +29,7 @@ def calculate_coverage(position, bed_file_content):
         # row = [interval_start, interval_end, coverage]
         if row[0] <= position <= row[1]:
             return row[2]
-    logger.warning("Coordinate not found in .bed file, assuming coverage is 0")
+    logger.debug("Coordinate not found in .bed file, assuming coverage is 0")
     return 0
 
 
@@ -37,8 +37,10 @@ class FlyeConsensus:
     def __init__(self, bam_file_name, graph_fasta_name, num_processes, consensus_dict, multiproc_manager,
                 indel_block_length_leniency=5):
 
-        self._consensus_dict = multiproc_manager.dict(consensus_dict)
         self._lock = multiproc_manager.Lock()
+
+        self._consensus_dict = multiproc_manager.dict(consensus_dict)
+        self._alignment_cache= multiproc_manager.dict()
 
         self._bam_path = bam_file_name
         self._read_index = None
@@ -64,8 +66,13 @@ class FlyeConsensus:
         self._debug_count = multiproc_manager.Value("i", 0)
         self._call_count = multiproc_manager.Value("i", 0)
 
-        self._position_match = multiproc_manager.Value("i", 0)
+
+        self._position_hit = multiproc_manager.Value("i", 0)
         self._position_miss = multiproc_manager.Value("i", 0)
+
+        self._alignment_cache_hit = multiproc_manager.Value("i", 0)
+        self._alignment_cache_miss = multiproc_manager.Value("i", 0)
+
 
     def get_consensus_dict(self):
         return self._consensus_dict.copy()
@@ -74,10 +81,12 @@ class FlyeConsensus:
         logger.info(f"Total number of key hits and misses for consensus computation:")
         logger.info(f" H:{self._key_hit.value}, M:{self._key_miss.value}")
         logger.info(f"Position hit/miss")
-        logger.info(f" H:{self._position_match.value}, M:{self._position_miss.value}")
+        logger.info(f" H:{self._position_hit.value}, M:{self._position_miss.value}")
+        logger.info(f"Alignment cache hit/miss")
+        logger.info(f" H:{self._alignment_cache_hit.value}, M:{self._alignment_cache_miss.value}")
 
 
-    def extract_reads(self, read_names, output_file, edge=""):
+    def _extract_reads(self, read_names, start_pos, output_file, edge=""):
         """
         based on the code by Tim Stuart https://timoast.github.io/blog/2015-10-12-extractreads/
         Extract the reads given query names to a new bam file
@@ -92,10 +101,10 @@ class FlyeConsensus:
             self._read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
             self._read_index.build()
 
-        for name in read_names:
+        for i, name in enumerate(read_names):
             iterator = self._read_index.find(name)
             for x in iterator:
-                if x.reference_name == edge:
+                if x.reference_name == edge and x.reference_start == start_pos[i]:
                     if x.reference_start < cluster_start or cluster_start == -1:
                         cluster_start = x.reference_start
                     if x.reference_end > cluster_end or cluster_end == -1:
@@ -113,6 +122,20 @@ class FlyeConsensus:
         out.close()
 
         return cluster_start, cluster_end, read_limits
+    
+    def _clip_consensus_seq(self, sequence, read_limits, bed_contents, curr_start, coverage_limit):
+        start_pos = sorted([start for (start, _) in read_limits])
+        end_pos = sorted([end for (_, end) in read_limits], reverse=True)
+
+        try:
+            new_start_pos = start_pos[coverage_limit - 1]
+            new_end_pos = end_pos[coverage_limit - 1]
+        except IndexError:
+            new_start_pos = start_pos[0]
+            new_end_pos = end_pos[0]
+
+        return new_start_pos, new_end_pos, sequence[new_start_pos - curr_start:new_end_pos - curr_start]
+
 
     def flye_consensus(self, cluster, edge, cl, debug=False):
         """
@@ -132,9 +155,10 @@ class FlyeConsensus:
         # fetch the read names in this cluster and extract those reads to a new bam file to be used by the
         # Flye polisher
         reads_from_curr_cluster = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
+        start_pos_of_reads = cl.loc[cl["Cluster"] == cluster]["Start"].to_numpy()
         salt = random.randint(1000, 10000)
         fprefix = "%s/flye_inputs/" % StRainyArgs().output
-        cluster_start, cluster_end, read_limits = self.extract_reads(reads_from_curr_cluster,
+        cluster_start, cluster_end, read_limits = self._extract_reads(reads_from_curr_cluster, start_pos_of_reads,
                                                         f"{fprefix}cluster_{cluster}_reads_{salt}.bam", edge)
 
         logger.debug((f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}, CLUSTER_END:{cluster_end}, EDGE:{edge},"
@@ -184,7 +208,7 @@ class FlyeConsensus:
                     'start': cluster_start,
                     'end': cluster_end
                 }
-                return self._consensus_dict[consensus_dict_key]
+            return self._consensus_dict[consensus_dict_key]
 
         try:
             # read back the output of the Flye polisher
@@ -206,19 +230,26 @@ class FlyeConsensus:
             os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
             shutil.rmtree(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
 
+        bed_content = self._parse_bed_coverage(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
+                                               f"base_coverage.bed.gz")
+        start, end, consensus_clipped = self._clip_consensus_seq(consensus.seq, 
+                                                                 read_limits, 
+                                                                 bed_content,
+                                                                 cluster_start,
+                                                                 2)
         with self._lock:
             self._consensus_dict[consensus_dict_key] = {
-                'consensus': consensus.seq,
-                'start': cluster_start,
-                'end': cluster_end,
+                'consensus': consensus_clipped,
+                'start': start,
+                'end': end,
                 'read_limits': read_limits,
                 'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
                 'reference_path': f"{fname}.fa",
                 'reference_seq': self._unitig_seqs[edge],
-                'bed_path': f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
-                            f"base_coverage.bed.gz"
+                'bed_content': bed_content
+
             }
-            return self._consensus_dict[consensus_dict_key]
+        return self._consensus_dict[consensus_dict_key]
 
     def _edlib_align(self, seq_a, seq_b):
         band_size = 32
@@ -249,7 +280,7 @@ class FlyeConsensus:
     def _custom_scoring_function(self, aligned_first, alignment_string, aligned_second,
                                 first_to_ref, reference_to_first,
                                 intersection_start, first_cl_dict, second_cl_dict,
-                                commonSNPs):
+                                commonSNPs, first_cl_start):
         info_printed = False
         """
         A custom distance scoring function for two sequences taking into account the artifacts of Flye consensus.
@@ -270,8 +301,9 @@ class FlyeConsensus:
 
         # read the contents of the bed.gz files that contain coverage information for each coordinate
         # list of lists with (start, end, coverage) for each coordinate interval
-        cl1_bed_contents = self._parse_bed_coverage(first_cl_dict['bed_path'])
-        cl2_bed_contents = self._parse_bed_coverage(second_cl_dict['bed_path'])
+        cl1_bed_contents = first_cl_dict['bed_content']
+        cl2_bed_contents = second_cl_dict['bed_content']
+
 
         for i, base in enumerate(alignment_list):
             if base not in "-.|":
@@ -326,92 +358,21 @@ class FlyeConsensus:
                     aligned_first,
                     first_to_ref,
                     reference_to_first,
-                    i)
-                if str(mismatch_position) in commonSNPs:
-                    # logger.info(f"HIT!, {mismatch_position}")
-                    self._position_match.value += 1
+                    i,
+                    intersection_start - first_cl_start
+                    ) + first_cl_start
+                
+                if mismatch_position in commonSNPs:
+                    self._position_hit.value += 1
                     score += 1
                 else:
-                    # logger.info(f"MISS!, {mismatch_position}")
                     self._position_miss.value += 1
-                
+
         return score
 
-    def _log_alignment_info(self, aligned_first, alignment_string, aligned_second, first_cl_dict, second_cl_dict,
-                            score, intersection_start, intersection_end):
-        pid = int(multiprocessing.current_process().pid)
-        fname = f"{StRainyArgs().output}/distance_inconsistency-{pid}.log"
 
-        first_shift = intersection_start - first_cl_dict['start']
-        second_shift = intersection_start - second_cl_dict['start']
-        cl1_bed_contents = self._parse_bed_coverage(first_cl_dict['bed_path'])
-        cl2_bed_contents = self._parse_bed_coverage(second_cl_dict['bed_path'])
+    def _get_true_mismatch_position(self, cons_to_cons, cons_to_ref, reference, mismatch_index, first_cl_start):
 
-        with open(fname, 'a+') as f:
-            """
-            Things to write to the file:
-            A different file for each process (filename{pid}.log)
-            Alignment string,
-            calculated score
-            for each cluster:
-                consensuses
-                read start and end positions 
-            """
-            f.write("ALIGNMENT:\n")
-            f.write(alignment_string + '\n')
-            mismatch_positions = [i for i in range(len(alignment_string)) if alignment_string.startswith('.', i)]
-            ref_mismatch = [i + intersection_start for i in mismatch_positions]
-            f.write(f"# OF MISMATCHES: {len(mismatch_positions)}\n")
-            f.write(f"MISMATCH POSITIONS: {mismatch_positions}\n")
-            f.write(f"MISMATCH POSITIONS IN REF (APPROXIMATE): {ref_mismatch}\n")
-            f.write(f"SCORE:{score}\n")
-            length = intersection_end - intersection_start
-            f.write(f"INTERSECTION AREA:({intersection_start}, {intersection_end}),"
-                    f"LENGTH:{length}\n")
-
-            # Calculate coverages of mismatches for both clusters
-            first_cl_mismatch_coverages = []
-            second_cl_mismatch_coverages = []
-            for i in mismatch_positions:
-                # i is relative to the alignment string
-                cl1_true_coor = first_shift + i - aligned_first[:i].count('-')
-                cl2_true_coor = second_shift + i - aligned_second[:i].count('-')
-
-                first_cl_mismatch_coverages.append(
-                    calculate_coverage(cl1_true_coor, cl1_bed_contents)
-                )
-                second_cl_mismatch_coverages.append(
-                    calculate_coverage(cl2_true_coor, cl2_bed_contents)
-                )
-
-            f.write("FIRST CLUSTER:\n")
-            f.write("\tREADS:\n")
-            f.write(f"\t{first_cl_dict['read_limits']}\n")
-            f.write(f"\tMISMATCH COVERAGES: {first_cl_mismatch_coverages}\n")
-            avg_coverage = 0
-            for read in first_cl_dict['read_limits']:
-                avg_coverage += read[1] - read[0]
-            avg_coverage = "{:.2f}".format(avg_coverage / len(first_cl_dict['consensus']))
-            f.write(f"\tAVERAGE COVERAGE:{avg_coverage}\n")
-            f.write(f"\tBAM FILE PATH:{first_cl_dict['bam_path']}\n")
-            f.write(f"\tREFERENCE FILE PATH:{first_cl_dict['reference_path']}\n")
-
-            f.write("SECOND CLUSTER:\n")
-            f.write("\tREADS:\n")
-            f.write(f"\t{second_cl_dict['read_limits']}\n")
-            f.write(f"\tMISMATCH COVERAGES: {second_cl_mismatch_coverages}\n")
-            avg_coverage = 0
-            for read in second_cl_dict['read_limits']:
-                avg_coverage += read[1] - read[0]
-            avg_coverage = "{:.2f}".format(avg_coverage / len(second_cl_dict['consensus']))
-            f.write(f"\tAVERAGE COVERAGE:{avg_coverage}\n")
-            f.write(f"\tBAM FILE PATH:{second_cl_dict['bam_path']}\n")
-            f.write(f"\tREFERENCE FILE PATH:{second_cl_dict['reference_path']}\n")
-
-            f.write("**********-------************\n\n")
-
-
-    def _get_true_mismatch_position(self, cons_to_cons, cons_to_ref, reference, mismatch_index):
         """ 
         The following three are outputs of alignments and contain gaps:
         cons_to_cons: consensus sequence aligned to another consensus sequence
@@ -423,8 +384,11 @@ class FlyeConsensus:
         # TODO: this function may return a position that corresponds to a gap
         # in reference. Is this valid?
 
+
+        # TODO: count mismatches too?
         # Find how many bases are there up to and including the mismatch_index
-        true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + 1
+        true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + first_cl_start + 1
+
         
         # Find the index of base from cons_to_cons in cons_to_ref
         true_pos_cons_to_ref = -1
@@ -443,7 +407,6 @@ class FlyeConsensus:
         # Find the true position of base matched with cons_to_ref in reference
         return true_pos_cons_to_ref - reference[:true_pos_cons_to_ref].count('-') + 1
 
-    
 
     def cluster_distance_via_alignment(self, first_cl, second_cl, cl, edge, commonSNPs, debug=False):
         """
@@ -479,9 +442,21 @@ class FlyeConsensus:
 
         reference_seq = first_cl_dict['reference_seq']
         aligned_first, aligned_second, edlib_aln = self._edlib_align(first_consensus_clipped, second_consensus_clipped)
-        first_cl_to_ref, reference_aligned, _ = self._edlib_align(first_consensus_clipped, reference_seq)
+
+        
+        # check if alignment to reference is already computed
+        cache_key = f"{edge}-{first_cl}-{first_cl_dict['start']}-{first_cl_dict['end']}"
+        if cache_key in self._alignment_cache:
+            self._alignment_cache_hit.value += 1
+            first_cl_to_ref, reference_aligned =  self._alignment_cache[cache_key]
+        # cache the reference alignment for re-use
+        else:
+            self._alignment_cache_miss.value += 1
+            first_cl_to_ref, reference_aligned, _ = self._edlib_align(first_cl_dict['consensus'], reference_seq[first_cl_dict['start']:first_cl_dict['end']])
+            self._alignment_cache[cache_key] = [first_cl_to_ref, reference_aligned]
+
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, first_cl_to_ref, reference_aligned, intersection_start,
-                                                    first_cl_dict, second_cl_dict, commonSNPs)
+                                                    first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'])
                 
         if debug:
             self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict, edlib_score,
