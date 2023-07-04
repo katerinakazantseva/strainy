@@ -11,6 +11,8 @@ import logging
 import multiprocessing
 import shutil
 import pysam
+import time
+import traceback
 
 import strainy.clustering.build_adj_matrix as matrix
 import strainy.clustering.cluster_postprocess as postprocess
@@ -403,8 +405,89 @@ def strong_tail(cluster, cl, ln, data):
     return (res)
 
 
-def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
-                         link_clusters_src, link_clusters_sink, remove_clusters):
+def gcu_worker(*args):
+
+    edge = args[0]
+    flye_consensus = args[1]
+    strainy_args = args[2]
+
+    bam_cache = {}
+    link_clusters = defaultdict(list)
+    link_clusters_src = defaultdict(list)
+    link_clusters_sink = defaultdict(list)
+    graph_ops = []
+    remove_clusters = set()
+    
+
+    init_global_args_storage(strainy_args)
+
+    set_thread_logging(StRainyArgs().log_transform, "gcu", multiprocessing.current_process().pid)
+    logger.info("\n\n\t == == Processing unitig " + edge + " == == ")
+
+    try:
+        graph_create_unitigs(edge,
+                            flye_consensus,
+                            bam_cache,
+                            link_clusters,
+                            link_clusters_src,
+                            link_clusters_sink,
+                            remove_clusters,
+                            graph_ops)
+    except Exception as e:
+        logger.error("Worker thread exception! " + str(e) + "\n" + traceback.format_exc())
+        raise e
+    return bam_cache, link_clusters, link_clusters_src, link_clusters_sink, graph_ops, remove_clusters
+
+
+def parallelize_gcu(graph_edges, flye_consensus, graph, args):
+
+    pool = multiprocessing.Pool(StRainyArgs().threads)
+
+    init_args = [[edge, flye_consensus, args] for edge in graph_edges]
+
+    results = pool.starmap_async(gcu_worker, init_args, chunksize=1)
+    while not results.ready():
+        time.sleep(0.01)
+        if not results._success:
+            pool.terminate()
+            raise Exception("Error in worker thread, exiting")
+
+    pool.close()
+    pool.join()
+
+    bam_cache = {}
+    link_clusters = defaultdict(list)
+    link_clusters_src = defaultdict(list)
+    link_clusters_sink = defaultdict(list)
+    graph_ops = []
+    remove_clusters = []
+    
+    outputs = [bam_cache, link_clusters, link_clusters_src, link_clusters_sink, graph_ops, remove_clusters]
+    # join the results of multiple threads
+    for r in results._value:
+        for i in range(len(r)):
+            if i == len(r) - 1 or i == len(r) - 2:
+                for k in r[i]:
+                    outputs[i].append(k)
+            else:
+                for k, v in r[i].items():
+                    outputs[i][k] = v
+    
+    # operations on the graph performed after the parallel graph_create_unitig
+    # due to not being able to pass the graph object to threads
+    for op in graph_ops:
+        if op[0] == 'add_child_edge':
+            add_child_edge(op[1], op[2], graph, op[3], op[4], op[5], op[6], flye_consensus, op[7], op[8])
+        elif op[0] == 'add_path_edges':
+            add_path_edges(op[1], graph, op[2], op[3], op[4], op[5], op[6], op[7], op[8], op[9], op[10], op[11], flye_consensus)
+        elif op[0] == 'add_path_links':
+            add_path_links(graph, op[1], op[2], op[3])
+        
+    return bam_cache, link_clusters, link_clusters_src, link_clusters_sink, set(remove_clusters), graph
+
+
+def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
+                         link_clusters_src, link_clusters_sink, remove_clusters, graph_ops):
     """
     First part of the transformation: creation of all new unitigs from clusters obtained during the phasing stage
     """
@@ -412,6 +495,8 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
     full_paths_leafs = []
     full_paths = []
     full_clusters = []
+
+    graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
 
     cl = None
     try:
@@ -446,8 +531,8 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
                     full_paths_roots.append(cluster)
                     full_paths_leafs.append(cluster)
                 consensus = flye_consensus.flye_consensus(cluster, edge, cl)
-                #add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus)
-                add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus,change_seq = False)
+                # add_child_edge(edge, cluster, graph, cl, consensus["start"], consensus["end"], cons, flye_consensus,change_seq = False)
+                graph_ops.append(['add_child_edge', edge, cluster, cl, consensus["start"], consensus["end"], cons, False, True])
             link_clusters[edge] = list(clusters)
             link_clusters_sink[edge] = list(clusters)
             link_clusters_src[edge] = list(clusters)
@@ -460,7 +545,8 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
                 if clStart < start_end_gap and clStop > ln - start_end_gap:
                     if strong_tail(cluster, cl, ln, data)[0] == True and strong_tail(cluster, cl, ln,data)[1] == True:
                         consensus = flye_consensus.flye_consensus(cluster, edge, cl)
-                        add_child_edge(edge, cluster, graph, cl,consensus["start"], consensus["end"], cons, flye_consensus)
+                        # add_child_edge(edge, cluster, graph, cl,consensus["start"], consensus["end"], cons, flye_consensus)
+                        graph_ops.append(['add_child_edge', edge, cluster, cl, consensus["start"], consensus["end"], cons, True, True])
                         full_clusters.append(cluster)
 
                     elif strong_tail(cluster, cl, ln, data)[0] != True:
@@ -487,9 +573,12 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
             except(ValueError):
                 pass
 
-            add_path_edges(edge, graph, cl, data, SNP_pos, ln, full_paths, G,full_paths_roots,
-                           full_paths_leafs,full_clusters,cons, flye_consensus)
-            add_path_links(graph, edge, full_paths, G)
+            # add_path_edges(edge, graph, cl, data, SNP_pos, ln, full_paths, G,full_paths_roots,
+                        #    full_paths_leafs,full_clusters,cons, flye_consensus)
+            graph_ops.append(['add_path_edges', edge, cl, data, SNP_pos, ln, full_paths, G,full_paths_roots,
+                           full_paths_leafs,full_clusters,cons])
+            # add_path_links(graph, edge, full_paths, G)
+            graph_ops.append(['add_path_links', edge, full_paths, G])
 
             othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]) - set(cl_removed))
             if len(othercl) > 0:
@@ -523,19 +612,11 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
             new_cov = change_cov(graph, edge, cons, ln, clusters, othercl, remove_clusters)
             if  new_cov < parental_min_coverage and len(clusters) - len(othercl) != 0:
                 remove_clusters.add(edge)
-
-
-            #else:
-                #change_sec(graph, edge, othercl, cl, flye_consensus)
-                #change_sec(graph, edge, othercl, cl, SNP_pos, data, True)
-            #elif len(othercl)==1:
-                #change_sec(graph, edge, othercl, cl, flye_consensus)
-                #change_sec(graph, edge, othercl, cl, SNP_pos, data, True)
-
             else:
                 for cluster in othercl:
                     consensus = flye_consensus.flye_consensus(cluster, edge, cl)
-                    add_child_edge(edge, cluster, graph, cl, cons[cluster]["Start"], cons[cluster]["End"], cons, flye_consensus,insertmain=False)
+                    # add_child_edge(edge, cluster, graph, cl, cons[cluster]["Start"], cons[cluster]["End"], cons, flye_consensus,insertmain=False)
+                    graph_ops.append(['add_child_edge', edge, cluster, cl, cons[cluster]["Start"], cons[cluster]["End"], cons, True, False])
                 remove_clusters.add(edge)
 
             link_clusters[edge] = list(full_clusters) + list(
@@ -545,9 +626,6 @@ def graph_create_unitigs(edge, graph, flye_consensus, bam_cache, link_clusters,
                 set(full_paths_roots).intersection(set([j for i in full_paths for j in i])))
             link_clusters_sink[edge] = list(full_clusters) + list(
                 set(full_paths_leafs).intersection(set([j for i in full_paths for j in i])))
-
-        #else:
-        #    change_sec(graph, edge, [clusters[0]], cl, SNP_pos, data, False)
 
     stats = open("%s/stats_clusters.txt" % StRainyArgs().output, "a")
     fcN = 0
@@ -773,24 +851,26 @@ def transform_main(args):
 
     try:
         with open(os.path.join(StRainyArgs().output, consensus_cache_path), "rb") as f:
-            logger.debug(os.getcwd())
+            logger.debug(f"searching consensus cache in {os.getcwd()}")
             consensus_dict = pickle.load(f)
     except FileNotFoundError:
         consensus_dict = {}
 
     flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, multiprocessing.Manager())
 
-    bam_cache = {}
-    link_clusters = defaultdict(list)
-    link_clusters_src = defaultdict(list)
-    link_clusters_sink = defaultdict(list)
-    remove_clusters = set()
+    # bam_cache = {}
+    # link_clusters = defaultdict(list)
+    # link_clusters_src = defaultdict(list)
+    # link_clusters_sink = defaultdict(list)
+    # remove_clusters = set()
 
     logger.info("### Create unitigs")
-    for edge in StRainyArgs().edges:
-        #TODO: this can run in parallel (and probably takes the most time)
-        graph_create_unitigs(edge, initial_graph, flye_consensus, bam_cache,
-                             link_clusters, link_clusters_src, link_clusters_sink, remove_clusters)
+    # for edge in StRainyArgs().edges:
+    #     #TODO: this can run in parallel (and probably takes the most time)
+    #     graph_create_unitigs(edge, initial_graph, flye_consensus, bam_cache,
+    #                          link_clusters, link_clusters_src, link_clusters_sink, remove_clusters)
+
+    bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters, initial_graph = parallelize_gcu(StRainyArgs().edges, flye_consensus, initial_graph, args)
 
     logger.info("### Link unitigs")
     for edge in StRainyArgs().edges:
