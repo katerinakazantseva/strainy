@@ -93,7 +93,7 @@ def _neg_strand(strand):
     return "-" if strand == "+" else "+"
 
 
-def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error):
+def read_bam(bam, edge, SNP_pos, min_mapping_quality,min_base_quality, min_al_len, max_aln_error):
     bamfile = pysam.AlignmentFile(bam, "rb")
     duplicates=[]
     all_reads=[]
@@ -173,7 +173,7 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality, min_al_len, max_aln_error)
                     #print("")
 
     for pos in SNP_pos:
-        for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=0,
+        for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=min_base_quality,
                                            ignore_overlaps=False, min_mapping_quality=min_mapping_quality,
                                            ignore_orphans=False, truncate=True):
             for pileupread in pileupcolumn.pileups:
