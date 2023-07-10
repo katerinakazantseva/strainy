@@ -48,6 +48,7 @@ def main():
                         required=False,
                         type=int,
                         default=50)
+    parser.add_argument("--only_split",help="Do not run stRainy, only split long gfa unitigs", default='False', required=False)
 
     args = parser.parse_args()
     args.strainy_root = strainy_root
@@ -71,8 +72,9 @@ def main():
 
     # set one more time for the modified args
     init_global_args_storage(args)
-    
-    if args.stage == "phase":
+    if args.only_split=='True':
+        sys.exit()
+    elif args.stage == "phase":
         sys.exit(phase_main(args))
     elif args.stage == "transform":
         sys.exit(transform_main(args))
