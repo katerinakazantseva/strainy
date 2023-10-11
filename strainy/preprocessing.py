@@ -49,7 +49,11 @@ def add_gfa_line(input_graph, *args):
     """
     args = [a for a in args if a is not None]
     line = "\t".join(args)
-    input_graph.add_line(line)
+    try:
+        input_graph.add_line(line)
+    except gfapy.NotUniqueError:
+        logger.warning(f"Tried insterting duplicate line, ignoring:\n{line}")
+        pass
 
 def split_long_unitigs(input_graph, output_file):
     """
