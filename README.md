@@ -85,7 +85,7 @@ stRainy has 2 stages: **phase** and **transform**. With the command below, stRai
 <img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
 </p>
 
-## Parameter desciption
+## Parameter description
 
 ```
 usage: strainy.py [-h] -o OUTPUT -g GFA -m {hifi,nano} -q FASTQ [-stage {phase,transform,e2e}] [-s SNP] [-t THREADS] [-f FASTA] [-b BAM] [--unitig-split-length UNITIG_SPLIT_LENGTH]
