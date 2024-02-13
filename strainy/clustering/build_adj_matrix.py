@@ -1,78 +1,101 @@
-import pandas as pd
-#pd.options.mode.chained_assignment = None
-import pysam
 import logging
+
+import pandas as pd
+from scipy.spatial.distance import cdist
+
 from strainy.params import *
 
 logger = logging.getLogger()
+
+class DistanceWrapper():
+    # Wrapper for calling cdist with custom distance function
+    def __init__(self, cl, data, SNP_pos, R, only_with_common_snip):
+        self.cl = cl
+        self.data = data
+        self.SNP_pos = SNP_pos
+        self.R = R
+        self.only_with_common_snip = only_with_common_snip
+
+    def distance_wrapper(self, first_read, second_read):
+        return distance(first_read[0],
+                        second_read[0],
+                        self.data,
+                        self.SNP_pos,
+                        self.R,
+                        self.only_with_common_snip)
 
 
 def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):
     m = pd.DataFrame(-1, index=cl['ReadName'], columns=cl['ReadName'])
     logger.debug("Building adjacency matrix with " + str(m.shape[1]) + " reads")
     if only_with_common_snip==False:
-        for i in range(1, m.shape[1]):
-            first_read = m.index[i]
-            for j in range(1, m.shape[1]):
-                second_read=m.index[j]
-                m[second_read][first_read] = distance(first_read, second_read, data, SNP_pos, R, only_with_common_snip=False)
+        dw = DistanceWrapper(cl, data, SNP_pos, R, only_with_common_snip)
+        result = cdist(cl['ReadName'].to_frame(), cl['ReadName'].to_frame(), dw.distance_wrapper)
+
+        # Set the first row and the column to -1
+        try:
+            result[0,:] = -1
+            result[:,0] = -1
+        except IndexError:
+            pass
+
+        result_df = pd.DataFrame(result, 
+                         index=cl['ReadName'],
+                         columns=cl['ReadName'])
     else:
-        for i in range(1, m.shape[1]):
-            first_read = m.index[i]
-            bamfile = pysam.AlignmentFile(file, "rb")
-            border1 = data[first_read]["Start"] + I
-            border2 = data[first_read]["End"] - I
-            if border2 <= 0:
-                border2 = 1
-            if border1 <= 0:
-                border1 = 1
 
-            for pos in [border1, border2]:
-                for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools',
-                                                   ignore_overlaps=False,
-                                                   ignore_orphans=False,
-                                                   truncate=True):
-                    for pileupread in pileupcolumn.pileups:
-                        second_read = pileupread.alignment.query_name
+        dw = DistanceWrapper(cl, data, SNP_pos, R, only_with_common_snip)
+        result = cdist(cl['ReadName'].to_frame(), cl['ReadName'].to_frame(), dw.distance_wrapper)
 
-                        try:
-                            if m[second_read][first_read] == -1:
-                                m[second_read][first_read] = distance(first_read, second_read, data, SNP_pos, R)
-                        except KeyError:
-                            pass
-    return m
+        result[0,:] = -1
+        result_df = pd.DataFrame(result, 
+                        index=cl['ReadName'],
+                        columns=cl['ReadName'])
+
+    return result_df
 
 
 def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
     d = -1
     firstSNPs = list(data[read1].keys())
     secondSNPs = list(data[read2].keys())
-    keys=('Stop','Start')
+    keys=('End','Start', 'Rclip', 'Lclip')
     firstSNPs = [key for key in firstSNPs if key not in keys]
     secondSNPs= [key for key in secondSNPs if key not in keys]
     commonSNP = sorted(set(firstSNPs).intersection(secondSNPs).intersection(SNP_pos))
-    #if len(commonSNP)>2 or (len(commonSNP) > 0 and only_with_common_snip == False) or len(SNP_pos)<=10: #???
-    if 1==1:
-        for snp in commonSNP:
-            try:
-                b1 = data[read1][snp]
-                b2 = data[read2][snp]
-                if b1 != b2 and len(b1) != 0 and len(b2) != 0:
-                    if d == -1:
-                        d = 0
-                    d = d + 1
-                elif b1 == b2:
-                    if d == -1:
-                        d = 0
-                    d = d
-            except:
-                continue
-            if d >= R:
-                d = R
-                break
 
-            else:
-                continue
+    if read1 == read2:
+        return 0
+
+    if only_with_common_snip:
+        r1_start = data[read1]["Start"]
+        r1_end = data[read1]["End"]
+        r2_start = data[read2]["Start"]
+        r2_end = data[read2]["End"]
+
+        if not (r2_start < r1_start + I < r2_end or r2_start < max(r1_end - I, 1) < r2_end):
+            return d
+    
+    for snp in commonSNP:
+        try:
+            b1 = data[read1][snp]
+            b2 = data[read2][snp]
+            if b1 != b2 and len(b1) != 0 and len(b2) != 0:
+                if d == -1:
+                    d = 0
+                d = d + 1
+            elif b1 == b2:
+                if d == -1:
+                    d = 0
+        except:
+            continue
+
+        if d >= R:
+            d = R
+            break
+        else:
+            continue
+
     if len(commonSNP) == 0 and only_with_common_snip == False:
         intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
             set(range(data[read2]["Start"], data[read2]["End"])))
@@ -80,6 +103,7 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
             d = 0
         else:
             d = 1
+
     return d
 
 
