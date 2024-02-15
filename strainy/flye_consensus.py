@@ -5,7 +5,7 @@ import os
 import shutil
 import random
 import logging
-import time
+import sys
 
 import edlib
 import pysam
@@ -15,10 +15,22 @@ from Bio.SeqRecord import SeqRecord
 from argparse import Namespace
 
 from strainy.params import *
-#from flye.main import _run_polisher_only
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
+
+
+BIN_DIR = "bin"
+# TODO: flye root should be changed to StRainyArgs().flye 
+FLYE_ROOT = '/Users/donmeza2/Documents/my-Flye'
+if len(FLYE_ROOT) == 0:
+    raise Exception('Please enter the path to the modified Flye manually')
+bin_absolute = os.path.join(FLYE_ROOT, BIN_DIR)
+sys.path.insert(0, FLYE_ROOT)
+os.environ["PATH"] = bin_absolute + os.pathsep + os.environ["PATH"]
+
+from flye.main import _run_polisher_only
+
 
 def calculate_coverage(position, bed_file_content):
     """
@@ -183,21 +195,25 @@ class FlyeConsensus:
         pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
 
         #  Polisher arguments for to call _run_polisher_only(polish_args)
-        # polish_args = Namespace(polish_target=f"{fname}.fa",
-        #                         reads=[f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam"],
-        #                         out_dir=f"{MetaPhaseArgs.output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}",
-        #                         num_iters=1,
-        #                         threads=1,
-        #                         platform=self._platform,
-        #                         read_type=self._read_type,
-        #                         output_progress=True)
+        polish_args = Namespace(polish_target=f"{fname}.fa",
+                                reads=[f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam"],
+                                out_dir=f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}",
+                                num_iters=1,
+                                threads=1,
+                                platform=self._platform,
+                                read_type=self._read_type,
+                                output_progress=True)
 
         polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa --threads {self._num_processes}" \
                      f" {self._mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
                      f"-o {StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             logger.debug("Running Flye polisher")
-            subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
+            # subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
+            # TODO: this should move to the top when flye pull request is merged
+            if not os.path.isdir(polish_args.out_dir):
+                os.mkdir(polish_args.out_dir)
+            _run_polisher_only(polish_args)
             logger.debug("Running Flye polisher - finished!")
         except subprocess.CalledProcessError as e:
             logger.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")

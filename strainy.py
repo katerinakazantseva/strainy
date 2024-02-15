@@ -79,10 +79,20 @@ def main():
     elif args.stage == "transform":
         sys.exit(transform_main(args))
     elif args.stage == "e2e":
+        import cProfile
+        pr_phase = cProfile.Profile()
+        pr_phase.enable()
         phase_main(args)
         logger.info("Phase stage completed, starting transform now...")
+        pr_phase.disable()
+        pr_phase.dump_stats(f'{StRainyArgs().output}/phase.prof')
+
+        pr_transform = cProfile.Profile()
+        pr_transform.enable()
         transform_main(args)
         logger.info("Transform stage completed, exiting...")
+        pr_transform.disable()
+        pr_transform.dump_stats(f'{StRainyArgs().output}/transform.prof')
 
 
 if __name__ == "__main__":
