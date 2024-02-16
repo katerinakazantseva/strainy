@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 BIN_DIR = "bin"
 # TODO: flye root should be changed to StRainyArgs().flye 
-FLYE_ROOT = '/Users/donmeza2/Documents/my-Flye'
+FLYE_ROOT = ''
 if len(FLYE_ROOT) == 0:
     raise Exception('Please enter the path to the modified Flye manually')
 bin_absolute = os.path.join(FLYE_ROOT, BIN_DIR)
