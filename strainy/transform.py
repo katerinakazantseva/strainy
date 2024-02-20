@@ -183,7 +183,7 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
 
     graph_str = str(nx.nx_agraph.to_agraph(G_vis))
     graph_vis = gv.AGraph(graph_str)
-    graph_vis.layout(prog = "dot")
+    graph_vis.layout(prog = "dot") # TODO: this line may cause an error
     graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output, edge))
 
     G_vis.remove_node("Src")
@@ -405,12 +405,8 @@ def strong_tail(cluster, cl, ln, data):
     return (res)
 
 
-def gcu_worker(*args):
-    if StRainyArgs().threads == 1:
-        args = args[0]
-    edge = args[0]
-    flye_consensus = args[1]
-    strainy_args = args[2]
+def gcu_worker(edge, flye_consensus, args):
+    init_global_args_storage(args)
 
     bam_cache = {}
     link_clusters = defaultdict(list)
@@ -418,9 +414,6 @@ def gcu_worker(*args):
     link_clusters_sink = defaultdict(list)
     graph_ops = []
     remove_clusters = set()
-    
-
-    init_global_args_storage(strainy_args)
 
     set_thread_logging(StRainyArgs().log_transform, "gcu", multiprocessing.current_process().pid)
     logger.info("\n\n\t == == Processing unitig " + edge + " == == ")
@@ -444,7 +437,7 @@ def parallelize_gcu(graph_edges, flye_consensus, graph, args):
 
     pool = multiprocessing.Pool(StRainyArgs().threads)
 
-    init_args = [[edge, flye_consensus, args] for edge in graph_edges]
+    init_args = [(edge, flye_consensus, args) for edge in graph_edges]
 
     if StRainyArgs().threads == 1:
         result_values = []
@@ -571,9 +564,9 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             G = build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters,
                                   data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
-            #full_cl[edge] = full_clusters
-            cl_removed = paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl, full_paths_roots,
-                                             full_paths_leafs, full_clusters, cluster_distances.copy())
+             # TODO: Make this function optional
+            # paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl, full_paths_roots,
+            #                                  full_paths_leafs, full_clusters, cluster_distances.copy())
 
             try:
                 full_paths = find_full_paths(G,full_paths_roots, full_paths_leafs)
@@ -587,7 +580,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             # add_path_links(graph, edge, full_paths, G)
             graph_ops.append(['add_path_links', edge, full_paths, G])
 
-            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]) - set(cl_removed))
+            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]))
             if len(othercl) > 0:
                 G = nx.from_pandas_adjacency(cluster_distances.copy(), create_using = nx.DiGraph)
 
