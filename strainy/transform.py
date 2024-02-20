@@ -434,17 +434,14 @@ def gcu_worker(edge, flye_consensus, args):
 
 
 def parallelize_gcu(graph_edges, flye_consensus, graph, args):
-
-    pool = multiprocessing.Pool(StRainyArgs().threads)
-
-    init_args = [(edge, flye_consensus, args) for edge in graph_edges]
-
     if StRainyArgs().threads == 1:
         result_values = []
-        for i in init_args:
-            result_values.append(gcu_worker(i))
+        for edge in graph_edges:
+            result_values.append(gcu_worker(edge, flye_consensus, args))
 
     else:
+        pool = multiprocessing.Pool(StRainyArgs().threads)
+        init_args = [(edge, flye_consensus, args) for edge in graph_edges]
         results = pool.starmap_async(gcu_worker, init_args, chunksize=1)
         while not results.ready():
             time.sleep(0.01)
