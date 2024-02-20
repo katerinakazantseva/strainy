@@ -20,6 +20,12 @@ from strainy.preprocessing import preprocess_cmd_args
 
 logger = logging.getLogger()
 
+def get_cpu_info_linux():
+    command = "cat /proc/cpuinfo"
+    all_info = subprocess.check_output(command, shell=True).decode().strip()
+    for line in all_info.split("\n"):
+        if "model name" in line:
+            return(re.sub( ".*model name.*:", "", line,1))
 
 def main():
     #Setting executable paths
@@ -69,6 +75,7 @@ def main():
     set_thread_logging(StRainyArgs().output, "root", None)
 
     preprocess_cmd_args(args, parser)
+    print(get_cpu_info_linux())
 
     # set one more time for the modified args
     init_global_args_storage(args)
