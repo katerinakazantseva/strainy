@@ -183,7 +183,11 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
 
     graph_str = str(nx.nx_agraph.to_agraph(G_vis))
     graph_vis = gv.AGraph(graph_str)
-    graph_vis.layout(prog = "dot")
+    try:
+        graph_vis.layout(prog = "dot")
+    except OSError:
+        logger.debug("Ignoring OSError in graph layout")
+        pass
     graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output, edge))
 
     G_vis.remove_node("Src")
