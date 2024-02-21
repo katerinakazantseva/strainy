@@ -234,7 +234,7 @@ def split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,typ
 def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
     cons = build_data.build_data_cons(cl, SNP_pos, data, edge, reference_seq)
-    cl.to_csv("%s/clusters/%s_1.csv" % (StRainyArgs().output,edge))
+    # cl.to_csv("%s/clusters/%s_1.csv" % (StRainyArgs().output,edge))
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))
     #cl.loc[cl["Cluster"] == UNCLUSTERED_GROUP_N, "Cluster"] = "NA"
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))

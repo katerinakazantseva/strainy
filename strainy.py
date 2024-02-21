@@ -2,6 +2,7 @@
 
 import sys
 import os
+import platform
 import re
 import subprocess
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -20,6 +21,13 @@ from strainy.preprocessing import preprocess_cmd_args
 
 logger = logging.getLogger()
 
+def get_cpu_info_linux():
+    if platform.system() == "Linux":
+        command = "cat /proc/cpuinfo"
+        all_info = subprocess.check_output(command, shell=True).decode().strip()
+        for line in all_info.split("\n"):
+            if "model name" in line:
+                return(re.sub( ".*model name.*:", "", line, 1))
 
 def main():
     #Setting executable paths
@@ -71,6 +79,7 @@ def main():
     set_thread_logging(StRainyArgs().output, "root", None)
 
     preprocess_cmd_args(args, parser)
+    print(f'CPU: {get_cpu_info_linux()}')
 
     # set one more time for the modified args
     init_global_args_storage(args)
@@ -81,10 +90,20 @@ def main():
     elif args.stage == "transform":
         sys.exit(transform_main(args))
     elif args.stage == "e2e":
+        import cProfile
+        pr_phase = cProfile.Profile()
+        pr_phase.enable()
         phase_main(args)
         logger.info("Phase stage completed, starting transform now...")
+        pr_phase.disable()
+        pr_phase.dump_stats(f'{StRainyArgs().output}/phase.prof')
+
+        pr_transform = cProfile.Profile()
+        pr_transform.enable()
         transform_main(args)
         logger.info("Transform stage completed, exiting...")
+        pr_transform.disable()
+        pr_transform.dump_stats(f'{StRainyArgs().output}/transform.prof')
 
 
 if __name__ == "__main__":
