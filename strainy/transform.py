@@ -137,15 +137,14 @@ def remove_nested(G, cons):
     return (G)
 
 
-def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots,
+def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
                         full_paths_leafs, full_clusters, cluster_distances):
     """
      Graph visualization function
     """
-    M = cluster_distances
-    G_vis = nx.from_pandas_adjacency(M, create_using = nx.DiGraph)
+    G_vis = nx.from_pandas_adjacency(cluster_distances,
+                                     create_using = nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
-    cl_removed = []
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
 
     try:
@@ -183,17 +182,8 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
 
     graph_str = str(nx.nx_agraph.to_agraph(G_vis))
     graph_vis = gv.AGraph(graph_str)
-    try:
-        graph_vis.layout(prog = "dot")
-    except OSError:
-        logger.debug("Ignoring OSError in graph layout")
-        pass
+    graph_vis.layout(prog = "dot")
     graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output, edge))
-
-    G_vis.remove_node("Src")
-    G_vis.remove_node("Sink")
-
-    return cl_removed
 
 
 def find_full_paths(G, paths_roots, paths_leafs):
@@ -569,8 +559,14 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
                                   data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
             #full_cl[edge] = full_clusters
-            cl_removed = paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl, full_paths_roots,
-                                             full_paths_leafs, full_clusters, cluster_distances.copy())
+            if StRainyArgs().vis_graphs:
+                paths_graph_add_vis(edge, 
+                                    cons,
+                                    cl,
+                                    full_paths_roots,
+                                    full_paths_leafs,
+                                    full_clusters,
+                                    cluster_distances.copy())
 
             try:
                 full_paths = find_full_paths(G,full_paths_roots, full_paths_leafs)
@@ -584,7 +580,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             # add_path_links(graph, edge, full_paths, G)
             graph_ops.append(['add_path_links', edge, full_paths, G])
 
-            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]) - set(cl_removed))
+            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]))
             if len(othercl) > 0:
                 G = nx.from_pandas_adjacency(cluster_distances.copy(), create_using = nx.DiGraph)
 

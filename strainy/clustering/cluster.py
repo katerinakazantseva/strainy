@@ -18,7 +18,7 @@ from strainy.params import *
 logger = logging.getLogger()
 
 
-def clusters_vis_stats(G, cl, clN, uncl, SNP_pos, bam, edge, I, AF):
+def clusters_vis_stats(G, cl, clN, uncl, bam, edge, I, AF):
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = 0
     cmap = plt.get_cmap('viridis')
     clusters=sorted(set(cl['Cluster'].astype(int)))
@@ -143,5 +143,6 @@ def cluster(i, flye_consensus):
     cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
     logger.info("### Graph viz...")
 
-    clusters_vis_stats (G,cl, clN,uncl,SNP_pos, StRainyArgs().bam, edge, I, AF)
+    if StRainyArgs().vis_graphs:
+        clusters_vis_stats(G, cl, clN,uncl, StRainyArgs().bam, edge, I, AF)
     cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
