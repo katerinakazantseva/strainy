@@ -137,15 +137,14 @@ def remove_nested(G, cons):
     return (G)
 
 
-def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots,
+def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
                         full_paths_leafs, full_clusters, cluster_distances):
     """
      Graph visualization function
     """
-    M = cluster_distances
-    G_vis = nx.from_pandas_adjacency(M, create_using = nx.DiGraph)
+    G_vis = nx.from_pandas_adjacency(cluster_distances,
+                                     create_using = nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
-    cl_removed = []
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
 
     try:
@@ -185,11 +184,6 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
     graph_vis = gv.AGraph(graph_str)
     graph_vis.layout(prog = "dot") # TODO: this line may cause an error
     graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output, edge))
-
-    G_vis.remove_node("Src")
-    G_vis.remove_node("Sink")
-
-    return cl_removed
 
 
 def find_full_paths(G, paths_roots, paths_leafs):
@@ -561,9 +555,15 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             G = build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters,
                                   data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
-             # TODO: Make this function optional
-            # paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl, full_paths_roots,
-            #                                  full_paths_leafs, full_clusters, cluster_distances.copy())
+            #full_cl[edge] = full_clusters
+            if StRainyArgs().vis_graphs:
+                paths_graph_add_vis(edge, 
+                                    cons,
+                                    cl,
+                                    full_paths_roots,
+                                    full_paths_leafs,
+                                    full_clusters,
+                                    cluster_distances.copy())
 
             try:
                 full_paths = find_full_paths(G,full_paths_roots, full_paths_leafs)

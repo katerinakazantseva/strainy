@@ -51,6 +51,8 @@ def main():
     parser.add_argument("-b", "--bam", help="bam file",required=False)
     parser.add_argument("--link-simplify", required=False, action="store_true", default=False, dest="link_simplify",
                         help="Enable agressive graph simplification")
+    parser.add_argument("--visualize-graphs", required=False, action="store_true", default=False,
+                        help="Enable generating connection graphs of clusters for debugging")
     parser.add_argument("--unitig-split-length",
                         help="The length (in kb) which the unitigs that are longer will be split, set 0 to disable",
                         required=False,

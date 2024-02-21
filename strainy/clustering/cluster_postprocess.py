@@ -91,7 +91,7 @@ def build_adj_matrix_clusters(edge,cons,cl,flye_consensus, only_with_common_snip
     return m
 
 
-def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_clusters=None, only_nested=False):
+def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True ,set_clusters=None, only_nested=False):
     MAX_VIS_SIZE = 500
 
     if only_with_common_snip == False:
@@ -115,11 +115,11 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
         G_vis = nx.from_pandas_adjacency(M, create_using = nx.DiGraph)
 
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
-    # TODO make this part optional 
-    # if max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
-    #     G_vis_before = nx.nx_agraph.to_agraph(G_vis)
-    #     G_vis_before.layout(prog = "dot")
-    #     G_vis_before.draw("%s/graphs/linear_phase_%s.png" % (StRainyArgs().output, edge))
+
+    if StRainyArgs().vis_graphs and max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
+        G_vis_before = nx.nx_agraph.to_agraph(G_vis)
+        G_vis_before.layout(prog = "dot")
+        G_vis_before.draw("%s/graphs/linear_phase_%s.png" % (StRainyArgs().output, edge))
 
     path_remove = []
     for node in G_vis.nodes():
@@ -148,11 +148,11 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True,set_c
         if first.count(i[0]) > 1 or last.count(i[1]) > 1:
             to_remove.append(i)
     G_vis.remove_edges_from(ebunch = to_remove)
-    # TODO make this part optional
-    # if max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
-    #     G_vis = nx.nx_agraph.to_agraph(G_vis)
-    #     G_vis.layout(prog="dot")
-    #     G_vis.draw("%s/graphs/linear_phase_simplified_%s.png" % (StRainyArgs().output, edge))
+
+    if StRainyArgs().vis_graphs and max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
+        G_vis = nx.nx_agraph.to_agraph(G_vis)
+        G_vis.layout(prog="dot")
+        G_vis.draw("%s/graphs/linear_phase_simplified_%s.png" % (StRainyArgs().output, edge))
 
     G = nx.from_pandas_adjacency(M)
 
