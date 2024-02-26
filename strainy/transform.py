@@ -556,7 +556,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
                                   data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
             #full_cl[edge] = full_clusters
-            if StRainyArgs().vis_graphs:
+            if StRainyArgs().debug:
                 paths_graph_add_vis(edge, 
                                     cons,
                                     cl,

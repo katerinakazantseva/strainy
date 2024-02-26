@@ -116,7 +116,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True ,set_
 
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
 
-    if StRainyArgs().vis_graphs and max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
+    if StRainyArgs().debug and max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
         G_vis_before = nx.nx_agraph.to_agraph(G_vis)
         G_vis_before.layout(prog = "dot")
         G_vis_before.draw("%s/graphs/linear_phase_%s.png" % (StRainyArgs().output, edge))
@@ -149,7 +149,7 @@ def join_clusters(cons, cl, R, edge, consensus, only_with_common_snip=True ,set_
             to_remove.append(i)
     G_vis.remove_edges_from(ebunch = to_remove)
 
-    if StRainyArgs().vis_graphs and max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
+    if StRainyArgs().debug and max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
         G_vis = nx.nx_agraph.to_agraph(G_vis)
         G_vis.layout(prog="dot")
         G_vis.draw("%s/graphs/linear_phase_simplified_%s.png" % (StRainyArgs().output, edge))
@@ -234,7 +234,8 @@ def split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,typ
 def postprocess(bam, cl, SNP_pos, data, edge, R, I, flye_consensus):
     reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
     cons = build_data.build_data_cons(cl, SNP_pos, data, edge, reference_seq)
-    # cl.to_csv("%s/clusters/%s_1.csv" % (StRainyArgs().output,edge))
+    if StRainyArgs().debug:
+        cl.to_csv("%s/clusters/%s_1.csv" % (StRainyArgs().output,edge))
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))
     #cl.loc[cl["Cluster"] == UNCLUSTERED_GROUP_N, "Cluster"] = "NA"
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))

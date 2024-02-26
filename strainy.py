@@ -21,13 +21,21 @@ from strainy.preprocessing import preprocess_cmd_args
 
 logger = logging.getLogger()
 
-def get_cpu_info_linux():
-    if platform.system() == "Linux":
+def get_processor_name():
+    if platform.system() == "Windows":
+        return platform.processor()
+    elif platform.system() == "Darwin":
+        os.environ['PATH'] = os.environ['PATH'] + os.pathsep + '/usr/sbin'
+        command ="sysctl -n machdep.cpu.brand_string"
+        return subprocess.check_output(command).strip()
+    elif platform.system() == "Linux":
         command = "cat /proc/cpuinfo"
         all_info = subprocess.check_output(command, shell=True).decode().strip()
         for line in all_info.split("\n"):
             if "model name" in line:
-                return(re.sub( ".*model name.*:", "", line, 1))
+                return re.sub( ".*model name.*:", "", line,1)
+    return ""
+
 
 def main():
     #Setting executable paths
@@ -51,8 +59,8 @@ def main():
     parser.add_argument("-b", "--bam", help="bam file",required=False)
     parser.add_argument("--link-simplify", required=False, action="store_true", default=False, dest="link_simplify",
                         help="Enable agressive graph simplification")
-    parser.add_argument("--visualize-graphs", required=False, action="store_true", default=False,
-                        help="Enable generating connection graphs of clusters for debugging")
+    parser.add_argument("--debug", required=False, action="store_true", default=False,
+                        help="Generate extra output for debugging")
     parser.add_argument("--unitig-split-length",
                         help="The length (in kb) which the unitigs that are longer will be split, set 0 to disable",
                         required=False,
@@ -79,7 +87,9 @@ def main():
     set_thread_logging(StRainyArgs().output, "root", None)
 
     preprocess_cmd_args(args, parser)
-    print(f'CPU: {get_cpu_info_linux()}')
+
+    if StRainyArgs().debug:
+        print(f'Using processor(s): {get_processor_name()}')
 
     # set one more time for the modified args
     init_global_args_storage(args)

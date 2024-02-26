@@ -28,7 +28,7 @@ def init_global_args_storage(args):
     _glob_args.fa = args.fasta
     _glob_args.fq = args.fastq
     _glob_args.splen = args.unitig_split_length
-    _glob_args.vis_graphs = args.visualize_graphs
+    _glob_args.debug = args.debug
 
 
 def StRainyArgs():

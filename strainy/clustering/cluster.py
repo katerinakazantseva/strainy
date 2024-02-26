@@ -101,7 +101,8 @@ def cluster(i, flye_consensus):
     #    m = pd.read_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), index_col='ReadName')
     #except FileNotFoundError:
     m = matrix.build_adj_matrix(cl, data, SNP_pos, I, StRainyArgs().bam, edge, R)
-    # m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
+    if StRainyArgs().debug:
+        m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
 
     logger.info("### Removing overweighed egdes...")
     m = matrix.remove_edges(m, R)
@@ -126,7 +127,8 @@ def cluster(i, flye_consensus):
             uncl = uncl + 1
 
     logger.info(str(clN)+" clusters found")
-    # cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
+    if StRainyArgs().debug:
+        cl.to_csv("%s/clusters/clusters_before_splitting_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
 
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = UNCLUSTERED_GROUP_N
     if clN != 0:
@@ -138,8 +140,7 @@ def cluster(i, flye_consensus):
     #clN = len(set(cl.loc[cl['Cluster']!='NA']['Cluster'].values))
     logger.info(str(clN) + " clusters after post-processing")
     cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
-    # logger.info("### Graph viz...")
-
-    if StRainyArgs().vis_graphs:
+    
+    if StRainyArgs().debug:
+        logger.info("### Graph viz...")
         clusters_vis_stats(G, cl, clN,uncl, StRainyArgs().bam, edge, I, AF)
-    # cl.to_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
