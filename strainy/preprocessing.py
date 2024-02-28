@@ -162,8 +162,9 @@ def preprocess_cmd_args(args, parser):
                      os.path.join(preprocessing_dir,"gfa_converted.fasta"))
         args.fasta = os.path.join(preprocessing_dir,"gfa_converted.fasta")
 
-    create_bam_file(args.fasta,
-                    args.fastq,
-                    os.path.join(preprocessing_dir, "long_unitigs_split.bam"),
-                    args.threads)
-    args.bam = os.path.join(preprocessing_dir, "long_unitigs_split.bam")
+    if args.bam is None:
+        create_bam_file(args.fasta,
+                        args.fastq,
+                        os.path.join(preprocessing_dir, "long_unitigs_split.bam"),
+                        args.threads)
+        args.bam = os.path.join(preprocessing_dir, "long_unitigs_split.bam")

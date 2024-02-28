@@ -682,7 +682,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                 try:
                     if len(nx.shortest_path(nx_graph, next_seg, edge)) <= max_hops:
                         neighbours[read] = next_seg
-                except(nx.NetworkXNoPath):
+                except (nx.NetworkXNoPath, nx.NodeNotFound):
                     pass
 
                 if link_orientation == "+":
@@ -694,7 +694,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                 try:
                     if len(nx.shortest_path(nx_graph, next_seg, edge)) <= max_hops:
                         neighbours[read] = next_seg
-                except(nx.NetworkXNoPath):
+                except (nx.NetworkXNoPath, nx.NodeNotFound):
                     pass
 
                 if link_orientation == "+":
