@@ -5,6 +5,7 @@ import logging
 from strainy.params import *
 
 logger = logging.getLogger()
+pd.options.mode.chained_assignment = None
 
 
 def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):
@@ -52,7 +53,7 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
     secondSNPs= [key for key in secondSNPs if key not in keys]
     commonSNP = sorted(set(firstSNPs).intersection(secondSNPs).intersection(SNP_pos))
     #if len(commonSNP)>2 or (len(commonSNP) > 0 and only_with_common_snip == False) or len(SNP_pos)<=10: #???
-    if 1==1:
+    if len(commonSNP)!=0:
         for snp in commonSNP:
             try:
                 b1 = data[read1][snp]
@@ -67,12 +68,15 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
                     d = d
             except:
                 continue
-            if d >= R:
-                d = R
-                break
+            #if d >= R:
+                #d = R
+                #break
 
-            else:
-                continue
+            #else:
+                #continue
+        intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
+            set(range(data[read2]["Start"], data[read2]["End"])))
+        d=d/len(intersect)
     if len(commonSNP) == 0 and only_with_common_snip == False:
         intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
             set(range(data[read2]["Start"], data[read2]["End"])))
@@ -85,15 +89,17 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
 
 def remove_edges(m, R):
     m_transformed = m
-    m_transformed[m_transformed >= R] = -1
+    m_transformed[m_transformed > R] = -1
     return m_transformed
 
 
 def change_w(m, R):
     m_transformed = m
-    m_transformed[m_transformed == 0] = 0.001
+    m_transformed[m_transformed == 0] = -10
     m_transformed[m_transformed == -1] = 0
-    m_transformed[m_transformed >= R] = 0
+    m_transformed[m_transformed > R] = 0
+    m_transformed[m_transformed == -10] = 0.000001
+
     return m_transformed
 
 
@@ -112,7 +118,7 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
         d = 1
     elif len(intersect) > I:
-        d = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP)
+        d = (flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP))/len(intersect)
     else:
         d = 1
     return d

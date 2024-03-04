@@ -49,15 +49,15 @@ def main():
                         type=int,
                         default=50)
     parser.add_argument("--only_split",help="Do not run stRainy, only split long gfa unitigs", default='False', required=False)
-
+    parser.add_argument("-Rcl","--Rcl",help="cluster difergence", type=float, required=True)  
     args = parser.parse_args()
     args.strainy_root = strainy_root
-
+    #args.R=args.Rcl/2
     #setting up global arguments storage
     input_graph = gfapy.Gfa.from_file(args.gfa)
     args.graph_edges = input_graph.segment_names
+    #args.graph_edges=["edge_5990"]
     init_global_args_storage(args)
-
     BIN_TOOLS = ["samtools", "bcftools", "minimap2", StRainyArgs().flye]
     for tool in BIN_TOOLS:
         if not shutil.which(tool):
