@@ -220,6 +220,8 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     val = {}
     clSNP = []
     mpileup_snps = []
+    mis_count=0
+    Rcl=StRainyArgs().Rcl
     for pos in SNP_pos:
         npos = []
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
@@ -245,11 +247,13 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
             #2nd most frequent, indicating a variant
             if int(Counter(npos).most_common()[1][1]) >= alt_snp_freq:
                 #print(cluster, pos, Counter(npos).most_common())
-                strange = 1
+                #strange = 1
+                mis_count=mis_count+1
                 clSNP.append(pos)
 
         except IndexError:
             continue
+    
 
     clSNP2 = mpileup_snps
     val["clSNP"] = clSNP
@@ -287,6 +291,10 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
 
     except (ValueError, IndexError):
         pass
+
+
+    if mis_count/(clStop-clStart)>Rcl:
+        strange=1
 
     val["Strange"] = int(strange == 1)
     val["Strange2"] = int(strange2 == 1)

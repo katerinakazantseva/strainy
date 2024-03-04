@@ -6,6 +6,7 @@ from scipy.spatial.distance import cdist
 from strainy.params import *
 
 logger = logging.getLogger()
+pd.options.mode.chained_assignment = None
 
 class DistanceWrapper():
     # Wrapper for calling cdist with custom distance function
@@ -90,11 +91,9 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
         except:
             continue
 
-        if d >= R:
-            d = R
-            break
-        else:
-            continue
+        intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
+            set(range(data[read2]["Start"], data[read2]["End"])))
+        d=d/len(intersect)
 
     if len(commonSNP) == 0 and only_with_common_snip == False:
         intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
@@ -109,15 +108,17 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
 
 def remove_edges(m, R):
     m_transformed = m
-    m_transformed[m_transformed >= R] = -1
+    m_transformed[m_transformed > R] = -1
     return m_transformed
 
 
 def change_w(m, R):
     m_transformed = m
-    m_transformed[m_transformed == 0] = 0.001
+    m_transformed[m_transformed == 0] = -10
     m_transformed[m_transformed == -1] = 0
-    m_transformed[m_transformed >= R] = 0
+    m_transformed[m_transformed > R] = 0
+    m_transformed[m_transformed == -10] = 0.000001
+
     return m_transformed
 
 
@@ -136,7 +137,7 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
         d = 1
     elif len(intersect) > I:
-        d = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP)
+        d = (flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP))/len(intersect)
     else:
         d = 1
     return d

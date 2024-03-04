@@ -29,7 +29,7 @@ def init_global_args_storage(args):
     _glob_args.fq = args.fastq
     _glob_args.splen = args.unitig_split_length
     _glob_args.debug = args.debug
-
+    _glob_args.Rcl = args.Rcl
 
 def StRainyArgs():
     global _glob_args
@@ -52,7 +52,6 @@ delete_files = False
 
 
 #cluster parameters
-R = 1 # reads max mismatch count
 I = 1000 # reads min intersection
 unseparated_cluster_min_reads = 3
 min_cluster_size = 2

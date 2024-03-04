@@ -59,6 +59,8 @@ def clusters_vis_stats(G, cl, clN, uncl, bam, edge, I, AF):
 
 def cluster(i, flye_consensus):
     edge = StRainyArgs().edges[i]
+    Rcl=StRainyArgs().Rcl
+    R=Rcl/2
     logger.info("### Reading SNPs...")
     SNP_pos = build_data.read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
 
@@ -103,10 +105,8 @@ def cluster(i, flye_consensus):
     m = matrix.build_adj_matrix(cl, data, SNP_pos, I, StRainyArgs().bam, edge, R)
     if StRainyArgs().debug:
         m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF))
-
     logger.info("### Removing overweighed egdes...")
     m = matrix.remove_edges(m, R)
-
     # BUILD graph and find clusters
     logger.info("### Creating graph...")
     m1 = m
@@ -133,7 +133,7 @@ def cluster(i, flye_consensus):
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = UNCLUSTERED_GROUP_N
     if clN != 0:
         logger.info("### Cluster post-processing...")
-        cl = postprocess(StRainyArgs().bam, cl, SNP_pos, data, edge, R, I, flye_consensus)
+        cl = postprocess(StRainyArgs().bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus)
     else:
         counts = cl['Cluster'].value_counts(dropna=False)
         cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]
