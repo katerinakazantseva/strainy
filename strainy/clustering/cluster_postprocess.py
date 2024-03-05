@@ -78,9 +78,6 @@ def build_adj_matrix_clusters(edge,cons,cl,flye_consensus, only_with_common_snip
 
     for i in sorted(sort, key = lambda sort: [sort[2], sort[1]]):
         sorted_by_pos.append(i[0])
-    logging.info(sorted_by_pos)
-    logging.info(clusters)
-
     clusters = sorted(set(sorted_by_pos) & set(clusters), key = sorted_by_pos.index)
     m = pd.DataFrame(-1, index = clusters, columns = clusters)
 
@@ -92,10 +89,8 @@ def build_adj_matrix_clusters(edge,cons,cl,flye_consensus, only_with_common_snip
             if m[second_cl][first_cl] == -1:
                 m[second_cl][first_cl] = matrix.distance_clusters(edge, first_cl, second_cl, cons, cl,flye_consensus, only_with_common_snip)
     return m
-
-
-
-def join_clusters(cons, cl, Rcl, edge, consensus, only_with_common_snip=True,set_clusters=None, only_nested=False,last=False):
+import pygraphviz as py
+def join_clusters(cons, cl, Rcl, edge, consensus, only_with_common_snip=True,set_clusters=None, only_nested=False, transitive=False):
     MAX_VIS_SIZE = 500
 
     if only_with_common_snip == False:
@@ -108,7 +103,6 @@ def join_clusters(cons, cl, Rcl, edge, consensus, only_with_common_snip=True,set
             M = build_adj_matrix_clusters(edge,cons, cl,consensus, True)
         else:
             M = build_adj_matrix_clusters(edge, cons, cl, consensus, True, set_clusters)
-
     M = matrix.change_w(M,Rcl)
 
     try:
@@ -160,95 +154,97 @@ def join_clusters(cons, cl, Rcl, edge, consensus, only_with_common_snip=True,set
 
     G = nx.from_pandas_adjacency(M)
 
-    for n_path in path_remove:
-        try:
-            G.remove_edge(n_path[0], n_path[2])
-        except :
-            continue
-    G.remove_edges_from(ebunch = to_remove)
 
-    nested = {}
-    nodes = list(G.nodes())
-
-    for node in nodes:
-        try:
+    if transitive==True:
+        graph_str = str(nx.nx_agraph.to_agraph(G))
+        logging.info("LAST STAGE")
+        not_visited=list(G.nodes).copy()
+        while not_visited:
+             
+            node=not_visited[0]
             neighbors = nx.all_neighbors(G, node)
-            for neighbor in list(neighbors):
-                if cons[int(node)]["Start"] < cons[int(neighbor)]["Start"] and cons[int(node)]["End"] > cons[int(neighbor)]["End"]:
-                    try:
-                        G.remove_edge(node, neighbor)
-                        logger.debug("REMOVE NESTED" + str(neighbor))
-                        if len(nx.all_neighbors(G, neighbor)) == 1:
-                            try:
-                                nested[neighbor] = nested[neighbor].append(node)
-                            except:
-                                nodes = [node]
-                                nested[neighbor] = nodes
-                    except:
-                        continue
-        except:
-            continue
+            n_list=list(neighbors)
+            for nei in n_list:
+                n_list2=list(nx.all_neighbors(G, nei))
+                n_list.remove(nei)
+                n_list2.remove(node)
+                if (n_list==n_list2) is True:
+                    logging.info("merge "+str(node)+" and "+ str(nei))
+                    сlusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
+                    new_cl_id = int(nei)+UNCLUSTERED_GROUP_N
+                    while new_cl_id in сlusters:
+                        new_cl_id = new_cl_id+1
+                    cl.loc[cl["Cluster"] == int(node), "Cluster"] =new_cl_id
+                    cl.loc[cl["Cluster"] == int(nei), "Cluster"] =new_cl_id
 
-    groups = list(nx.connected_components(G))
-    if only_nested == True:
-        for k,v in nested.items():
-            if len(v) == 1:
-                cl.loc[cl["Cluster"] == int(k), "Cluster"] = int(v[0])
+                    G.remove_node(node)
+                    G=nx.relabel_nodes(G,{nei:new_cl_id})
+
+                    not_visited.append(new_cl_id)
+                    try:
+                        not_visited.remove(nei)
+                        not_visited.remove(node)
+                    except:
+                        pass
+                    break
+            try:
+                not_visited.remove(node)
+            except:
+                 pass
+
+            #end
 
     else:
-        #NEW part
-        print(last)
-        if last!=False:
-            logging.info("LAST STAGE")
-            not_visited=list(G.nodes).copy()
-            print(G)
-            print(G.nodes)
-            while not_visited:
-                node=not_visited[0]
+        for n_path in path_remove:
+            try:
+                G.remove_edge(n_path[0], n_path[2])
+            except :
+                continue
+        G.remove_edges_from(ebunch = to_remove)
+
+        nested = {}
+        nodes = list(G.nodes())
+
+
+
+
+        for node in nodes:
+            try:
                 neighbors = nx.all_neighbors(G, node)
-                n_list=list(neighbors)
-                for nei in n_list:
-                    n_list2=list(nx.all_neighbors(G, nei))
-                    n_list.remove(nei)
-                    n_list2.remove(node)
-                    if (n_list==n_list2) is True:
-                        logging.info("merge "+str(node)+" and "+ str(nei))
-                        #print("merge "+str(node)+" and "+ str(nei))
-                        сlusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
-                        new_cl_id = int(nei)+UNCLUSTERED_GROUP_N
-                        while new_cl_id in сlusters:
-                            new_cl_id = new_cl_id+1
-
-                        cl.loc[cl["Cluster"] == int(node), "Cluster"] =new_cl_id
-                        cl.loc[cl["Cluster"] == int(nei), "Cluster"] =new_cl_id
-                        
-                        G.remove_node(node)
-                        G=nx.relabel_nodes(G,{nei:new_cl_id})
-                        
-                        not_visited.append(new_cl_id)
+                for neighbor in list(neighbors):
+                    if cons[int(node)]["Start"] < cons[int(neighbor)]["Start"] and cons[int(node)]["End"] > cons[int(neighbor)]["End"]:
                         try:
-                            not_visited.remove(nei)
-                            not_visited.remove(node)
+                            G.remove_edge(node, neighbor)
+                            logger.info("REMOVE NESTED" + str(neighbor)+" :"+str(node))
+                            if len(nx.all_neighbors(G, neighbor)) == 1:
+                                try:
+                                    nested[neighbor] = nested[neighbor].append(node)
+                                except:
+                                    nodes = [node]
+                                    nested[neighbor] = nodes
                         except:
-                            pass
-                        break
-                try:
-                    not_visited.remove(node)
-                except:
-                    pass
-                
-
+                            continue
+            except:
+                continue
 
         groups = list(nx.connected_components(G))
-        #end
-        for group in groups:
-            if len(group) > 1:
-                сlusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
-                new_cl_id = int(list(group)[0])+UNCLUSTERED_GROUP_N
-                while new_cl_id in сlusters:
-                    new_cl_id = new_cl_id+1
-                for i in range(0, len(group)):
-                    cl.loc[cl["Cluster"] == int(list(group)[i]), "Cluster"] = new_cl_id
+        if only_nested == True:
+            logging.info("NESTED STAGE")
+            logging.info(nested.items())
+            for k,v in nested.items():
+                if len(v) == 1:
+                    cl.loc[cl["Cluster"] == int(k), "Cluster"] = int(v[0])
+
+        else:
+        #NEW part
+            for group in groups:
+                if len(group) > 1:
+                    сlusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
+                    new_cl_id = int(list(group)[0])+UNCLUSTERED_GROUP_N
+                    while new_cl_id in сlusters:
+                        new_cl_id = new_cl_id+1
+                    for i in range(0, len(group)):
+                        cl.loc[cl["Cluster"] == int(list(group)[i]), "Cluster"] = new_cl_id
     return cl
 
 
@@ -259,6 +255,7 @@ def split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,typ
     if type=="lowheterozygosity":
         factor="Strange2"
         snp_set="clSNP2"
+
 
     if cons[cluster][factor] == 1:
         clSNP = cons[cluster][snp_set]
@@ -280,13 +277,17 @@ def split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,typ
                 split_all(cl, cluster, data, cons,bam, edge, R, I, SNP_pos,reference_seq,"unclustered")
 
 
+
+
+
+
 def postprocess(bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus):
     reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
     cons = build_data.build_data_cons(cl, SNP_pos, data, edge, reference_seq)
     if StRainyArgs().debug:
         cl.to_csv("%s/clusters/%s_1.csv" % (StRainyArgs().output,edge))
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))
-    
+
 
     #newpart
     cl.loc[cl["Cluster"] == "NA", "Cluster"] = UNCLUSTERED_GROUP_N
@@ -321,7 +322,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus):
         clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
         new_clusters = list(set(clusters) - set(prev_clusters))
         prev_clusters = clusters
-        cl= join_clusters(cons, cl, Rcl, edge, flye_consensus, False,new_clusters,only_nested=False,last=False)
+        cl= join_clusters(cons, cl, Rcl, edge, flye_consensus, False,new_clusters,only_nested=False)
         clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
 
         for cluster in clusters:
@@ -363,9 +364,12 @@ def postprocess(bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus):
     for cluster in clusters:
         if cluster not in cons:
             build_data.cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
-    cl = join_clusters(cons, cl, Rcl, edge, flye_consensus, only_with_common_snip=True,set_clusters=None, only_nested=False,last=True)
+
+    cl = join_clusters(cons, cl, Rcl, edge, flye_consensus, transitive=True)
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
-    cl = join_clusters(cons, cl, Rcl, edge, flye_consensus, False,None,only_nested=True)
+    cl = join_clusters(cons, cl, Rcl, edge, flye_consensus)
+    clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
+    cl = join_clusters(cons, cl, Rcl, edge, flye_consensus, only_with_common_snip=False,only_nested=True)
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
     cl = cl[~cl["Cluster"].isin(counts[counts < 6].index)]  #TODO change for cov*01.
     return cl
