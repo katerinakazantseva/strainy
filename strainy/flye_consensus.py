@@ -19,18 +19,7 @@ from strainy.params import *
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
 
-
-BIN_DIR = "bin"
-# TODO: flye root should be changed to StRainyArgs().flye 
-FLYE_ROOT = ''
-if len(FLYE_ROOT) == 0:
-    raise Exception('Please enter the path to the modified Flye manually')
-bin_absolute = os.path.join(FLYE_ROOT, BIN_DIR)
-sys.path.insert(0, FLYE_ROOT)
-os.environ["PATH"] = bin_absolute + os.pathsep + os.environ["PATH"]
-
 from flye.main import _run_polisher_only
-
 
 def calculate_coverage(position, bed_file_content):
     """
