@@ -40,22 +40,26 @@ def phase(edges, args):
     if os.path.isdir(StRainyArgs().log_phase):
         shutil.rmtree(StRainyArgs().log_phase)
     os.mkdir(StRainyArgs().log_phase)
-
-    default_manager = multiprocessing.Manager()
     empty_consensus_dict = {}
+    default_manager = multiprocessing.Manager()
     shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, empty_consensus_dict, default_manager)
-    pool = multiprocessing.Pool(StRainyArgs().threads)
-    init_args = [(i, shared_flye_consensus, args) for i in range(len(edges))]
+    if StRainyArgs().threads == 1:
+        for i in range(len(edges)):
+            # cProfile.runctx('cluster(i, shared_flye_consensus)', globals(), locals(), '../edge_532_improved.prof')
+            cluster(i, shared_flye_consensus)
+    else:
+        pool = multiprocessing.Pool(StRainyArgs().threads)
+        init_args = [(i, shared_flye_consensus, args) for i in range(len(edges))]
 
-    results = pool.starmap_async(_thread_fun, init_args, chunksize=1)
-    while not results.ready():
-        time.sleep(0.01)
-        if not results._success:
-            pool.terminate()
-            raise Exception("Error in worker thread, exiting")
+        results = pool.starmap_async(_thread_fun, init_args, chunksize=1)
+        while not results.ready():
+            time.sleep(0.01)
+            if not results._success:
+                pool.terminate()
+                raise Exception("Error in worker thread, exiting")
 
-    pool.close()
-    pool.join()
+        pool.close()
+        pool.join()
 
     shared_flye_consensus.print_cache_statistics()
     return shared_flye_consensus.get_consensus_dict()

@@ -2,6 +2,7 @@
 
 import sys
 import os
+import platform
 import re
 import subprocess
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
@@ -19,6 +20,21 @@ from strainy.preprocessing import preprocess_cmd_args
 
 
 logger = logging.getLogger()
+
+def get_processor_name():
+    if platform.system() == "Windows":
+        return platform.processor()
+    elif platform.system() == "Darwin":
+        os.environ['PATH'] = os.environ['PATH'] + os.pathsep + '/usr/sbin'
+        command ="sysctl -n machdep.cpu.brand_string"
+        return subprocess.check_output(command).strip()
+    elif platform.system() == "Linux":
+        command = "cat /proc/cpuinfo"
+        all_info = subprocess.check_output(command, shell=True).decode().strip()
+        for line in all_info.split("\n"):
+            if "model name" in line:
+                return re.sub( ".*model name.*:", "", line,1)
+    return ""
 
 
 def main():
@@ -43,6 +59,8 @@ def main():
     parser.add_argument("-b", "--bam", help="bam file",required=False)
     parser.add_argument("--link-simplify", required=False, action="store_true", default=False, dest="link_simplify",
                         help="Enable agressive graph simplification")
+    parser.add_argument("--debug", required=False, action="store_true", default=False,
+                        help="Generate extra output for debugging")
     parser.add_argument("--unitig-split-length",
                         help="The length (in kb) which the unitigs that are longer will be split, set 0 to disable",
                         required=False,
@@ -70,6 +88,9 @@ def main():
 
     preprocess_cmd_args(args, parser)
 
+    if StRainyArgs().debug:
+        print(f'Using processor(s): {get_processor_name()}')
+
     # set one more time for the modified args
     init_global_args_storage(args)
     if args.only_split=='True':
@@ -79,10 +100,20 @@ def main():
     elif args.stage == "transform":
         sys.exit(transform_main(args))
     elif args.stage == "e2e":
+        import cProfile
+        pr_phase = cProfile.Profile()
+        pr_phase.enable()
         phase_main(args)
         logger.info("Phase stage completed, starting transform now...")
+        pr_phase.disable()
+        pr_phase.dump_stats(f'{StRainyArgs().output}/phase.prof')
+
+        pr_transform = cProfile.Profile()
+        pr_transform.enable()
         transform_main(args)
         logger.info("Transform stage completed, exiting...")
+        pr_transform.disable()
+        pr_transform.dump_stats(f'{StRainyArgs().output}/transform.prof')
 
 
 if __name__ == "__main__":

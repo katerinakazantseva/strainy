@@ -137,15 +137,14 @@ def remove_nested(G, cons):
     return (G)
 
 
-def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots,
+def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
                         full_paths_leafs, full_clusters, cluster_distances):
     """
      Graph visualization function
     """
-    M = cluster_distances
-    G_vis = nx.from_pandas_adjacency(M, create_using = nx.DiGraph)
+    G_vis = nx.from_pandas_adjacency(cluster_distances,
+                                     create_using = nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
-    cl_removed = []
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
 
     try:
@@ -183,17 +182,8 @@ def paths_graph_add_vis(edge, flye_consensus,cons, SNP_pos, cl, full_paths_roots
 
     graph_str = str(nx.nx_agraph.to_agraph(G_vis))
     graph_vis = gv.AGraph(graph_str)
-    try:
-        graph_vis.layout(prog = "dot")
-    except OSError:
-        logger.debug("Ignoring OSError in graph layout")
-        pass
+    graph_vis.layout(prog = "dot") # TODO: this line may cause an error
     graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output, edge))
-
-    G_vis.remove_node("Src")
-    G_vis.remove_node("Sink")
-
-    return cl_removed
 
 
 def find_full_paths(G, paths_roots, paths_leafs):
@@ -409,11 +399,8 @@ def strong_tail(cluster, cl, ln, data):
     return (res)
 
 
-def gcu_worker(*args):
-
-    edge = args[0]
-    flye_consensus = args[1]
-    strainy_args = args[2]
+def gcu_worker(edge, flye_consensus, args):
+    init_global_args_storage(args)
 
     bam_cache = {}
     link_clusters = defaultdict(list)
@@ -421,9 +408,6 @@ def gcu_worker(*args):
     link_clusters_sink = defaultdict(list)
     graph_ops = []
     remove_clusters = set()
-    
-
-    init_global_args_storage(strainy_args)
 
     set_thread_logging(StRainyArgs().log_transform, "gcu", multiprocessing.current_process().pid)
     logger.info("\n\n\t == == Processing unitig " + edge + " == == ")
@@ -444,20 +428,23 @@ def gcu_worker(*args):
 
 
 def parallelize_gcu(graph_edges, flye_consensus, graph, args):
+    if StRainyArgs().threads == 1:
+        result_values = []
+        for edge in graph_edges:
+            result_values.append(gcu_worker(edge, flye_consensus, args))
 
-    pool = multiprocessing.Pool(StRainyArgs().threads)
-
-    init_args = [[edge, flye_consensus, args] for edge in graph_edges]
-
-    results = pool.starmap_async(gcu_worker, init_args, chunksize=1)
-    while not results.ready():
-        time.sleep(0.01)
-        if not results._success:
-            pool.terminate()
-            raise Exception("Error in worker thread, exiting")
-
-    pool.close()
-    pool.join()
+    else:
+        pool = multiprocessing.Pool(StRainyArgs().threads)
+        init_args = [(edge, flye_consensus, args) for edge in graph_edges]
+        results = pool.starmap_async(gcu_worker, init_args, chunksize=1)
+        while not results.ready():
+            time.sleep(0.01)
+            if not results._success:
+                pool.terminate()
+                raise Exception("Error in worker thread, exiting")
+        result_values = results._value
+        pool.close()
+        pool.join()
 
     bam_cache = {}
     link_clusters = defaultdict(list)
@@ -468,7 +455,7 @@ def parallelize_gcu(graph_edges, flye_consensus, graph, args):
     
     outputs = [bam_cache, link_clusters, link_clusters_src, link_clusters_sink, graph_ops, remove_clusters]
     # join the results of multiple threads
-    for r in results._value:
+    for r in result_values:
         for i in range(len(r)):
             if i == len(r) - 1 or i == len(r) - 2:
                 for k in r[i]:
@@ -569,8 +556,14 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
                                   data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
             #full_cl[edge] = full_clusters
-            cl_removed = paths_graph_add_vis(edge,flye_consensus,cons, SNP_pos, cl, full_paths_roots,
-                                             full_paths_leafs, full_clusters, cluster_distances.copy())
+            if StRainyArgs().debug:
+                paths_graph_add_vis(edge, 
+                                    cons,
+                                    cl,
+                                    full_paths_roots,
+                                    full_paths_leafs,
+                                    full_clusters,
+                                    cluster_distances.copy())
 
             try:
                 full_paths = find_full_paths(G,full_paths_roots, full_paths_leafs)
@@ -584,7 +577,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             # add_path_links(graph, edge, full_paths, G)
             graph_ops.append(['add_path_links', edge, full_paths, G])
 
-            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]) - set(cl_removed))
+            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]))
             if len(othercl) > 0:
                 G = nx.from_pandas_adjacency(cluster_distances.copy(), create_using = nx.DiGraph)
 
@@ -862,17 +855,7 @@ def transform_main(args):
 
     flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, multiprocessing.Manager())
 
-    # bam_cache = {}
-    # link_clusters = defaultdict(list)
-    # link_clusters_src = defaultdict(list)
-    # link_clusters_sink = defaultdict(list)
-    # remove_clusters = set()
-
     logger.info("### Create unitigs")
-    # for edge in StRainyArgs().edges:
-    #     #TODO: this can run in parallel (and probably takes the most time)
-    #     graph_create_unitigs(edge, initial_graph, flye_consensus, bam_cache,
-    #                          link_clusters, link_clusters_src, link_clusters_sink, remove_clusters)
 
     bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters, initial_graph = parallelize_gcu(StRainyArgs().edges, flye_consensus, initial_graph, args)
 
@@ -881,7 +864,6 @@ def transform_main(args):
         graph_link_unitigs(edge, initial_graph, bam_cache, link_clusters, link_clusters_src,
                            link_clusters_sink, remove_clusters)
     connect_parental_edges(initial_graph, link_clusters_src, link_clusters_sink, remove_clusters)
-    #gfapy.Gfa.to_file(initial_graph, StRainyArgs().gfa_transformed)
 
     logger.info("### Remove initial segments")
     for ed in initial_graph.segments:
