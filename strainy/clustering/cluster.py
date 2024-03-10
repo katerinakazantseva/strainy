@@ -133,7 +133,7 @@ def cluster(i, flye_consensus):
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = UNCLUSTERED_GROUP_N
     if clN != 0:
         logger.info("### Cluster post-processing...")
-        cl = postprocess(StRainyArgs().bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus)
+        cl = postprocess(StRainyArgs().bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge_cov)
     else:
         counts = cl['Cluster'].value_counts(dropna=False)
         cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]
