@@ -52,11 +52,9 @@ def main():
     parser.add_argument("-Rcl","--Rcl",help="cluster difergence", type=float, required=True)  
     args = parser.parse_args()
     args.strainy_root = strainy_root
-    #args.R=args.Rcl/2
     #setting up global arguments storage
     input_graph = gfapy.Gfa.from_file(args.gfa)
     args.graph_edges = input_graph.segment_names
-    args.graph_edges=["edge_435","edge_4692", "edge_5340","edge_5343"]
     init_global_args_storage(args)
     BIN_TOOLS = ["samtools", "bcftools", "minimap2", StRainyArgs().flye]
     for tool in BIN_TOOLS:
