@@ -353,16 +353,16 @@ def postprocess(bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge
     cl = join_clusters(cons, cl, Rcl, edge, flye_consensus, transitive=True)
     cl=update_cluster_set(cl, cluster, SNP_pos, data, cons, edge, reference_seq,mean_edge_cov)
     cl = join_clusters(cons, cl, Rcl, edge, flye_consensus)
-    cl=update_cluster_set(cl, cluster, SNP_pos, data, cons, edge, reference_seq,mean_edge_cov)
+    cl=update_cluster_set(cl, cluster, SNP_pos, data, cons, edge, reference_seq,mean_edge_cov,fraction=0.05)
     cl = join_clusters(cons, cl, Rcl, edge, flye_consensus, only_with_common_snip=False,only_nested=True)
     counts = cl["Cluster"].value_counts(dropna = False)
     cl = cl[~cl["Cluster"].isin(counts[counts < 6].index)]  #TODO change for cov*01.
-    cl=update_cluster_set(cl, cluster, SNP_pos, data, cons, edge, reference_seq,mean_edge_cov)
+    cl=update_cluster_set(cl, cluster, SNP_pos, data, cons, edge, reference_seq,mean_edge_cov,fraction=0.05)
     return cl
 
 
 
-def update_cluster_set(cl, cluster, SNP_pos, data, cons, edge, reference_seq,mean_edge_cov):
+def update_cluster_set(cl, cluster, SNP_pos, data, cons, edge, reference_seq,mean_edge_cov,fraction=0.01):
     #Update consensus and remove small clusters (less 5% of unitig coverage)
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
     for cluster in clusters:
@@ -370,7 +370,7 @@ def update_cluster_set(cl, cluster, SNP_pos, data, cons, edge, reference_seq,mea
             build_data.cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
 
     for cluster in clusters:
-        if cons[cluster]['Cov']<mean_edge_cov/20:
+        if cons[cluster]['Cov']<mean_edge_cov*fraction:
             cl = cl[cl["Cluster"] !=cluster]
 
 
