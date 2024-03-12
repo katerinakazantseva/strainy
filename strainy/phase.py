@@ -45,7 +45,6 @@ def phase(edges, args):
     shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, empty_consensus_dict, default_manager)
     if StRainyArgs().threads == 1:
         for i in range(len(edges)):
-            # cProfile.runctx('cluster(i, shared_flye_consensus)', globals(), locals(), '../edge_532_improved.prof')
             cluster(i, shared_flye_consensus)
     else:
         pool = multiprocessing.Pool(StRainyArgs().threads)
@@ -115,7 +114,7 @@ def phase_main(args):
         except:
             os.makedirs(dir)
 
-    consensus_dict = phase(StRainyArgs().edges, args)
+    consensus_dict = phase(StRainyArgs().edges_to_phase, args)
     if write_consensus_cache:
         with open(os.path.join(StRainyArgs().output, consensus_cache_path), "wb") as f:
             pickle.dump(consensus_dict, f)

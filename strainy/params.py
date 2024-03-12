@@ -29,6 +29,10 @@ def init_global_args_storage(args):
     _glob_args.fq = args.fastq
     _glob_args.splen = args.unitig_split_length
     _glob_args.debug = args.debug
+    _glob_args.min_unitig_length = args.min_unitig_length
+    _glob_args.min_unitig_coverage = args.min_unitig_coverage
+    _glob_args.max_unitig_coverage = args.max_unitig_coverage
+    _glob_args.edges_to_phase = args.edges_to_phase
 
 
 def StRainyArgs():

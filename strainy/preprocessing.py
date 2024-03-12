@@ -76,10 +76,7 @@ def split_long_unitigs(input_graph, output_file):
             n_new_unitigs = -(unitig.length // -split_length)
             # length of the each new unitig
             new_unitig_len = unitig.length // n_new_unitigs
-            try:
-                new_unitig_dp="dp:i:%s" % unitig.dp
-            except gfapy.error.FormatError:
-                new_unitig_dp = None
+
             # edges of the original unitig that will be removed
             to_remove = []
             for i in range(n_new_unitigs):
@@ -91,7 +88,9 @@ def split_long_unitigs(input_graph, output_file):
                     # all other unitigs get new_unitig_len number of bases
                     new_unitig_seq = unitig.sequence[i*new_unitig_len : (i+1) * new_unitig_len]
 
-                add_gfa_line(input_graph, "S", new_unitig_name, new_unitig_seq)
+                # unitig string has the form ['S', name, sequence, ..fields..]
+                optional_fields = str(unitig).split("\t")[3:]
+                add_gfa_line(input_graph, "S", new_unitig_name, new_unitig_seq, *optional_fields)
 
                 # leftmost new unitigs inherits the L edges
                 if i == 0:
@@ -139,7 +138,22 @@ def split_long_unitigs(input_graph, output_file):
     input_graph.to_file(output_file)
 
 
-def preprocess_cmd_args(args, parser):
+def get_unitigs_to_phase(input_graph):
+    """
+    Returns a list of unitig names that are fit to phase based on the user defined
+    min_unitig_coverage, max_unitig_coverage, min_unitig length parameters.
+    """
+    edges_to_phase = []
+    min_unitig_length = 1000 * StRainyArgs().min_unitig_length # convert kb to b
+    for unitig in input_graph.segments:
+        if (StRainyArgs().min_unitig_coverage < unitig.dp < StRainyArgs().max_unitig_coverage
+                and unitig.length > min_unitig_length):
+            edges_to_phase.append(unitig.name)
+
+    return edges_to_phase
+
+
+def preprocess_cmd_args(args):
     """
     Do preprocessing based on the input cmd arguments before starting phasing
     or transforming. Accessing arguments via args.XX instead of stRainyArguments.XX
@@ -168,3 +182,6 @@ def preprocess_cmd_args(args, parser):
                         os.path.join(preprocessing_dir, "long_unitigs_split.bam"),
                         args.threads)
         args.bam = os.path.join(preprocessing_dir, "long_unitigs_split.bam")
+
+    args.edges_to_phase = get_unitigs_to_phase(input_graph)
+    logger.info(f"Following unitigs will not be phased: {set(args.graph_edges) - set(args.edges_to_phase)}")

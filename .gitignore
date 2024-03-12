@@ -2,3 +2,5 @@
 *.swp
 *.pkl
 __pycache__/
+strainy/.DS_Store
+.DS_Store
