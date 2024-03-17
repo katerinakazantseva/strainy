@@ -190,8 +190,7 @@ class FlyeConsensus:
                                 num_iters=1,
                                 threads=1,
                                 platform=self._platform,
-                                read_type=self._read_type,
-                                output_progress=True)
+                                read_type=self._read_type)
 
         polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa --threads {self._num_processes}" \
                      f" {self._mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
@@ -202,7 +201,7 @@ class FlyeConsensus:
             # TODO: this should move to the top when flye pull request is merged
             if not os.path.isdir(polish_args.out_dir):
                 os.mkdir(polish_args.out_dir)
-            _run_polisher_only(polish_args)
+            _run_polisher_only(polish_args, output_progress=False)
             logger.debug("Running Flye polisher - finished!")
         except subprocess.CalledProcessError as e:
             logger.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")
