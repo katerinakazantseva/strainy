@@ -74,13 +74,11 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
 
             #else:
                 #continue
-        intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
-            set(range(data[read2]["Start"], data[read2]["End"])))
-        d=d/len(intersect)
+        intersect = max(min(data[read1]["End"], data[read2]["End"]) - max(data[read1]["Start"], data[read2]["Start"]), 0)
+        d = d / intersect
     if len(commonSNP) == 0 and only_with_common_snip == False:
-        intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
-            set(range(data[read2]["Start"], data[read2]["End"])))
-        if len(intersect) > 0:
+        intersect = max(min(data[read1]["End"], data[read2]["End"]) - max(data[read1]["Start"], data[read2]["Start"]), 0)
+        if intersect > 0:
             d = 0
         else:
             d = 1
@@ -111,15 +109,15 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     firstSNPs = set([int(key) for key in firstSNPs if key not in keys])
     secondSNPs = set([int(key) for key in secondSNPs if key not in keys])
     commonSNP = set(sorted(firstSNPs.intersection(secondSNPs)))
-    intersect = set(range(cons[first_cl]["Start"],cons[first_cl]["End"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["End"])))
+    intersect = max(min(cons[first_cl]["End"], cons[second_cl]["End"]) - max(cons[first_cl]["Start"], cons[second_cl]["Start"]), 0)
 
-    if only_with_common_snip == False and len(commonSNP) == 0 and len(intersect) > I:
+    if only_with_common_snip == False and len(commonSNP) == 0 and intersect > I:
         d = 0
     elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
     #elif only_with_common_snip == True and len(commonSNP) == 0:
         d = 1
-    elif len(intersect) > I:
-        d = (flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP))/len(intersect)
+    elif intersect > I:
+        d = (flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP))/intersect
     else:
         d = 1
     return d
