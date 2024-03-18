@@ -138,7 +138,7 @@ def split_long_unitigs(input_graph, output_file):
     input_graph.to_file(output_file)
 
 
-def get_unitigs_to_phase(input_graph):
+def get_unitigs_to_phase(input_graph, bam_file):
     """
     Returns a list of unitig names that are fit to phase based on the user defined
     min_unitig_coverage, max_unitig_coverage, min_unitig length parameters.
@@ -146,7 +146,12 @@ def get_unitigs_to_phase(input_graph):
     edges_to_phase = []
     min_unitig_length = 1000 * StRainyArgs().min_unitig_length # convert kb to b
     for unitig in input_graph.segments:
-        if (StRainyArgs().min_unitig_coverage < unitig.dp < StRainyArgs().max_unitig_coverage
+        alignment_coverage = round(float(pysam.samtools.coverage("-r",
+                                                                 unitig.name,
+                                                                 bam_file,
+                                                                 "--no-header").
+                                                                 split()[6]))
+        if (StRainyArgs().min_unitig_coverage < alignment_coverage< StRainyArgs().max_unitig_coverage
                 and unitig.length > min_unitig_length):
             edges_to_phase.append(unitig.name)
 
@@ -183,5 +188,7 @@ def preprocess_cmd_args(args):
                         args.threads)
         args.bam = os.path.join(preprocessing_dir, "long_unitigs_split.bam")
 
-    args.edges_to_phase = get_unitigs_to_phase(input_graph)
-    logger.info(f"Following unitigs will not be phased: {set(args.graph_edges) - set(args.edges_to_phase)}")
+    args.edges_to_phase = get_unitigs_to_phase(input_graph, args.bam)
+    logger.info(f"{len(set(args.graph_edges) - set(args.edges_to_phase))}/{len(args.graph_edges)} unitigs will NOT be phased.")
+    args.graph_edges = args.edges_to_phase
+    

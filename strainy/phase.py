@@ -100,19 +100,29 @@ def phase_main(args):
     #logging.info(StRainyArgs)
     logger.info("Starting phasing")
     dirs = ("%s/vcf/" % StRainyArgs().output,
-            "%s/adj_M/" % StRainyArgs().output,
             "%s/clusters/" % StRainyArgs().output,
-            "%s/graphs/" % StRainyArgs().output,
             "%s/bam/" % StRainyArgs().output,
             "%s/bam/clusters" % StRainyArgs().output,
             "%s/flye_inputs" % StRainyArgs().output,
-            "%s/flye_outputs" % StRainyArgs().output)
+            "%s/flye_outputs" % StRainyArgs().output
+    )
+    
+    debug_dirs = ("%s/graphs/" % StRainyArgs().output,
+                  "%s/adj_M/" % StRainyArgs().output
+    )
 
     for dir in dirs:
         try:
             os.stat(dir)
         except:
             os.makedirs(dir)
+
+    if StRainyArgs().debug:
+        for dir in debug_dirs:
+            try:
+                os.stat(dir)
+            except:
+                os.makedirs(dir)
 
     consensus_dict = phase(StRainyArgs().edges_to_phase, args)
     if write_consensus_cache:

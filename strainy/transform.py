@@ -27,9 +27,38 @@ from strainy.logging import set_thread_logging
 
 logger = logging.getLogger()
 
+def format_rounding(number):
+    n = abs(number)
+    if n == 0:
+        return '0.000'
+    if n < 1:
+        # Find the first non-zero digit.
+        # We want 3 digits, starting at that location.
+        s = f'{n:.99f}'
+        index = re.search('[1-9]', s).start()
+        return s[:index + 3]
+    else:
+        # We want 2 digits after decimal point.
+        return str(round(n, 2))
 
 
-def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True,insertmain=True):
+def log_unitig_info(strain_unitig, reference_unitig, n_SNPs):
+    reference_coverage = round(float(pysam.samtools.coverage("-r",
+                                                             reference_unitig,
+                                                             StRainyArgs().bam,
+                                                             "--no-header").
+                                                             split()[6]))
+    
+    logger.info(f'== == Inserted strain unitig: {strain_unitig.name} == == ')
+    logger.info(f'\t\tReference unitig: {reference_unitig}')
+    logger.info(f'\t\tLength: {strain_unitig.length} bp')
+    logger.info(f'\t\tCoverage: {strain_unitig.dp}')
+    logger.info(f'\t\tAbundance Ratio: {round(100 * strain_unitig.dp // reference_coverage)}%')
+    logger.info(f'\t\t#SNP: {n_SNPs}')
+    logger.info(f'\t\tSNP density: {format_rounding(n_SNPs / strain_unitig.length)}\n\n')
+
+
+def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True, insertmain=True):
     """
     The function creates unitiges in the gfa graph
     """
@@ -51,7 +80,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
     new_line = g.try_get_segment("%s_%s" % (edge, clN))
     new_line.name = str(edge) + "_" + str(clN)
     new_line.sid = str(edge) + "_" + str(clN)
-    new_line.dp = cons[clN]["Cov"]  # TODO: what to do with coverage?
+    new_line.dp = round(cons[clN]["Cov"])  # TODO: what to do with coverage?
     #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
     if change_seq==True:
         if len(seq) == 0:
@@ -61,10 +90,11 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
     else:
         new_line.sequence = g.try_get_segment("%s" % edge).sequence
 
-    logger.debug("unitig added  %s_%s" % (edge, clN))
+    logger.debug("Unitig created  %s_%s" % (edge, clN))
+    log_unitig_info(new_line, edge, len(cons[clN]) - 7)
 
 
-def build_paths_graph(edge, flye_consensus,SNP_pos, cl, cons,full_clusters, data,ln, full_paths_roots, full_paths_leafs, cluster_distances):
+def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
     """
     Create an "overlap" graph for clusters within a unitig, based on flye distance
     """
@@ -552,8 +582,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             cluster_distances = postprocess.build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
             cluster_distances = matrix.change_w(cluster_distances, 1)
 
-            G = build_paths_graph(edge, flye_consensus, SNP_pos, cl, cons, full_clusters,
-                                  data, ln, full_paths_roots, full_paths_leafs, cluster_distances.copy())
+            G = build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
             #full_cl[edge] = full_clusters
             if StRainyArgs().debug:

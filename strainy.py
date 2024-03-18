@@ -70,7 +70,7 @@ def main():
     parser.add_argument("--min-unitig-length",
                         help="The length (in kb) which the unitigs that are shorter will not be phased",
                         required=False,
-                        type=int,
+                        type=float,
                         default=1)
     parser.add_argument("--min-unitig-coverage",
                         help="The minimum coverage threshold for phasing unitigs, unitigs with less coverage will not be phased",
