@@ -27,7 +27,7 @@ class DistanceWrapper():
 
 
 def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):
-    m = pd.DataFrame(-1, index=cl['ReadName'], columns=cl['ReadName'])
+    m = pd.DataFrame(-1.0, index=cl['ReadName'], columns=cl['ReadName'])
     logger.debug("Building adjacency matrix with " + str(m.shape[1]) + " reads")
     if only_with_common_snip==False:
         dw = DistanceWrapper(cl, data, SNP_pos, R, only_with_common_snip)
@@ -101,7 +101,7 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
         else:
             d = 1
 
-    return d
+    return float(d)
 
 
 def remove_edges(m, R):
@@ -139,4 +139,4 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
         d = (flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP))/intersect
     else:
         d = 1
-    return d
+    return float(d)
