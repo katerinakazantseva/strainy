@@ -189,6 +189,12 @@ def preprocess_cmd_args(args):
         args.bam = os.path.join(preprocessing_dir, "long_unitigs_split.bam")
 
     args.edges_to_phase = get_unitigs_to_phase(input_graph, args.bam)
-    logger.info(f"{len(set(args.graph_edges) - set(args.edges_to_phase))}/{len(args.graph_edges)} unitigs will NOT be phased.")
+    filtered_out = set(args.graph_edges) - set(args.edges_to_phase)
+    logger.info(f"{len(filtered_out)}/{len(args.graph_edges)} unitigs will NOT be phased.")
     args.graph_edges = args.edges_to_phase
-    
+
+    # log filtered out files
+    with open(f'{args.output}/filtered_out_unitigs.txt', 'w+') as f:
+        for i in filtered_out:
+            f.write(f'{i}\n')
+
