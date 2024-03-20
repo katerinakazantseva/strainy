@@ -69,29 +69,27 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
         return 0
 
     if only_with_common_snip:
-        r1_start = data[read1]["Start"]
-        r1_end = data[read1]["End"]
-        r2_start = data[read2]["Start"]
-        r2_end = data[read2]["End"]
-
-        if not (r2_start < r1_start + I < r2_end or r2_start < max(r1_end - I, 1) < r2_end):
-            return d
-    
-    for snp in commonSNP:
-        try:
-            b1 = data[read1][snp]
-            b2 = data[read2][snp]
-            if b1 != b2 and len(b1) != 0 and len(b2) != 0:
-                if d == -1:
-                    d = 0
-                d = d + 1
-            elif b1 == b2:
-                if d == -1:
-                    d = 0
-        except:
-            continue
-
         intersect = max(min(data[read1]["End"], data[read2]["End"]) - max(data[read1]["Start"], data[read2]["Start"]), 0)
+        if intersect < I:
+            return -1.0
+
+        if len(commonSNP) == 0:
+            return -1.0
+
+        for snp in commonSNP:
+            try:
+                b1 = data[read1][snp]
+                b2 = data[read2][snp]
+                if b1 != b2 and len(b1) != 0 and len(b2) != 0:
+                    if d == -1:
+                        d = 0
+                    d = d + 1
+                elif b1 == b2:
+                    if d == -1:
+                        d = 0
+            except:
+                continue
+
         d = d / intersect
 
     if len(commonSNP) == 0 and only_with_common_snip == False:
