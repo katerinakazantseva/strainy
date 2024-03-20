@@ -580,7 +580,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
                     full_paths_leafs.append(cluster)
 
             cluster_distances = postprocess.build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
-            cluster_distances = matrix.change_w(cluster_distances, 1)
+            cluster_distances = matrix.change_w(cluster_distances,0)
 
             G = build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 

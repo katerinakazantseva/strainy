@@ -6,6 +6,7 @@ from scipy.spatial.distance import cdist
 from strainy.params import *
 
 logger = logging.getLogger()
+pd.options.mode.chained_assignment = None
 
 class DistanceWrapper():
     # Wrapper for calling cdist with custom distance function
@@ -26,7 +27,7 @@ class DistanceWrapper():
 
 
 def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):
-    m = pd.DataFrame(-1, index=cl['ReadName'], columns=cl['ReadName'])
+    m = pd.DataFrame(-1.0, index=cl['ReadName'], columns=cl['ReadName'])
     logger.debug("Building adjacency matrix with " + str(m.shape[1]) + " reads")
     if only_with_common_snip==False:
         dw = DistanceWrapper(cl, data, SNP_pos, R, only_with_common_snip)
@@ -68,56 +69,52 @@ def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
         return 0
 
     if only_with_common_snip:
-        r1_start = data[read1]["Start"]
-        r1_end = data[read1]["End"]
-        r2_start = data[read2]["Start"]
-        r2_end = data[read2]["End"]
+        intersect = max(min(data[read1]["End"], data[read2]["End"]) - max(data[read1]["Start"], data[read2]["Start"]), 0)
+        if intersect < I:
+            return -1.0
 
-        if not (r2_start < r1_start + I < r2_end or r2_start < max(r1_end - I, 1) < r2_end):
-            return d
-    
-    for snp in commonSNP:
-        try:
-            b1 = data[read1][snp]
-            b2 = data[read2][snp]
-            if b1 != b2 and len(b1) != 0 and len(b2) != 0:
-                if d == -1:
-                    d = 0
-                d = d + 1
-            elif b1 == b2:
-                if d == -1:
-                    d = 0
-        except:
-            continue
+        if len(commonSNP) == 0:
+            return -1.0
 
-        if d >= R:
-            d = R
-            break
-        else:
-            continue
+        for snp in commonSNP:
+            try:
+                b1 = data[read1][snp]
+                b2 = data[read2][snp]
+                if b1 != b2 and len(b1) != 0 and len(b2) != 0:
+                    if d == -1:
+                        d = 0
+                    d = d + 1
+                elif b1 == b2:
+                    if d == -1:
+                        d = 0
+            except:
+                continue
+
+        d = d / intersect
 
     if len(commonSNP) == 0 and only_with_common_snip == False:
-        intersect = set(range(data[read1]["Start"], data[read1]["End"])).intersection(
-            set(range(data[read2]["Start"], data[read2]["End"])))
-        if len(intersect) > 0:
+        intersect = max(min(data[read1]["End"], data[read2]["End"]) - max(data[read1]["Start"], data[read2]["Start"]), 0)
+        if intersect > 0:
             d = 0
         else:
             d = 1
 
-    return d
+    return float(d)
 
 
 def remove_edges(m, R):
     m_transformed = m
-    m_transformed[m_transformed >= R] = -1
+    m_transformed[m_transformed > R] = -1
     return m_transformed
 
 
 def change_w(m, R):
     m_transformed = m
-    m_transformed[m_transformed == 0] = 0.001
+    m_transformed[m_transformed == 0] = -10
     m_transformed[m_transformed == -1] = 0
-    m_transformed[m_transformed >= R] = 0
+    m_transformed[m_transformed > R] = 0
+    m_transformed[m_transformed == -10] = 0.000001
+
     return m_transformed
 
 
@@ -129,14 +126,15 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     firstSNPs = set([int(key) for key in firstSNPs if key not in keys])
     secondSNPs = set([int(key) for key in secondSNPs if key not in keys])
     commonSNP = set(sorted(firstSNPs.intersection(secondSNPs)))
-    intersect = set(range(cons[first_cl]["Start"],cons[first_cl]["End"])).intersection(set(range(cons[second_cl]["Start"],cons[second_cl]["End"])))
+    intersect = max(min(cons[first_cl]["End"], cons[second_cl]["End"]) - max(cons[first_cl]["Start"], cons[second_cl]["Start"]), 0)
 
-    if only_with_common_snip == False and len(commonSNP) == 0 and len(intersect) > I:
+    if only_with_common_snip == False and len(commonSNP) == 0 and intersect > I:
         d = 0
     elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
+    #elif only_with_common_snip == True and len(commonSNP) == 0:
         d = 1
-    elif len(intersect) > I:
-        d = flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP)
+    elif intersect > I:
+        d = (flye_consensus.cluster_distance_via_alignment(first_cl, second_cl, cl, edge, commonSNP))/intersect
     else:
         d = 1
-    return d
+    return float(d)

@@ -8,13 +8,16 @@ from Bio import SeqIO
 from strainy.params import *
 
 
+import logging
+logger = logging.getLogger()
+
 def read_snp(vcf_file, edge, bam, AF, cluster=None):
     SNP_pos = []
 
     if vcf_file == None:
         if cluster == None:
-            snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD 2>/dev/null ' +
-                     '| bcftools query -f  "%CHROM %POS [ %AD %DP]\n" >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs().output, edge)
+            snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD --annotate FORMAT/ADR --annotate FORMAT/ADF   2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP %ADR %ADF  %REF %ALT]\n"  >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs().output, edge)
+
             subprocess.check_output(snpos, shell=True, capture_output=False)
             with open("%s/vcf/vcf_%s.txt" % (StRainyArgs().output, edge)) as f:
                 lines = f.readlines()
@@ -24,7 +27,19 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                         pos_cov = int(line.split()[3])
                         min_snp_freq = max(unseparated_cluster_min_reads, AF * pos_cov)
                         if snp_freq >= min_snp_freq:
-                            SNP_pos.append(line.split()[1])
+                        
+                            try:
+                                dpF=sum([int(i) for i in list(line.split()[4].split(',')) if int(i)>1])
+                                altF=int(line.split()[4].split(',')[1])
+                                var_freqF=(1-altF/dpF)
+                                dpR = sum([int(i) for i in list(line.split()[5].split(',')) if int(i)>1])
+                                altR=int(line.split()[5].split(',')[1])
+                                var_freqR=(1-altR/dpR)
+                            except ZeroDivisionError:
+                                continue
+                            if var_freqF>=(AF)*0.6 and var_freqR >= (AF) * 0.6:
+                                SNP_pos.append(line.split()[1])
+
 
                     except(IndexError):
                         pass
@@ -220,6 +235,8 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     val = {}
     clSNP = []
     mpileup_snps = []
+    mis_count=0
+    Rcl=StRainyArgs().Rcl
     for pos in SNP_pos:
         npos = []
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
@@ -245,11 +262,13 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
             #2nd most frequent, indicating a variant
             if int(Counter(npos).most_common()[1][1]) >= alt_snp_freq:
                 #print(cluster, pos, Counter(npos).most_common())
-                strange = 1
+                #strange = 1
+                mis_count=mis_count+1
                 clSNP.append(pos)
 
         except IndexError:
             continue
+    
 
     clSNP2 = mpileup_snps
     val["clSNP"] = clSNP
@@ -287,6 +306,10 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
 
     except (ValueError, IndexError):
         pass
+
+
+    if mis_count/(clStop-clStart)>Rcl:
+        strange=1
 
     val["Strange"] = int(strange == 1)
     val["Strange2"] = int(strange2 == 1)
