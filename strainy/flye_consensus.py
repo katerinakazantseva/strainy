@@ -89,6 +89,7 @@ class FlyeConsensus:
     def get_consensus_dict(self):
         return self._consensus_dict.copy()
 
+
     def print_cache_statistics(self):
         logger.info(f"Total number of key hits and misses for consensus computation:")
         logger.info(f" H:{self._key_hit.value}, M:{self._key_miss.value}")
@@ -135,6 +136,7 @@ class FlyeConsensus:
 
         return cluster_start, cluster_end, read_limits
     
+
     def _clip_consensus_seq(self, sequence, read_limits, bed_contents, curr_start, coverage_limit):
         start_pos = sorted([start for (start, _) in read_limits])
         end_pos = sorted([end for (_, end) in read_limits], reverse=True)
@@ -224,7 +226,7 @@ class FlyeConsensus:
                     'start': cluster_start,
                     'end': cluster_end
                 }
-            return self._consensus_dict[consensus_dict_key]
+                return self._consensus_dict[consensus_dict_key]
 
         try:
             # read back the output of the Flye polisher
@@ -265,7 +267,8 @@ class FlyeConsensus:
                 'bed_content': bed_content
 
             }
-        return self._consensus_dict[consensus_dict_key]
+            return self._consensus_dict[consensus_dict_key]
+
 
     def _edlib_align(self, seq_a, seq_b):
         band_size = 32
@@ -283,6 +286,7 @@ class FlyeConsensus:
         #note that target and query are swapped because the definition is edlib.align(query, target)
         return nice["query_aligned"], nice["target_aligned"], nice["matched_aligned"]
 
+
     def _parse_bed_coverage(self, filename):
         contents = []
         with gzip.open(filename, 'r') as f:
@@ -292,6 +296,7 @@ class FlyeConsensus:
                 except ValueError:
                     pass
         return contents
+
 
     def _custom_scoring_function(self, aligned_first, alignment_string, aligned_second,
                                 first_to_ref, reference_to_first,
@@ -400,11 +405,9 @@ class FlyeConsensus:
         # TODO: this function may return a position that corresponds to a gap
         # in reference. Is this valid?
 
-
         # TODO: count mismatches too?
         # Find how many bases are there up to and including the mismatch_index
         true_pos_cons_to_cons = mismatch_index - cons_to_cons[:mismatch_index].count('-') + first_cl_start + 1
-
         
         # Find the index of base from cons_to_cons in cons_to_ref
         true_pos_cons_to_ref = -1
@@ -430,7 +433,7 @@ class FlyeConsensus:
         intersecting parts of the consensus'.
         first_cl: id (int)
         second_cl: id (int)
-        cl: dataframe with columns read_name and cluster(id)
+        cl: dataframe with columns 'read_name' and 'cluster' (id)
         edge: edge name (str)
         """
         self._call_count.value += 1
@@ -462,21 +465,27 @@ class FlyeConsensus:
         
         # check if alignment to reference is already computed
         cache_key = f"{edge}-{first_cl}-{first_cl_dict['start']}-{first_cl_dict['end']}"
-        if cache_key in self._alignment_cache:
+        
+        # Check if the result is already computed 
+        already_computed = False
+        with self._lock:
+            if cache_key in self._alignment_cache:
+                already_computed = True
+
+        if already_computed:
             self._alignment_cache_hit.value += 1
-            first_cl_to_ref, reference_aligned =  self._alignment_cache[cache_key]
-        # cache the reference alignment for re-use
+            with self._lock:
+                first_cl_to_ref, reference_aligned =  self._alignment_cache[cache_key]
         else:
             self._alignment_cache_miss.value += 1
             first_cl_to_ref, reference_aligned, _ = self._edlib_align(first_cl_dict['consensus'], reference_seq[first_cl_dict['start']:first_cl_dict['end']])
-            self._alignment_cache[cache_key] = [first_cl_to_ref, reference_aligned]
+            # cache the reference alignment for re-use
+            with self._lock:
+                self._alignment_cache[cache_key] = [first_cl_to_ref, reference_aligned]
 
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, first_cl_to_ref, reference_aligned, intersection_start,
                                                     first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'])
-                
-        if debug:
-            self._log_alignment_info(aligned_first, edlib_aln, aligned_second, first_cl_dict, second_cl_dict, edlib_score,
-                                     intersection_start, intersection_end)
+        
         # score is not normalized!
         return edlib_score
 

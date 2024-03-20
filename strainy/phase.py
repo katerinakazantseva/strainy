@@ -45,7 +45,6 @@ def phase(edges, args):
     shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, empty_consensus_dict, default_manager)
     if StRainyArgs().threads == 1:
         for i in range(len(edges)):
-            # cProfile.runctx('cluster(i, shared_flye_consensus)', globals(), locals(), '../edge_532_improved.prof')
             cluster(i, shared_flye_consensus)
     else:
         pool = multiprocessing.Pool(StRainyArgs().threads)
@@ -101,13 +100,16 @@ def phase_main(args):
     #logging.info(StRainyArgs)
     logger.info("Starting phasing")
     dirs = ("%s/vcf/" % StRainyArgs().output,
-            "%s/adj_M/" % StRainyArgs().output,
             "%s/clusters/" % StRainyArgs().output,
-            "%s/graphs/" % StRainyArgs().output,
             "%s/bam/" % StRainyArgs().output,
             "%s/bam/clusters" % StRainyArgs().output,
             "%s/flye_inputs" % StRainyArgs().output,
-            "%s/flye_outputs" % StRainyArgs().output)
+            "%s/flye_outputs" % StRainyArgs().output
+    )
+    
+    debug_dirs = ("%s/graphs/" % StRainyArgs().output,
+                  "%s/adj_M/" % StRainyArgs().output
+    )
 
     for dir in dirs:
         try:
@@ -115,7 +117,14 @@ def phase_main(args):
         except:
             os.makedirs(dir)
 
-    consensus_dict = phase(StRainyArgs().edges, args)
+    if StRainyArgs().debug:
+        for dir in debug_dirs:
+            try:
+                os.stat(dir)
+            except:
+                os.makedirs(dir)
+
+    consensus_dict = phase(StRainyArgs().edges_to_phase, args)
     if write_consensus_cache:
         with open(os.path.join(StRainyArgs().output, consensus_cache_path), "wb") as f:
             pickle.dump(consensus_dict, f)

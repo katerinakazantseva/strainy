@@ -67,12 +67,31 @@ def main():
                         type=int,
                         default=50)
     parser.add_argument("--only_split",help="Do not run stRainy, only split long gfa unitigs", default='False', required=False)
+
     parser.add_argument("-Rcl","--Rcl",help="cluster difergence", type=float, required=True)  
+
+    parser.add_argument("--min-unitig-length",
+                        help="The length (in kb) which the unitigs that are shorter will not be phased",
+                        required=False,
+                        type=float,
+                        default=1)
+    parser.add_argument("--min-unitig-coverage",
+                        help="The minimum coverage threshold for phasing unitigs, unitigs with less coverage will not be phased",
+                        required=False,
+                        type=int,
+                        default=10)
+    parser.add_argument("--max-unitig-coverage",
+                        help="The maximum coverage threshold for phasing unitigs, unitigs with higher coverage will not be phased",
+                        required=False,
+                        type=int,
+                        default=500)
+
     args = parser.parse_args()
     args.strainy_root = strainy_root
     #setting up global arguments storage
     input_graph = gfapy.Gfa.from_file(args.gfa)
     args.graph_edges = input_graph.segment_names
+    args.edges_to_phase = []
     init_global_args_storage(args)
     BIN_TOOLS = ["samtools", "bcftools", "minimap2", StRainyArgs().flye]
     for tool in BIN_TOOLS:
@@ -84,7 +103,7 @@ def main():
         os.mkdir(StRainyArgs().output)
     set_thread_logging(StRainyArgs().output, "root", None)
 
-    preprocess_cmd_args(args, parser)
+    preprocess_cmd_args(args)
 
     if StRainyArgs().debug:
         print(f'Using processor(s): {get_processor_name()}')
