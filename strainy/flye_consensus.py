@@ -19,18 +19,7 @@ from strainy.params import *
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
 
-
-BIN_DIR = "bin"
-# TODO: flye root should be changed to StRainyArgs().flye 
-FLYE_ROOT = ''
-if len(FLYE_ROOT) == 0:
-    raise Exception('Please enter the path to the modified Flye manually')
-bin_absolute = os.path.join(FLYE_ROOT, BIN_DIR)
-sys.path.insert(0, FLYE_ROOT)
-os.environ["PATH"] = bin_absolute + os.pathsep + os.environ["PATH"]
-
 from flye.main import _run_polisher_only
-
 
 def calculate_coverage(position, bed_file_content):
     """
@@ -208,8 +197,7 @@ class FlyeConsensus:
                                 num_iters=1,
                                 threads=1,
                                 platform=self._platform,
-                                read_type=self._read_type,
-                                output_progress=True)
+                                read_type=self._read_type)
 
         # polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa --threads {self._num_processes}" \
         #              f" {self._mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
@@ -220,7 +208,7 @@ class FlyeConsensus:
             # TODO: this should move to the top when flye pull request is merged
             if not os.path.isdir(polish_args.out_dir):
                 os.mkdir(polish_args.out_dir)
-            _run_polisher_only(polish_args)
+            _run_polisher_only(polish_args, output_progress=False)
             logger.debug("Running Flye polisher - finished!")
         except Exception as e:
             logger.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")

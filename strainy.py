@@ -12,6 +12,19 @@ import shutil
 
 import gfapy
 
+
+#Setting executable paths and additional import dirs
+strainy_root = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, strainy_root)
+
+flye_root = os.path.join(strainy_root, "submodules", "Flye")
+sys.path.insert(0, flye_root)
+
+bin_absolute = os.path.join(flye_root, "bin")   #for flye binaries
+os.environ["PATH"] = bin_absolute + os.pathsep + os.environ["PATH"]
+###
+
+
 from strainy.phase import phase_main
 from strainy.transform import transform_main
 from strainy.params import StRainyArgs, init_global_args_storage
@@ -38,10 +51,6 @@ def get_processor_name():
 
 
 def main():
-    #Setting executable paths
-    strainy_root = os.path.dirname(os.path.realpath(__file__))
-    sys.path.insert(0, strainy_root)
-
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 
     requiredNamed = parser.add_argument_group('Required named arguments')
@@ -68,6 +77,7 @@ def main():
                         default=50)
     parser.add_argument("--only_split",help="Do not run stRainy, only split long gfa unitigs", default='False', required=False)
     parser.add_argument("-Rcl","--Rcl",help="cluster divergence", type=float, required=True)  
+    parser.add_argument("-AF","--AF",help="set allele frequency for internal caller only (pileup)", type=float,default=0.2, required=False)
     parser.add_argument("--min-unitig-length",
                         help="The length (in kb) which the unitigs that are shorter will not be phased",
                         required=False,
