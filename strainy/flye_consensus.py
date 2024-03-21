@@ -1,5 +1,5 @@
 import gzip
-import multiprocessing
+import traceback
 import subprocess
 import os
 import shutil
@@ -190,11 +190,16 @@ class FlyeConsensus:
         )
         SeqIO.write([record], f"{fname}.fa", "fasta")
 
-        # sort the bam file
-        pysam.sort("-o", f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam",
-                   f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
-        # index the bam file
-        pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
+       
+        try:
+            # sort the bam file
+            pysam.sort("-o", f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam",
+                    f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
+            # index the bam file
+            pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
+        except pysam.utils.SamtoolsError  as e:
+            logger.error(f'Error while sorting {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam')
+            logger.error(traceback.format_exc())
 
         #  Polisher arguments for to call _run_polisher_only(polish_args)
         polish_args = Namespace(polish_target=f"{fname}.fa",
@@ -206,9 +211,9 @@ class FlyeConsensus:
                                 read_type=self._read_type,
                                 output_progress=True)
 
-        polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa --threads {self._num_processes}" \
-                     f" {self._mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
-                     f"-o {StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
+        # polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa --threads {self._num_processes}" \
+        #              f" {self._mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
+        #              f"-o {StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             logger.debug("Running Flye polisher")
             # subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
@@ -217,7 +222,7 @@ class FlyeConsensus:
                 os.mkdir(polish_args.out_dir)
             _run_polisher_only(polish_args)
             logger.debug("Running Flye polisher - finished!")
-        except subprocess.CalledProcessError as e:
+        except Exception as e:
             logger.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")
             logger.error(e)
             with self._lock:
