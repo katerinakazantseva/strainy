@@ -168,9 +168,8 @@ def preprocess_cmd_args(args):
     preprocessing_dir = os.path.join(args.output, "preprocessing_data")
     if not os.path.isdir(preprocessing_dir):
         os.mkdir(preprocessing_dir)
-
+    input_graph = gfapy.Gfa.from_file(args.gfa)
     if args.unitig_split_length != 0:
-        input_graph = gfapy.Gfa.from_file(args.gfa)
         split_long_unitigs(input_graph,
                            os.path.join(preprocessing_dir, "long_unitigs_split.gfa"))
         args.gfa = os.path.join(preprocessing_dir, "long_unitigs_split.gfa")
@@ -187,7 +186,6 @@ def preprocess_cmd_args(args):
                         os.path.join(preprocessing_dir, "long_unitigs_split.bam"),
                         args.threads)
         args.bam = os.path.join(preprocessing_dir, "long_unitigs_split.bam")
-
     args.edges_to_phase = get_unitigs_to_phase(input_graph, args.bam)
     filtered_out = set(args.graph_edges) - set(args.edges_to_phase)
     logger.info(f"{len(filtered_out)}/{len(args.graph_edges)} unitigs will NOT be phased.")

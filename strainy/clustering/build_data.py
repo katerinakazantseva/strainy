@@ -46,8 +46,11 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
         else:
             raise Exception("Shouldn't happen")
     else:
-        vcf = open(vcf_file, "rt")
-        for line in vcf:
+        vcf_file_f=('{}/vcf/vcf_filtered.vcf').format(StRainyArgs().output)
+        filter_pass=('bcftools view -f PASS {} > {}').format(vcf_file,vcf_file_f)
+        subprocess.check_output(filter_pass, shell=True, capture_output=False)
+        vcf_f = open(vcf_file_f, "rt")
+        for line in vcf_f:
             if line.split()[0] == edge:
                 SNP_pos.append(line.split()[1])
     return SNP_pos
@@ -237,6 +240,7 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     mpileup_snps = []
     mis_count=0
     Rcl=StRainyArgs().Rcl
+    AF=StRainyArgs().AF
     for pos in SNP_pos:
         npos = []
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:

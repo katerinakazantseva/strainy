@@ -30,6 +30,7 @@ def init_global_args_storage(args):
     _glob_args.splen = args.unitig_split_length
     _glob_args.debug = args.debug
     _glob_args.Rcl = args.Rcl
+    _glob_args.AF = args.AF
     _glob_args.min_unitig_length = args.min_unitig_length
     _glob_args.min_unitig_coverage = args.min_unitig_coverage
     _glob_args.max_unitig_coverage = args.max_unitig_coverage
@@ -89,5 +90,4 @@ de_max = {"hifi": 0.05, "nano": 0.10}
 min_consensus_cov = {"hifi": 3, "nano": 5}
 
 # SNP allele frequency
-AF = 0.1
 split_allele_freq = 0.3
