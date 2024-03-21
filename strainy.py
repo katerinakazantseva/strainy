@@ -76,8 +76,7 @@ def main():
                         type=int,
                         default=50)
     parser.add_argument("--only_split",help="Do not run stRainy, only split long gfa unitigs", default='False', required=False)
-
-    parser.add_argument("-Rcl","--Rcl",help="cluster difergence", type=float,default=0, required=False)  
+    parser.add_argument("-Rcl","--Rcl",help="cluster divergence", type=float, required=True)  
     parser.add_argument("-AF","--AF",help="set allele frequency for internal caller only (pileup)", type=float,default=0.2, required=False)
     parser.add_argument("--min-unitig-length",
                         help="The length (in kb) which the unitigs that are shorter will not be phased",

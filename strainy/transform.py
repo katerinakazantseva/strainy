@@ -882,7 +882,8 @@ def transform_main(args):
     except FileNotFoundError:
         consensus_dict = {}
 
-    flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, multiprocessing.Manager())
+    default_manager = multiprocessing.Manager()
+    flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, default_manager)
 
     logger.info("### Create unitigs")
 
