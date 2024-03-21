@@ -46,7 +46,7 @@ def write_bam(edge, I, AF):
 
 def color(edge):
     try:
-        write_bam(edge, I, AF)
+        write_bam(edge, I, StRainyArgs().AF)
     except (FileNotFoundError):
         pass
 

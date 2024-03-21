@@ -521,13 +521,13 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
 
     cl = None
     try:
-        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na = False)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, StRainyArgs().AF), keep_default_na = False)
     except(FileNotFoundError, IndexError):
         logger.debug("%s: No clusters" % edge)
         clusters = []
 
     if cl is not None:
-        SNP_pos = build_data.read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, AF)
+        SNP_pos = build_data.read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, StRainyArgs().AF)
         data = build_data.read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality,min_base_quality,min_al_len, de_max[StRainyArgs().mode])
         bam_cache[edge] = data
 
@@ -683,7 +683,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
     clusters = link_clusters[edge]
 
     try:
-        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF), keep_default_na = False)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, StRainyArgs().AF), keep_default_na = False)
     except(FileNotFoundError):
         pass
     link_unitigs = []
@@ -738,7 +738,7 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
             #print(f"\tPROCESSING outgoing segment {next_seg}")
             fr_or, to_or = orient[next_seg]
             try:
-                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, next_seg, I, AF), keep_default_na = False)
+                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, next_seg, I, StRainyArgs().AF), keep_default_na = False)
             except(FileNotFoundError):
                 gfa_ops.add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 555)
                 continue
