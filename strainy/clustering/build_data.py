@@ -312,8 +312,11 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
         pass
 
 
-    if mis_count/(clStop-clStart)>Rcl:
-        strange=1
+    try:
+        if mis_count / (clStop - clStart) > Rcl:
+            strange = 1
+    except ZeroDivisionError:
+        strange = 1
 
     val["Strange"] = int(strange == 1)
     val["Strange2"] = int(strange2 == 1)
