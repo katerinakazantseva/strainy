@@ -83,8 +83,8 @@ def clear_links(edge,g):
                 for i in siblings:
                     if len(to_neighbours(g,i[0],i[1])) > 1:
                         changed = remove_link(i[0],i[1], to_n[0][0],to_n[0][1],g)
-    except( TypeError):
-        pass
+    except TypeError as e:
+        logger.error(f'Caught {e} for {g.try_get_segment(to_n[0][0])}')
     try:
         from_n = from_neighbours(g, edge, "+")
         if len(from_n) == 1 and g.try_get_segment(from_n[0][0]).dp / edge_cov < cov_ratio:
@@ -93,8 +93,8 @@ def clear_links(edge,g):
                 for i in siblings:
                     if len(from_neighbours(g, i[0], i[1])) > 1:
                         changed = remove_link(from_n[0][0], from_n[0][1],i[0], i[1],g)
-    except( TypeError): 
-        pass
+    except TypeError as e: 
+        logger.error(f'Caught {e} for {g.try_get_segment(to_n[0][0])}')
     return changed
 
 
