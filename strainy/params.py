@@ -24,13 +24,15 @@ def init_global_args_storage(args):
     #_glob_args.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
     _glob_args.log_phase = os.path.join(args.output, "log_phase")
     _glob_args.log_transform = os.path.join(args.output, "log_transform")
+    _glob_args.unitig_info_table_path = os.path.join(args.output, "unitig_info_table.csv")
+    _glob_args.unitig_info_table = None
     _glob_args.edges = args.graph_edges
     _glob_args.fa = args.fasta
     _glob_args.fq = args.fastq
     _glob_args.splen = args.unitig_split_length
     _glob_args.debug = args.debug
-    _glob_args.Rcl = args.Rcl
-    _glob_args.AF = args.AF
+    _glob_args.Rcl = args.cluster_divergence
+    _glob_args.AF = args.allele_frequency
     _glob_args.min_unitig_length = args.min_unitig_length
     _glob_args.min_unitig_coverage = args.min_unitig_coverage
     _glob_args.max_unitig_coverage = args.max_unitig_coverage

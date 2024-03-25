@@ -42,20 +42,46 @@ def format_rounding(number):
         return str(round(n, 2))
 
 
-def log_unitig_info(strain_unitig, reference_unitig, n_SNPs):
+def log_unitig_info(strain_unitig, reference_unitig, n_SNPs, start, end):
     reference_coverage = round(float(pysam.samtools.coverage("-r",
                                                              reference_unitig,
                                                              StRainyArgs().bam,
                                                              "--no-header").
                                                              split()[6]))
-    
-    logger.info(f'== == Inserted strain unitig: {strain_unitig.name} == == ')
-    logger.info(f'\t\tReference unitig: {reference_unitig}')
-    logger.info(f'\t\tLength: {strain_unitig.length} bp')
-    logger.info(f'\t\tCoverage: {strain_unitig.dp}')
-    logger.info(f'\t\tAbundance Ratio: {round(100 * strain_unitig.dp // reference_coverage)}%')
-    logger.info(f'\t\t#SNP: {n_SNPs}')
-    logger.info(f'\t\tSNP density: {format_rounding(n_SNPs / strain_unitig.length)}\n\n')
+    # Create df columns for the first time
+    if not isinstance(StRainyArgs().unitig_info_table, pd.DataFrame):
+        StRainyArgs().unitig_info_table = pd.DataFrame(columns=['Strain unitig',
+                                                                'Reference unitig',
+                                                                'Length',
+                                                                'Coverage',
+                                                                'Abundance Ratio',
+                                                                '#SNP',
+                                                                'SNP density',
+                                                                'Start positioin',
+                                                                'End position'])
+                                
+    # Log the information to std output
+    logger.info(f'== == Inserted Strain unitig: {strain_unitig.name} == == ')
+    logger.info(f'\t\t Reference unitig: {reference_unitig}')
+    logger.info(f'\t\t Length: {strain_unitig.length} bp')
+    logger.info(f'\t\t Coverage: {strain_unitig.dp}')
+    logger.info(f'\t\t Abundance Ratio: {round(100 * strain_unitig.dp // reference_coverage)}%')
+    logger.info(f'\t\t #SNP: {n_SNPs}')
+    logger.info(f'\t\t SNP density: {format_rounding(n_SNPs / strain_unitig.length)}')
+    logger.info(f'\t\t Start position: {start}')
+    logger.info(f'\t\t End position: {end}\n\n')
+
+    StRainyArgs().unitig_info_table.loc[len(StRainyArgs().unitig_info_table)] = [
+        strain_unitig.name,
+        reference_unitig,
+        strain_unitig.length,
+        strain_unitig.dp,
+        round(100 * strain_unitig.dp // reference_coverage),
+        n_SNPs,
+        format_rounding(n_SNPs / strain_unitig.length),
+        start,
+        end
+        ]
 
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True, insertmain=True):
@@ -91,7 +117,12 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
         new_line.sequence = g.try_get_segment("%s" % edge).sequence
 
     logger.debug("Unitig created  %s_%s" % (edge, clN))
-    log_unitig_info(new_line, edge, len(cons[clN]) - 7)
+    log_unitig_info(new_line,
+                    edge,
+                    len(cons[clN]) - 7,
+                    cons[clN]['Start'],
+                    cons[clN]['End']
+                    )
 
 
 def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
@@ -241,7 +272,7 @@ def add_path_links(graph, edge, paths, G):
             gfa_ops.add_link(graph, f"{edge}_{path[i]}", "+", f"{edge}_{path[i + 1]}", "+", 1)
 
 
-def add_path_edges(edge,g,cl, data, SNP_pos, ln, full_paths, G,paths_roots,paths_leafs,full_clusters, cons, flye_consensus):
+def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, full_clusters, cons, flye_consensus):
     """
     Add gfa nodes (unitigs) forming "full path", calculating cluster boundaries
     """
@@ -495,12 +526,12 @@ def parallelize_gcu(graph_edges, flye_consensus, graph, args):
                     outputs[i][k] = v
     
     # operations on the graph performed after the parallel graph_create_unitig
-    # due to not being able to pass the graph object to threads
+    # this is due to not being able to pass the graph object to threads
     for op in graph_ops:
         if op[0] == 'add_child_edge':
             add_child_edge(op[1], op[2], graph, op[3], op[4], op[5], op[6], flye_consensus, op[7], op[8])
         elif op[0] == 'add_path_edges':
-            add_path_edges(op[1], graph, op[2], op[3], op[4], op[5], op[6], op[7], op[8], op[9], op[10], op[11], flye_consensus)
+            add_path_edges(op[1], graph, op[2], op[5], op[6], op[7], op[8], op[9], op[10], op[11], flye_consensus)
         elif op[0] == 'add_path_links':
             add_path_links(graph, op[1], op[2], op[3])
         
@@ -888,6 +919,9 @@ def transform_main(args):
     logger.info("### Create unitigs")
 
     bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters, initial_graph = parallelize_gcu(StRainyArgs().edges, flye_consensus, initial_graph, args)
+
+    # Save created unitigs' info as a csv
+    StRainyArgs().unitig_info_table.to_csv(StRainyArgs().unitig_info_table_path)
 
     logger.info("### Link unitigs")
     for edge in StRainyArgs().edges:

@@ -58,8 +58,8 @@ def main():
     requiredNamed.add_argument("-g", "--gfa", help="gfa file",required=True)
     requiredNamed.add_argument("-m", "--mode", help="type of reads", choices=["hifi", "nano"], required=True)
     requiredNamed.add_argument("-q", "--fastq",
-                    help="fastq file containing reads to perform alignment, used to create a .bam file",
-                    required=True)
+                               help="fastq file containing reads to perform alignment, used to create a .bam file",
+                               required=True)
     
     parser.add_argument("-s", "--stage", help="stage to run: either phase, transform or e2e (phase + transform)", choices=["phase", "transform", "e2e"], default="e2e")
     parser.add_argument("--snp", help="vcf file", default=None)
@@ -76,15 +76,15 @@ def main():
                         type=int,
                         default=50)
     parser.add_argument("--only_split",help="Do not run stRainy, only split long gfa unitigs", default='False', required=False)
-    parser.add_argument("-Rcl","--Rcl",help="cluster divergence", type=float, required=True)  
-    parser.add_argument("-AF","--AF",help="set allele frequency for internal caller only (pileup)", type=float,default=0.2, required=False)
+    parser.add_argument("-d","--cluster-divergence",help="cluster divergence", type=float, default=0, required=False)  
+    parser.add_argument("-a","--allele-frequency",help="Set allele frequency for internal caller only (pileup)", type=float, default=0.2, required=False)
     parser.add_argument("--min-unitig-length",
                         help="The length (in kb) which the unitigs that are shorter will not be phased",
                         required=False,
                         type=float,
                         default=1)
     parser.add_argument("--min-unitig-coverage",
-                        help="The minimum coverage threshold for phasing unitigs, unitigs with less coverage will not be phased",
+                        help="The minimum coverage threshold for phasing unitigs, unitigs with lower coverage will not be phased",
                         required=False,
                         type=int,
                         default=10)
