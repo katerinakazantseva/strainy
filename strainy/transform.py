@@ -120,8 +120,8 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
     log_unitig_info(new_line,
                     edge,
                     len(cons[clN]) - 7,
-                    cons[clN]['Start'],
-                    cons[clN]['End']
+                    left,
+                    right
                     )
 
 
