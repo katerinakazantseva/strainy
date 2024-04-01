@@ -24,7 +24,7 @@ def _thread_fun(i, shared_flye_consensus, args):
     init_global_args_storage(args)
 
     set_thread_logging(StRainyArgs().log_phase, "phase", multiprocessing.current_process().pid)
-    logger.info("\n\n\t == == Processing unitig " + str(StRainyArgs().edges[i]) + " == == ")
+    logger.info("\n\n\t == == Processing unitig " + str(StRainyArgs().edges_to_phase[i]) + " == == ")
 
     try:
         cluster(i, shared_flye_consensus)
