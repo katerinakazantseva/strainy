@@ -667,7 +667,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
 
 
             new_cov = change_cov(graph, edge, cons, ln, clusters, othercl, remove_clusters)
-            if  new_cov < parental_min_coverage and len(clusters) - len(othercl) != 0:
+            if  new_cov < parental_min_coverage and len(clusters) - len(othercl) != 0 and (len(set(full_clusters))>0 or len(full_paths)>0):
                 remove_clusters.add(edge)
             else:
                 for cluster in othercl:
