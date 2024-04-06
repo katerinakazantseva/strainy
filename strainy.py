@@ -87,7 +87,7 @@ def main():
                         help="The minimum coverage threshold for phasing unitigs, unitigs with lower coverage will not be phased",
                         required=False,
                         type=int,
-                        default=10)
+                        default=20)
     parser.add_argument("--max-unitig-coverage",
                         help="The maximum coverage threshold for phasing unitigs, unitigs with higher coverage will not be phased",
                         required=False,
