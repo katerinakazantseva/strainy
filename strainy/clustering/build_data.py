@@ -19,6 +19,11 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
             snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD --annotate FORMAT/ADR --annotate FORMAT/ADF   2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP %ADR %ADF  %REF %ALT]\n"  >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs().output, edge)
 
             subprocess.check_output(snpos, shell=True, capture_output=False)
+            filtered_file='{}/vcf/vcf_{}_filtered.vcf'.format(StRainyArgs().output,edge)
+            if not os.path.exists(filtered_file):
+                vcf_file_f = open(filtered_file, "a+")
+                vcf_file_f.write("##fileformat=VCFv4.2\n")
+                vcf_file_f.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
             with open("%s/vcf/vcf_%s.txt" % (StRainyArgs().output, edge)) as f:
                 lines = f.readlines()
                 for line in lines:
@@ -27,22 +32,36 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                         pos_cov = int(line.split()[3])
                         min_snp_freq = max(unseparated_cluster_min_reads, AF * pos_cov)
                         if snp_freq >= min_snp_freq:
-                        
-                            try:
-                                dpF=sum([int(i) for i in list(line.split()[4].split(',')) if int(i)>1])
-                                altF=int(line.split()[4].split(',')[1])
-                                var_freqF=(1-altF/dpF)
-                                dpR = sum([int(i) for i in list(line.split()[5].split(',')) if int(i)>1])
-                                altR=int(line.split()[5].split(',')[1])
-                                var_freqR=(1-altR/dpR)
-                            except ZeroDivisionError:
-                                continue
-                            if var_freqF>=(AF)*0.6 and var_freqR >= (AF) * 0.6:
+                            var_freqF=0
+                            var_freqR=0
+                            FreqF=[int(i) for i in (line.split()[4].split(','))]
+                            FreqF_s=sorted(FreqF,reverse=True)
+                            FreqR=[int(i) for i in (line.split()[5].split(','))]
+                            FreqR_s=sorted(FreqR,reverse=True)
+
+                            if FreqF.index(FreqF_s[0]) in [1,2] and FreqF.index(FreqF_s[1]) in [1,2] and FreqR.index(FreqR_s[0]) in [1,2] and FreqR.index(FreqR_s[1]) in [1,2]:
+                                try:
+                                    dpF=sum([int(i) for i in list(line.split()[4].split(',')) if int(i)>1])
+                                    altF=int(line.split()[4].split(',')[2])
+                                    var_freqF=altF/dpF
+                                    dpR = sum([int(i) for i in list(line.split()[5].split(',')) if int(i)>1])
+                                    altR=int(line.split()[5].split(',')[2])
+                                    var_freqR=altR/dpR
+                                except ZeroDivisionError:
+                                    continue
+                            if var_freqF>=(AF)*0.6 and var_freqR >= (AF) * 0.6 and altF>2 and altR>2:
                                 SNP_pos.append(line.split()[1])
+                                try:
+                                    vcf_file_f.write(str(line.split()[0])+"\t"+str(line.split()[1])+"\t.\t"+str(line.split()[6])+"\t"+str(line.split()[7])+"\t.\tPASS\t.\n")
+                                except: pass
+
 
 
                     except(IndexError):
                         pass
+            try:
+                vcf_file_f.close()
+            except: pass
         else:
             raise Exception("Shouldn't happen")
     else:
@@ -54,6 +73,7 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
             if line.split()[0] == edge:
                 SNP_pos.append(line.split()[1])
     return SNP_pos
+    
 
 
 ReadSegment = namedtuple("ReadSegment", ["query_start", "query_end", "reference_start", "reference_end", "query_name", "reference_name",
