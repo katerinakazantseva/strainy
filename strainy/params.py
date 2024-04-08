@@ -24,8 +24,10 @@ def init_global_args_storage(args):
     #_glob_args.gfa_transformed2 = "%s/transformed_after_simplification_merged.gfa" % args.output
     _glob_args.log_phase = os.path.join(args.output, "log_phase")
     _glob_args.log_transform = os.path.join(args.output, "log_transform")
-    _glob_args.unitig_info_table_path = os.path.join(args.output, "unitig_info_table.csv")
-    _glob_args.unitig_info_table = None
+    _glob_args.phased_unitig_info_table_path = os.path.join(args.output, "phased_unitig_info_table.csv")
+    _glob_args.reference_unitig_info_table_path = os.path.join(args.output, "reference_unitig_info_table.csv")
+    _glob_args.phased_unitig_info_table = {}
+    _glob_args.reference_unitig_info_table = {}
     _glob_args.edges = args.graph_edges
     _glob_args.fa = args.fasta
     _glob_args.fq = args.fastq
