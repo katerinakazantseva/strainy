@@ -58,7 +58,7 @@ def clusters_vis_stats(G, cl, clN, uncl, bam, edge, I, AF):
 
 
 def cluster(i, flye_consensus):
-    edge = StRainyArgs().edges[i]
+    edge = StRainyArgs().edges_to_phase[i]
     Rcl=StRainyArgs().Rcl
     AF=StRainyArgs().AF
     R=Rcl/2

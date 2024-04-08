@@ -151,7 +151,7 @@ def get_unitigs_to_phase(input_graph, bam_file):
                                                                  bam_file,
                                                                  "--no-header").
                                                                  split()[6]))
-        if (StRainyArgs().min_unitig_coverage < alignment_coverage< StRainyArgs().max_unitig_coverage
+        if (StRainyArgs().min_unitig_coverage <= alignment_coverage <= StRainyArgs().max_unitig_coverage
                 and unitig.length > min_unitig_length):
             edges_to_phase.append(unitig.name)
 

@@ -1,10 +1,8 @@
-import csv
 import networkx as nx
 import pygraphviz as gv
 import re
 import gfapy
 from collections import Counter, deque, defaultdict
-import numpy as np
 import pandas as pd
 import pickle
 import logging
@@ -13,6 +11,7 @@ import shutil
 import pysam
 import time
 import traceback
+import csv
 
 import strainy.clustering.build_adj_matrix as matrix
 import strainy.clustering.cluster_postprocess as postprocess
@@ -40,53 +39,110 @@ def format_rounding(number):
     else:
         # We want 2 digits after decimal point.
         return str(round(n, 2))
+    
+
+def write_phased_unitig_csv():
+    columns = [
+        'Strain unitig',
+        'Reference unitig',
+        'Length',
+        'Coverage',
+        'Abundance Ratio',
+        '#SNP',
+        'SNP density',
+        'Start positioin',
+        'End position'
+        ]
+    
+    with open(StRainyArgs().phased_unitig_info_table_path, 'w') as f:
+        write = csv.writer(f, delimiter='\t')
+
+        write.writerow(columns)
+        write.writerows(list(StRainyArgs().phased_unitig_info_table.values()))
 
 
-def log_unitig_info(strain_unitig, reference_unitig, n_SNPs, start, end):
+def write_reference_unitig_csv():
+    columns=[
+        'Reference unitig',
+        'Length',
+        '#SNP',
+        'SNP density',
+        'Is processed',
+        'Is phased'
+        ]
+    
+    with open(StRainyArgs().reference_unitig_info_table_path, 'w') as f:
+        write = csv.writer(f, delimiter='\t')
+        
+        write.writerow(columns)
+        write.writerows(list(StRainyArgs().reference_unitig_info_table.values()))
+
+
+def store_phased_unitig_info(strain_unitig, reference_unitig, n_SNPs, start, end):
     reference_coverage = round(float(pysam.samtools.coverage("-r",
                                                              reference_unitig,
                                                              StRainyArgs().bam,
                                                              "--no-header").
                                                              split()[6]))
-    # Create df columns for the first time
-    if not isinstance(StRainyArgs().unitig_info_table, pd.DataFrame):
-        StRainyArgs().unitig_info_table = pd.DataFrame(columns=['Strain unitig',
-                                                                'Reference unitig',
-                                                                'Length',
-                                                                'Coverage',
-                                                                'Abundance Ratio',
-                                                                '#SNP',
-                                                                'SNP density',
-                                                                'Start positioin',
-                                                                'End position'])
-                                
-    # Log the information to std output
-    logger.info(f'== == Inserted Strain unitig: {strain_unitig.name} == == ')
-    logger.info(f'\t\t Reference unitig: {reference_unitig}')
-    logger.info(f'\t\t Length: {strain_unitig.length} bp')
-    logger.info(f'\t\t Coverage: {strain_unitig.dp}')
-    logger.info(f'\t\t Abundance Ratio: {round(100 * strain_unitig.dp // reference_coverage)}%')
-    logger.info(f'\t\t #SNP: {n_SNPs}')
-    logger.info(f'\t\t SNP density: {format_rounding(n_SNPs / strain_unitig.length)}')
-    logger.info(f'\t\t Start position: {start}')
-    logger.info(f'\t\t End position: {end}\n\n')
+    # # Log the information to std output
+    # logger.info(f'== == Inserted Strain unitig: {strain_unitig.name} == == ')
+    # logger.info(f'\t\t Reference unitig: {reference_unitig}')
+    # logger.info(f'\t\t Length: {strain_unitig.length} bp')
+    # logger.info(f'\t\t Coverage: {strain_unitig.dp}')
+    # logger.info(f'\t\t Abundance Ratio: {round(100 * strain_unitig.dp // reference_coverage)}%')
+    # logger.info(f'\t\t #SNP: {n_SNPs}')
+    # logger.info(f'\t\t SNP density: {format_rounding(n_SNPs / strain_unitig.length)}')
+    # logger.info(f'\t\t Start position: {start}')
+    # logger.info(f'\t\t End position: {end}\n\n')
 
-    StRainyArgs().unitig_info_table.loc[len(StRainyArgs().unitig_info_table)] = [
+    try:
+        abundance_ratio =  round(100 * strain_unitig.dp // reference_coverage)
+    except ZeroDivisionError:
+        abundance_ratio = 0
+
+    StRainyArgs().phased_unitig_info_table[strain_unitig.name] = [
         strain_unitig.name,
         reference_unitig,
         strain_unitig.length,
         strain_unitig.dp,
-        round(100 * strain_unitig.dp // reference_coverage),
+        abundance_ratio,
         n_SNPs,
         format_rounding(n_SNPs / strain_unitig.length),
         start,
         end
         ]
+    
+
+def store_reference_unitig_info():
+    graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
+    phased_unitig_df = pd.read_csv(StRainyArgs().phased_unitig_info_table_path, sep='\t')
+    counter = Counter(list(phased_unitig_df['Reference unitig']))
+    for reference_unitig in graph.segments:
+
+        # Number of phased unitigs created from this reference unitig
+        n_phased_unitigs = counter[reference_unitig.name]
+        # Number of SNPs
+        n_SNPs = len(
+            build_data.read_snp(
+                StRainyArgs().snp,
+                reference_unitig.name,
+                StRainyArgs().bam,
+                StRainyArgs().AF
+                )
+            )
+        StRainyArgs().reference_unitig_info_table[reference_unitig.name] = [
+            reference_unitig.name,
+            reference_unitig.length,
+            n_SNPs,
+            format_rounding(n_SNPs / reference_unitig.length),
+            reference_unitig.name in StRainyArgs().edges_to_phase,
+            n_phased_unitigs > 1
+        ]
 
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True, insertmain=True):
     """
-    The function creates unitiges in the gfa graph
+    The function creates unitigs in the gfa graph
     """
     ##TODO make separare function to add gfa edge and move to gfa_ops
     consensus = flye_consensus.flye_consensus(clN, edge, cl)
@@ -117,13 +173,14 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
         new_line.sequence = g.try_get_segment("%s" % edge).sequence
 
     logger.debug("Unitig created  %s_%s" % (edge, clN))
-    log_unitig_info(new_line,
+
+    store_phased_unitig_info(new_line,
                     edge,
                     len(cons[clN]) - 7,
                     left,
                     right
                     )
-
+    
 
 def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
     """
@@ -920,8 +977,15 @@ def transform_main(args):
 
     bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters, initial_graph = parallelize_gcu(StRainyArgs().edges, flye_consensus, initial_graph, args)
 
-    # Save created unitigs' info as a csv
-    StRainyArgs().unitig_info_table.to_csv(StRainyArgs().unitig_info_table_path)
+    # Save phased and reference unitigs' info as a csv
+    logger.info('Creating csv file with phased unitigs...')
+    write_phased_unitig_csv()
+    logger.info('Done!')
+    logger.info('Creating csv file with reference unitigs...')
+    store_reference_unitig_info()
+    write_reference_unitig_csv()
+    logger.info('Done!')
+
 
     logger.info("### Link unitigs")
     for edge in StRainyArgs().edges:
