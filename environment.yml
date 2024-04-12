@@ -17,5 +17,5 @@ dependencies:
   - numpy
   - pandas
   - pysam
-  - scipy>=1.8
+  - scipy>=1.8,<1.13
   - minimap2
