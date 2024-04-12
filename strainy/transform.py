@@ -552,7 +552,17 @@ def parallelize_gcu(graph_edges, flye_consensus, graph, args):
             result_values.append(gcu_worker(edge, flye_consensus, args))
 
     else:
-        pool = multiprocessing.Pool(StRainyArgs().threads)
+        """
+        Here we put a hard limit on the number of 16 threads. This is because of an issue in CPython implementation
+        of multiprocessing that has a hardcoded contant of max 16 threads that can wait for Lock().
+        The issue has been fixed in Python 3.11, and once we transtition to this version, this hard limit
+        can be removed.
+        https://github.com/katerinakazantseva/stRainy/issues/75
+        https://github.com/python/cpython/issues/101225
+        """
+        HARD_LIMIT = 16
+        num_threads = min(StRainyArgs().threads, HARD_LIMIT)
+        pool = multiprocessing.Pool(num_threads)
         init_args = [(edge, flye_consensus, args) for edge in graph_edges]
         results = pool.starmap_async(gcu_worker, init_args, chunksize=1)
         while not results.ready():
