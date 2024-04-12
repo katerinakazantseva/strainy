@@ -187,7 +187,7 @@ def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distance
     Create an "overlap" graph for clusters within a unitig, based on flye distance
     """
     M = cluster_distances
-    G = nx.from_pandas_adjacency(M, create_using = nx.DiGraph)
+    G = gfa_ops.from_pandas_adjacency_notinplace(M, create_using = nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
     try:
         G.remove_node(0)
@@ -260,8 +260,8 @@ def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
     """
      Graph visualization function
     """
-    G_vis = nx.from_pandas_adjacency(cluster_distances,
-                                     create_using = nx.DiGraph)
+    G_vis = gfa_ops.from_pandas_adjacency_notinplace(cluster_distances,
+                                                     create_using = nx.DiGraph)
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
 
@@ -696,7 +696,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
 
             othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]))
             if len(othercl) > 0:
-                G = nx.from_pandas_adjacency(cluster_distances.copy(), create_using = nx.DiGraph)
+                G = gfa_ops.from_pandas_adjacency_notinplace(cluster_distances.copy(), create_using = nx.DiGraph)
 
             close_to_full = []
             othercl_len=[cons[i]['End']-cons[i]['Start'] for i in othercl]

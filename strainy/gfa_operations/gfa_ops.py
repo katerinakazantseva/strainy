@@ -21,6 +21,7 @@ def add_link(graph, fr, fr_or, to, to_or, w):
     except(gfapy.NotUniqueError):   #link already exists
         pass
 
+
 def gfa_to_nx(g):
     G = nx.Graph()
     for i in g.segment_names:
@@ -30,3 +31,23 @@ def gfa_to_nx(g):
     return(G)
 
 
+def from_pandas_adjacency_notinplace(df, create_using=None):
+    """
+    This function is exactly the same as networkx.from_pandas_adjacency,
+    with the exception of 'copy=True' argument in relabel_nodes.
+    This is because copy=False (default option) implies that the graph
+    can be relabeled in place, which is not always possible
+    """
+
+    try:
+        df = df[df.index]
+    except Exception as err:
+        missing = list(set(df.index).difference(set(df.columns)))
+        msg = f"{missing} not in columns"
+        raise nx.NetworkXError("Columns must match Indices.", msg) from err
+
+    A = df.values
+    G = nx.from_numpy_array(A, create_using=create_using)
+
+    G = nx.relabel.relabel_nodes(G, dict(enumerate(df.columns)), copy=True)
+    return G

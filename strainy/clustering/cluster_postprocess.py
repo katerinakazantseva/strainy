@@ -5,6 +5,7 @@ import pandas as pd
 from strainy.clustering.community_detection import find_communities
 import strainy.clustering.build_adj_matrix as matrix
 import strainy.clustering.build_data as build_data
+import strainy.gfa_operations.gfa_ops as gfa_ops
 from strainy.params import *
 
 logger = logging.getLogger()
@@ -22,7 +23,7 @@ def split_cluster(cl,cluster, data,cons,clSNP, bam, edge, R, I,only_with_common_
     m.columns = range(0,len(cl[cl["Cluster"] == cluster]["ReadName"]))
     m.index = range(0,len(cl[cl["Cluster"] == cluster]["ReadName"]))
     m = matrix.change_w(m, R)
-    G_sub = nx.from_pandas_adjacency(m)
+    G_sub = gfa_ops.from_pandas_adjacency_notinplace(m)
     cl_exist = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))+list(cons.keys())
     cluster_membership = find_communities(G_sub)
     clN = 0
@@ -109,11 +110,11 @@ def join_clusters(cons, cl, Rcl, edge, consensus, only_with_common_snip=True,set
     M = matrix.change_w(M,Rcl)
 
     try:
-        G_vis = nx.from_pandas_adjacency(M, create_using = nx.DiGraph)
+        G_vis = gfa_ops.from_pandas_adjacency_notinplace(M, create_using = nx.DiGraph)
     except nx.NetworkXUnfeasible:
         M.index = M.index.astype(str)
         M.columns = M.columns.astype(str)
-        G_vis = nx.from_pandas_adjacency(M, create_using = nx.DiGraph)
+        G_vis = gfa_ops.from_pandas_adjacency_notinplace(M, create_using = nx.DiGraph)
 
     G_vis.remove_edges_from(list(nx.selfloop_edges(G_vis)))
 
@@ -156,7 +157,7 @@ def join_clusters(cons, cl, Rcl, edge, consensus, only_with_common_snip=True,set
         G_vis.layout(prog="dot")
         G_vis.draw("%s/graphs/linear_phase_simplified_%s.png" % (StRainyArgs().output, edge))
 
-    G = nx.from_pandas_adjacency(M)
+    G = gfa_ops.from_pandas_adjacency_notinplace(M)
 
 
     if transitive==True:

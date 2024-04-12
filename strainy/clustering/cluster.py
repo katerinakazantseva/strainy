@@ -13,6 +13,7 @@ from strainy.clustering.cluster_postprocess import postprocess
 import strainy.clustering.build_adj_matrix as matrix
 import strainy.clustering.build_data as build_data
 from strainy.params import *
+import strainy.gfa_operations.gfa_ops as gfa_ops
 
 
 logger = logging.getLogger()
@@ -113,7 +114,7 @@ def cluster(i, flye_consensus):
     m1 = m
     m1.columns = range(0,len(cl['ReadName']))
     m1.index=range(0,len(cl['ReadName']))
-    G = nx.from_pandas_adjacency(matrix.change_w(m.transpose(), R))
+    G = gfa_ops.from_pandas_adjacency_notinplace(matrix.change_w(m.transpose(), R))
     logger.info("### Searching clusters...")
     cluster_membership = find_communities(G)
     clN = 0
