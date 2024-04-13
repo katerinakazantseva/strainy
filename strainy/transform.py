@@ -771,7 +771,8 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
     stats.close()
 
 
-def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters):
+def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_clusters_src,
+                       link_clusters_sink, remove_clusters):
     """
     Second part of the transformation: linkage of all new unitigs created during the first tranforming stage
     """
@@ -792,8 +793,6 @@ def graph_link_unitigs(edge, graph, bam_cache, link_clusters, link_clusters_src,
                 link_unitigs.append(phase_clust)
         except:
             continue
-
-    nx_graph = gfa_ops.gfa_to_nx(graph)
 
     #for each cluster in the initial unitig
     for cur_clust in link_unitigs:
@@ -910,30 +909,35 @@ def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_
 
     #if we keeping the parental segment,
     #connect parent segment with all clusters in the adjecent edge.
+    from_index = defaultdict(list)
+    to_index = defaultdict(list)
+    for link in graph.dovetails:
+        from_index[link.from_segment].append(link)
+        to_index[link.to_segment].append(link)
+
     for edge in StRainyArgs().edges:
         if edge in remove_clusters:
             continue
 
-        for link in graph.dovetails:
-            if link.from_segment == edge:
-                to_connect = link_clusters_src[link.to_segment.name] if link.to_orient == "+" else \
-                             link_clusters_sink[link.to_segment.name]
-                for next_clust in to_connect:
-                    #logger.debug(str(link).replace(link.to_segment.name, f"{link.to_segment.name}_{next_clust}"))
-                    candidate = f"{link.to_segment.name}_{next_clust}"
-                    if is_right_tip(candidate, neg_sign(link.to_orient)):
-                        gfa_ops.add_link(graph, link.from_segment.name, link.from_orient,
-                                 candidate, link.to_orient, 888)
+        for link in from_index[edge]:
+            to_connect = link_clusters_src[link.to_segment.name] if link.to_orient == "+" else \
+                         link_clusters_sink[link.to_segment.name]
+            for next_clust in to_connect:
+                #logger.debug(str(link).replace(link.to_segment.name, f"{link.to_segment.name}_{next_clust}"))
+                candidate = f"{link.to_segment.name}_{next_clust}"
+                if is_right_tip(candidate, neg_sign(link.to_orient)):
+                    gfa_ops.add_link(graph, link.from_segment.name, link.from_orient,
+                             candidate, link.to_orient, 888)
 
-            if link.to_segment == edge:
-                to_connect = link_clusters_sink[link.from_segment.name] if link.from_orient == "+" else \
-                             link_clusters_src[link.from_segment.name]
-                for next_clust in to_connect:
-                    #logger.debug(str(link).replace(link.from_segment.name, f"{link.from_segment.name}_{next_clust}"))
-                    candidate = f"{link.from_segment.name}_{next_clust}"
-                    if is_right_tip(candidate, link.from_orient):
-                        gfa_ops.add_link(graph, candidate, link.from_orient,
-                                 link.to_segment.name, link.to_orient, 888)
+        for link in to_index[edge]:
+            to_connect = link_clusters_sink[link.from_segment.name] if link.from_orient == "+" else \
+                         link_clusters_src[link.from_segment.name]
+            for next_clust in to_connect:
+                #logger.debug(str(link).replace(link.from_segment.name, f"{link.from_segment.name}_{next_clust}"))
+                candidate = f"{link.from_segment.name}_{next_clust}"
+                if is_right_tip(candidate, link.from_orient):
+                    gfa_ops.add_link(graph, candidate, link.from_orient,
+                             link.to_segment.name, link.to_orient, 888)
 
 
 def clean_graph(g):
@@ -998,8 +1002,9 @@ def transform_main(args):
 
 
     logger.info("### Link unitigs")
+    nx_graph = gfa_ops.gfa_to_nx(initial_graph)
     for edge in StRainyArgs().edges:
-        graph_link_unitigs(edge, initial_graph, bam_cache, link_clusters, link_clusters_src,
+        graph_link_unitigs(edge, initial_graph, nx_graph, bam_cache, link_clusters, link_clusters_src,
                            link_clusters_sink, remove_clusters)
     connect_parental_edges(initial_graph, link_clusters_src, link_clusters_sink, remove_clusters)
 
