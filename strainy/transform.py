@@ -545,24 +545,13 @@ def gcu_worker(edge, flye_consensus, args):
     return bam_cache, link_clusters, link_clusters_src, link_clusters_sink, graph_ops, remove_clusters
 
 
-def parallelize_gcu(graph_edges, flye_consensus, graph, args):
+def parallelize_gcu(pool, graph_edges, flye_consensus, graph, args):
     if StRainyArgs().threads == 1:
         result_values = []
         for edge in graph_edges:
             result_values.append(gcu_worker(edge, flye_consensus, args))
 
     else:
-        """
-        Here we put a hard limit on the number of 16 threads. This is because of an issue in CPython implementation
-        of multiprocessing that has a hardcoded contant of max 16 threads that can wait for Lock().
-        The issue has been fixed in Python 3.11, and once we transtition to this version, this hard limit
-        can be removed.
-        https://github.com/katerinakazantseva/stRainy/issues/75
-        https://github.com/python/cpython/issues/101225
-        """
-        HARD_LIMIT = 16
-        num_threads = min(StRainyArgs().threads, HARD_LIMIT)
-        pool = multiprocessing.Pool(num_threads)
         init_args = [(edge, flye_consensus, args) for edge in graph_edges]
         results = pool.starmap_async(gcu_worker, init_args, chunksize=1)
         while not results.ready():
@@ -967,6 +956,21 @@ def transform_main(args):
     os.mkdir(StRainyArgs().log_transform)
     set_thread_logging(StRainyArgs().log_transform, "transform", None)
 
+    """
+    Here we put a hard limit on the number of 16 threads. This is because of an issue in CPython implementation
+    of multiprocessing that has a hardcoded contant of max 16 threads that can wait for Lock().
+    The issue has been fixed in Python 3.11, and once we transtition to this version, this hard limit
+    can be removed.
+    https://github.com/katerinakazantseva/stRainy/issues/75
+    https://github.com/python/cpython/issues/101225
+    """
+    HARD_LIMIT = 16
+    num_threads = min(StRainyArgs().threads, HARD_LIMIT)
+    pool = None
+    if StRainyArgs().threads != 1:
+        pool = multiprocessing.Pool(num_threads)
+    default_manager = multiprocessing.Manager()
+
     stats = open("%s/stats_clusters.txt" % StRainyArgs().output, "a")
     stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
     stats.close()
@@ -984,12 +988,13 @@ def transform_main(args):
     except FileNotFoundError:
         consensus_dict = {}
 
-    default_manager = multiprocessing.Manager()
     flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, args.threads, consensus_dict, default_manager)
+    consensus_dict = {}
 
     logger.info("### Create unitigs")
 
-    bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters, initial_graph = parallelize_gcu(StRainyArgs().edges, flye_consensus, initial_graph, args)
+    bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters, initial_graph = \
+            parallelize_gcu(pool, StRainyArgs().edges, flye_consensus, initial_graph, args)
 
     # Save phased and reference unitigs' info as a csv
     logger.info('Creating csv file with phased unitigs...')
