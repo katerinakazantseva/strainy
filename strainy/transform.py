@@ -765,7 +765,7 @@ def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_cl
     """
     Second part of the transformation: linkage of all new unitigs created during the first tranforming stage
     """
-    logger.info(edge)
+    logger.debug(f"Linking {edge}")
     link_added = False
 
     clusters = link_clusters[edge]
@@ -977,10 +977,12 @@ def transform_main(args):
 
     initial_graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
     #Setting up coverage for all unitigs based on bam alignment depth
+    logger.info("Re-setting unitigs coverage")
     for edge in StRainyArgs().edges:
         edge_cov = pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[6]
         initial_graph.try_get_segment(edge).dp = round(float(edge_cov))
 
+    logger.info("Loading phased unitigs dictionary")
     try:
         with open(os.path.join(StRainyArgs().output, consensus_cache_path), "rb") as f:
             logger.debug(f"searching consensus cache in {os.getcwd()}")
@@ -999,12 +1001,11 @@ def transform_main(args):
     # Save phased and reference unitigs' info as a csv
     logger.info('Creating csv file with phased unitigs...')
     write_phased_unitig_csv()
-    logger.info('Done!')
+    #logger.info('Done!')
     logger.info('Creating csv file with reference unitigs...')
     store_reference_unitig_info()
     write_reference_unitig_csv()
-    logger.info('Done!')
-
+    #logger.info('Done!')
 
     logger.info("### Link unitigs")
     nx_graph = gfa_ops.gfa_to_nx(initial_graph)
@@ -1016,8 +1017,8 @@ def transform_main(args):
     logger.info("### Remove initial segments")
     for ed in initial_graph.segments:
         if ed.name in remove_clusters:
+            logger.debug(f"Removing {ed.name}")
             initial_graph.rm(ed)
-            logger.info(ed.name)
     for link in initial_graph.dovetails:
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
