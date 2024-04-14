@@ -149,7 +149,6 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
     consensus_start = consensus["start"]
     cons_length_diff = len(consensus["consensus"]) - (consensus["end"] - consensus["start"])
     logger.debug(f'Consensus length difference: {cons_length_diff}')
-
     if consensus_start > left and insertmain==True:
         main_seq = g.try_get_segment(edge)
         insert = main_seq.sequence[left:consensus_start]
@@ -370,7 +369,6 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
     stop_pos = {}
     for i in cut_r_unsorted.keys():
         stop_pos[i] = cons[i]["End"]
-
     order_by_stop_pos = list(dict(sorted(stop_pos.items(), key = lambda item: item[1])).keys())
 
     cut_l = {}
@@ -378,7 +376,6 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
     for i in order_by_stop_pos:
         cut_l[i] = cut_l_unsorted[i]
         cut_r[i] = cut_r_unsorted[i]
-
     Members=list(cut_l.keys())
     while Members:
         member=Members.pop(0)
@@ -421,7 +418,6 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
 
                         except (ValueError, IndexError):
                                 continue
-
             l_borders = []
             r_borders = []
             for i in L:
@@ -452,7 +448,6 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
                         cut_l[member] = cut_r[path[path.index(member)-1]]
                     except:
                         pass
-
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!= cut_r[path_cluster]:
             add_child_edge(edge, path_cluster, g,  cl, cut_l[path_cluster], cut_r[path_cluster], cons, flye_consensus)
