@@ -379,7 +379,13 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
         cut_l[i] = cut_l_unsorted[i]
         cut_r[i] = cut_r_unsorted[i]
 
-    for member in cut_l.keys():
+    Members=list(cut_l.keys())
+    while Members:
+        member=Members.pop(0)
+        if cut_l[member] == None and cut_r[member] == None: #if the cluster does not already have boundaries, try the next one first
+                member_to_q=member
+                member=Members.pop(0)
+                Members.insert(0,member_to_q)
         if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
             Q = deque()
             L = []
