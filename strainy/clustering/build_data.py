@@ -1,15 +1,16 @@
 import subprocess
 import pysam
 import os
+import io
 import re
 from collections import Counter, namedtuple
 from Bio import SeqIO
 
 from strainy.params import *
 
-
 import logging
 logger = logging.getLogger()
+
 
 def read_snp(vcf_file, edge, bam, AF, cluster=None):
     SNP_pos = []
@@ -55,8 +56,6 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                                     vcf_file_f.write(str(line.split()[0])+"\t"+str(line.split()[1])+"\t.\t"+str(line.split()[6])+"\t"+str(line.split()[7])+"\t.\tPASS\t.\n")
                                 except: pass
 
-
-
                     except(IndexError):
                         pass
             try:
@@ -65,15 +64,12 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
         else:
             raise Exception("Shouldn't happen")
     else:
-        vcf_file_f=('{}/vcf/vcf_filtered.vcf').format(StRainyArgs().output)
-        filter_pass=('bcftools view -f PASS {} > {}').format(vcf_file,vcf_file_f)
-        subprocess.check_output(filter_pass, shell=True, capture_output=False)
-        vcf_f = open(vcf_file_f, "rt")
-        for line in vcf_f:
-            if line.split()[0] == edge:
-                SNP_pos.append(line.split()[1])
+        bcftools_cmd = f"bcftools view -f PASS -H {vcf_file} {edge} --types snps"
+        bcf_proc = subprocess.Popen(bcftools_cmd, shell=True, stdout=subprocess.PIPE)
+        for line in io.TextIOWrapper(bcf_proc.stdout, encoding="utf-8"):
+            SNP_pos.append(line.split()[1])
+
     return SNP_pos
-    
 
 
 ReadSegment = namedtuple("ReadSegment", ["query_start", "query_end", "reference_start", "reference_end", "query_name", "reference_name",
