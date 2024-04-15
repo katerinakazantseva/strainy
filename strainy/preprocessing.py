@@ -165,6 +165,30 @@ def preprocess_cmd_args(args):
     as some arguments may not be initialized yet.
     """
 
+    if (args.bam or args.snp) and args.unitig_split_length != 0:
+        logger.error("--bam and --snp arguments are incompatible with long edge splitting "
+                     "(enabled by default). Add \"--unitig-split-length 0\" to disable..")
+        raise Exception("Arguments exception")
+
+    if args.snp and not args.bam:
+        logger.error("--snp requires --bam to be set up")
+        raise Exception("Arguments exception")
+
+    if args.bam:
+        if not os.path.isfile(args.bam):
+            logger.error("bam file not found")
+            raise Exception("Arguments exception")
+        elif not os.path.isfile(args.bam + ".bai"):
+            logger.error("bam file must be indexed (with samtools)")
+
+    if args.snp:
+        if not os.path.isfile(args.snp):
+            logger.error("SNP/VCF file not found")
+            raise Exception("Arguments exception")
+        if not os.path.isfile(args.snp + ".tbi"):
+            logger.error("SNP/VCF file must be block-gzipped and indexed (with bgzip + tabix)")
+            raise Exception("Arguments exception")
+
     preprocessing_dir = os.path.join(args.output, "preprocessing_data")
     if not os.path.isdir(preprocessing_dir):
         os.mkdir(preprocessing_dir)
