@@ -124,7 +124,8 @@ def cluster(i, flye_consensus):
         group = [k for k, v in cluster_membership.items() if v == value]
         if len(group) > 3:
             clN = clN + 1
-            cl['Cluster'][group] = value
+            cl.loc[group, 'Cluster'] = value
+            #cl['Cluster'][group] = value
         else:
             uncl = uncl + 1
 

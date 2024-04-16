@@ -6,7 +6,7 @@ from scipy.spatial.distance import cdist
 from strainy.params import *
 
 logger = logging.getLogger()
-pd.options.mode.chained_assignment = None
+#pd.options.mode.chained_assignment = None
 
 class DistanceWrapper():
     # Wrapper for calling cdist with custom distance function

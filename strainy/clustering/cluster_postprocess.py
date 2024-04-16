@@ -88,7 +88,8 @@ def build_adj_matrix_clusters(edge,cons,cl,flye_consensus, only_with_common_snip
             second_cl = m.index[k]
 
             if m[second_cl][first_cl] == -1:
-                m[second_cl][first_cl] = matrix.distance_clusters(edge, first_cl, second_cl, cons, cl,flye_consensus, only_with_common_snip)
+                m.loc[first_cl, second_cl] = matrix.distance_clusters(edge, first_cl, second_cl, cons, cl,flye_consensus, only_with_common_snip)
+                #m[second_cl][first_cl] = matrix.distance_clusters(edge, first_cl, second_cl, cons, cl,flye_consensus, only_with_common_snip)
     return m
 
 
