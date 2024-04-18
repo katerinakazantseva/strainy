@@ -233,16 +233,18 @@ class FlyeConsensus:
             consensus = SeqRecord(
                 seq=''
             )
+
+        bed_content = self._parse_bed_coverage(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
+                                               f"base_coverage.bed.gz")
+
         # delete the created input files to Flye
-        if delete_files:
+        if delete_flye_files:
             os.remove(f"{fname}.fa")
             os.remove(f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
             os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
             os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
             shutil.rmtree(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
 
-        bed_content = self._parse_bed_coverage(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
-                                               f"base_coverage.bed.gz")
         start, end, consensus_clipped = self._clip_consensus_seq(consensus.seq, 
                                                                  read_limits, 
                                                                  bed_content,

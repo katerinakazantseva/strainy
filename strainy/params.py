@@ -56,7 +56,7 @@ consensus_cache_path = "consensus_dict.pkl"
 # Whether to store the consensus cache or not
 # This needs to be True to carry out it from phase part to transform part
 write_consensus_cache = True
-delete_files = False
+delete_flye_files = True
 
 """It is not recommended to change parameters below"""
 
