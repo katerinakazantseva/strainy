@@ -239,11 +239,14 @@ class FlyeConsensus:
 
         # delete the created input files to Flye
         if delete_flye_files:
-            os.remove(f"{fname}.fa")
-            os.remove(f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
-            os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
-            os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
-            shutil.rmtree(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
+            try:
+                os.remove(f"{fname}.fa")
+                os.remove(f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
+                os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
+                os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
+                shutil.rmtree(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
+            except (OSError, FileNotFoundError):
+                pass
 
         start, end, consensus_clipped = self._clip_consensus_seq(consensus.seq, 
                                                                  read_limits, 
