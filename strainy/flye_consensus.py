@@ -161,8 +161,10 @@ class FlyeConsensus:
         start_pos_of_reads = cl.loc[cl["Cluster"] == cluster]["Start"].to_numpy()
         salt = random.randint(1000, 10000)
         fprefix = "%s/flye_inputs/" % StRainyArgs().output
+        bam_subset = f"{fprefix}{edge}_cluster_{cluster}_reads_{salt}.bam"
+        bam_subset_sorted = f"{fprefix}{edge}_cluster_{cluster}_reads_{salt}_sorted.bam"
         cluster_start, cluster_end, read_limits = self._extract_reads(reads_from_curr_cluster, start_pos_of_reads,
-                                                        f"{fprefix}cluster_{cluster}_reads_{salt}.bam", edge)
+                                                                      bam_subset, edge)
 
         logger.debug((f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}, CLUSTER_END:{cluster_end}, EDGE:{edge},"
                f"# OF READS:{len(reads_from_curr_cluster)}"))
@@ -179,21 +181,20 @@ class FlyeConsensus:
         )
         SeqIO.write([record], f"{fname}.fa", "fasta")
 
-       
         try:
             # sort the bam file
-            pysam.sort("-o", f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam",
-                    f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
+            pysam.sort("-o", bam_subset_sorted, bam_subset)
             # index the bam file
-            pysam.index(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
+            pysam.index(bam_subset_sorted)
         except pysam.utils.SamtoolsError  as e:
-            logger.error(f'Error while sorting {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam')
+            logger.error(f'Error while sorting {bam_subset_sorted}')
             logger.error(traceback.format_exc())
 
         #  Polisher arguments for to call _run_polisher_only(polish_args)
+        flye_out_dir = f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         polish_args = Namespace(polish_target=f"{fname}.fa",
-                                reads=[f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam"],
-                                out_dir=f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}",
+                                reads=[bam_subset_sorted],
+                                out_dir=flye_out_dir,
                                 num_iters=1,
                                 threads=1,
                                 platform=self._platform,
@@ -223,8 +224,7 @@ class FlyeConsensus:
 
         try:
             # read back the output of the Flye polisher
-            consensus = SeqIO.read(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/polished_1.fasta",
-                                   "fasta")
+            consensus = SeqIO.read(os.path.join(flye_out_dir, "polished_1.fasta"), "fasta")
         except (ImportError, ValueError) as e:
             # If there is an error, the sequence string is set to empty by default
             logger.warning("WARNING: error reading back the flye output, defaulting to empty sequence for consensus")
@@ -234,17 +234,16 @@ class FlyeConsensus:
                 seq=''
             )
 
-        bed_content = self._parse_bed_coverage(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}/"
-                                               f"base_coverage.bed.gz")
+        bed_content = self._parse_bed_coverage(os.path.join(flye_out_dir, "base_coverage.bed.gz"))
 
         # delete the created input files to Flye
         if delete_flye_files:
             try:
                 os.remove(f"{fname}.fa")
-                os.remove(f"{fprefix}cluster_{cluster}_reads_{salt}.bam")
-                os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam")
-                os.remove(f"{fprefix}cluster_{cluster}_reads_sorted_{salt}.bam.bai")
-                shutil.rmtree(f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}")
+                os.remove(bam_subset)
+                os.remove(bam_subset_sorted)
+                os.remove(bam_subset_sorted + ".bai")
+                shutil.rmtree(flye_out_dir)
             except (OSError, FileNotFoundError):
                 pass
 
@@ -259,7 +258,7 @@ class FlyeConsensus:
                 'start': start,
                 'end': end,
                 'read_limits': read_limits,
-                'bam_path': f"{fprefix}cluster_{cluster}_reads_{salt}.bam",
+                'bam_path': bam_subset,
                 'reference_path': f"{fname}.fa",
                 'reference_seq': self._unitig_seqs[edge],
                 'bed_content': bed_content
