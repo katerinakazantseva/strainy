@@ -44,6 +44,7 @@ def stats_by_ref(strainy_stats, ref_utgs_info):
 
     all_cov_frequencies = defaultdict(int)
     all_snp_rates = defaultdict(int)
+    all_depths = defaultdict(int)
 
     strains_by_ref = defaultdict(list)
     #for line in csv.reader(open(strainy_stats, "r")):
@@ -77,6 +78,9 @@ def stats_by_ref(strainy_stats, ref_utgs_info):
         for st in strain_utgs:
             for i in range(st.ref_start // WND, st.ref_end // WND):
                 coverage_bins[i] += 1
+
+        for cov, ctg_len in zip(strain_covs, strain_lengths):
+            all_depths[cov] += ctg_len // WND
 
         for x in coverage_bins:
             all_cov_frequencies[x] += 1
@@ -121,19 +125,29 @@ def stats_by_ref(strainy_stats, ref_utgs_info):
     print("Strain asm len:\t{0}\tcontigs: {1}\tN50:{2}".format(sum(total_strain_utgs), len(total_strain_utgs), _n50(total_strain_utgs)))
 
     print("")
-    print("Multiplicity distribution")
+    print("Multiplicity")
     print("Mul\tRefSeqLength\tStrainSeq")
     max_hist = max(all_cov_frequencies.values())
     for i in sorted(all_cov_frequencies):
+        ref_len = all_cov_frequencies[i] * WND
+        rate = all_cov_frequencies[i] / max_hist
+        hist = int(rate * 20) * "*"
+        #strain_len = all_cov_frequencies[i] * WND * i
         if i > 0 and i <= 10:
-            ref_len = all_cov_frequencies[i] * WND
-            rate = all_cov_frequencies[i] / max_hist
-            hist = int(rate * 20) * "*"
-            #strain_len = all_cov_frequencies[i] * WND * i
             print(f"{i}\t{ref_len:10}\t{hist}")
 
     print("")
-    print("SNP divergencies")
+    print("Read depth")
+    max_hist = max(all_depths.values())
+    for i in sorted(all_depths):
+        depth = all_depths[i] * WND
+        rate = all_depths[i] / max_hist
+        hist = int(rate * 20) * "*"
+        if rate > 0.05:
+            print(f"{i}\t{depth:10}\t{hist}")
+
+    print("")
+    print("SNP divergence")
     print("Rate\tStrainSeq")
     max_hist = max(all_snp_rates.values())
     for i in sorted(all_snp_rates):
@@ -143,7 +157,8 @@ def stats_by_ref(strainy_stats, ref_utgs_info):
         strain_seq = all_snp_rates[i] * WND
         rate = all_snp_rates[i] / max_hist
         hist = int(rate * 20) * "*"
-        print(f"{div_perc:4.5f}\t{strain_seq}\t{hist}")
+        if rate > 0.01:
+            print(f"{div_perc:4.5f}\t{strain_seq}\t{hist}")
 
     #####
 
