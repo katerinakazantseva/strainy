@@ -40,7 +40,7 @@ def get_lengths_and_coverage(ref_utgs_table):
     return ref_utgs
 
 
-def stats_by_ref(strainy_stats, ref_utgs_info):
+def stats_by_ref(strainy_stats, ref_utgs_info, ref_whitelist):
 
     all_cov_frequencies = defaultdict(int)
     all_snp_rates = defaultdict(int)
@@ -68,6 +68,9 @@ def stats_by_ref(strainy_stats, ref_utgs_info):
         if len(strain_utgs) == 0:
             continue
 
+        if ref_whitelist and ref_utg not in ref_whitelist:
+            continue
+
         strain_lengths = [s.phased_len for s in strain_utgs]
         strain_snp_rates = [s.snp_rate for s in strain_utgs]
         strain_covs = [s.cov for s in strain_utgs]
@@ -78,6 +81,8 @@ def stats_by_ref(strainy_stats, ref_utgs_info):
         for st in strain_utgs:
             for i in range(st.ref_start // WND, st.ref_end // WND):
                 coverage_bins[i] += 1
+        #print(ref_utg)
+        #print(coverage_bins)
 
         for cov, ctg_len in zip(strain_covs, strain_lengths):
             all_depths[cov] += ctg_len // WND
@@ -108,7 +113,10 @@ def stats_by_ref(strainy_stats, ref_utgs_info):
     ctgs_processed = []
     ctgs_phased = []
 
-    for info in ref_utgs_info.values():
+    for utg, info in ref_utgs_info.items():
+        if ref_whitelist and utg not in ref_whitelist:
+            continue
+
         ctgs_input.append(info.length)
         if info.is_processed:
             ctgs_processed.append(info.length)
@@ -167,15 +175,20 @@ WND = 100
 MIN_DIV = 0.00001
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: strainy_stats.py ref_table phased_table")
+    if len(sys.argv) < 3:
+        print("Usage: strainy_stats.py ref_table phased_table [ref_utgs]")
         return 1
 
     ref_utg_stats = sys.argv[1]
     phased_utg_stats = sys.argv[2]
+    ref_whitelist = None
+    if len(sys.argv) == 4:
+        ref_whitelist = set()
+        for line in open(sys.argv[3], "r"):
+            ref_whitelist.add(line.strip())
 
     ref_utg_stats = get_lengths_and_coverage(ref_utg_stats)
-    stats_by_ref(phased_utg_stats, ref_utg_stats)
+    stats_by_ref(phased_utg_stats, ref_utg_stats, ref_whitelist)
 
 
 if __name__ == "__main__":
