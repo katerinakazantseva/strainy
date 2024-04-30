@@ -127,10 +127,10 @@ def stats_by_ref(strainy_stats, ref_utgs_info, ref_whitelist):
         return _calc_n50(x, sum(x))[1]
 
     print("")
-    print("Ref input len:\t{0}\tcontigs: {1}\tN50:{2}".format(sum(ctgs_input), len(ctgs_input), _n50(ctgs_input)))
-    print("Ref proc. len:\t{0}\tcontigs: {1}\tN50:{2}".format(sum(ctgs_processed), len(ctgs_processed), _n50(ctgs_processed)))
-    print("Ref phased len:\t{0}\tcontigs: {1}\tN50:{2}".format(sum(ctgs_phased), len(ctgs_phased), _n50(ctgs_phased)))
-    print("Strain asm len:\t{0}\tcontigs: {1}\tN50:{2}".format(sum(total_strain_utgs), len(total_strain_utgs), _n50(total_strain_utgs)))
+    print("Reference utgs input:\tlen: {0}\tnum: {1}\tN50:{2}".format(sum(ctgs_input), len(ctgs_input), _n50(ctgs_input)))
+    print("Reference utgs select:\tlen: {0}\tnum: {1}\tN50:{2}".format(sum(ctgs_processed), len(ctgs_processed), _n50(ctgs_processed)))
+    print("Reference utgs phased:\tlen: {0}\tnum: {1}\tN50:{2}".format(sum(ctgs_phased), len(ctgs_phased), _n50(ctgs_phased)))
+    print("Strain utgs asmembled:\tlen: {0}\tnum: {1}\tN50:{2}".format(sum(total_strain_utgs), len(total_strain_utgs), _n50(total_strain_utgs)))
 
     print("")
     print("Multiplicity")
