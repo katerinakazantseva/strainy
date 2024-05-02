@@ -145,14 +145,27 @@ def generate_vcf(bam_aln, ref_fasta, out_stream):
                 out_stream.write("\t".join(map(str, vcf_fields)) + "\n")
 
 
+MINIMAP = "minimap2"
+def run_minimap2(reference, query, threads, aln_out):
+    cmd = f"{MINIMAP} -ax asm10 {reference} {query} -t {threads} | {SAMTOOLS} sort -@4 > {aln_out}"
+    subprocess.check_call(cmd, shell=True)
+    subprocess.check_call(f"{SAMTOOLS} index -@4 {aln_out}", shell=True)
+
+
+def produce_strainy_vcf(ref_fasta, strain_asm, threads, minimap_aln, vcf_stream):
+    run_minimap2(ref_fasta, strain_asm, threads, minimap_aln)
+    generate_vcf(minimap_aln, ref_fasta, sys.stdout)
+
+
 def main():
     if len(sys.argv) < 3:
-        print("Usage call_variants.py minimap_aln ref_fasta")
+        print("Usage call_variants.py ref_fasta strain_fasta")
         return 1
 
-    minimap_aln = sys.argv[1]
-    ref_fasta = sys.argv[2]
-    generate_vcf(minimap_aln, ref_fasta, sys.stdout)
+    ref_fasta = sys.argv[1]
+    strain_fasta = sys.argv[2]
+    mmap_aln = strain_fasta + "_ref_aln.bam"
+    produce_strainy_vcf(ref_fasta, strain_fasta, 10, mmap_aln, sys.stdout)
 
 
 if __name__ == "__main__":
