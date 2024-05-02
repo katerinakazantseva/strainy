@@ -21,8 +21,9 @@ from strainy.flye_consensus import FlyeConsensus
 import strainy.clustering.build_data as build_data
 from strainy.params import *
 from strainy.logging import set_thread_logging
-
-
+from strainy.reports.strainy_stats import strain_stats_report
+from strainy.reports.call_variants import produce_strainy_vcf
+from strainy.preprocessing import gfa_to_fasta
 
 logger = logging.getLogger()
 
@@ -952,10 +953,22 @@ def clean_graph(g):
 def transform_main(args):
     init_global_args_storage(args)
 
+    intermediate_dir = os.path.join(StRainyArgs().output, "intermediate")
+    if not os.path.isdir(intermediate_dir):
+        os.mkdir(intermediate_dir)
+
+    debug_dir = os.path.join(StRainyArgs().output, "debug")
+    if not os.path.isdir(debug_dir):
+        os.mkdir(debug_dir)
+
     if os.path.isdir(StRainyArgs().log_transform):
         shutil.rmtree(StRainyArgs().log_transform)
     os.mkdir(StRainyArgs().log_transform)
     set_thread_logging(StRainyArgs().log_transform, "transform", None)
+
+    stats = open("%s/stats_clusters.txt" % StRainyArgs().output, "a")
+    stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
+    stats.close()
 
     """
     Here we put a hard limit on the number of 16 threads. This is because of an issue in CPython implementation
@@ -971,10 +984,6 @@ def transform_main(args):
     if StRainyArgs().threads != 1:
         pool = multiprocessing.Pool(num_threads)
     default_manager = multiprocessing.Manager()
-
-    stats = open("%s/stats_clusters.txt" % StRainyArgs().output, "a")
-    stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
-    stats.close()
 
     initial_graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
     #Setting up coverage for all unitigs based on bam alignment depth
@@ -995,7 +1004,6 @@ def transform_main(args):
     consensus_dict = {}
 
     logger.info("### Create unitigs")
-
     bam_cache, link_clusters, link_clusters_src, link_clusters_sink, remove_clusters, initial_graph = \
             parallelize_gcu(pool, StRainyArgs().edges, flye_consensus, initial_graph, args)
 
@@ -1024,20 +1032,16 @@ def transform_main(args):
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
 
-    graph_dir = os.path.join(StRainyArgs().output, "intermediate_gfa")
-    if not os.path.isdir(graph_dir):
-        os.mkdir(graph_dir)
-    strainy_final = os.path.join(StRainyArgs().output, "strainy_final.gfa")
-
     clean_graph(initial_graph)
-    out_clusters = os.path.join(graph_dir, "10_fine_clusters.gfa")
+    out_clusters = os.path.join(intermediate_dir, "10_fine_clusters.gfa")
     gfapy.Gfa.to_file(initial_graph, out_clusters)
 
     phased_graph = gfapy.Gfa.from_file(out_clusters)    #parsing again because gfapy can"t copy
     gfapy.GraphOperations.merge_linear_paths(phased_graph)
     clean_graph(phased_graph)
-    out_merged = os.path.join(graph_dir, "20_extended_haplotypes.gfa")
+    out_merged = os.path.join(intermediate_dir, "20_extended_haplotypes.gfa")
     gfapy.Gfa.to_file(phased_graph, out_merged)
+    strainy_final = os.path.join(StRainyArgs().output, "strainy_final.gfa")
     shutil.copyfile(out_merged, strainy_final)
 
     logger.info("### Simplify graph")
@@ -1045,15 +1049,23 @@ def transform_main(args):
 
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
     clean_graph(initial_graph)
-    out_simplified = os.path.join(graph_dir, "30_links_simplification.gfa")
+    out_simplified = os.path.join(intermediate_dir, "30_links_simplification.gfa")
     gfapy.Gfa.to_file(initial_graph, out_simplified)
     if args.link_simplify:
         shutil.copyfile(out_merged, strainy_final)
 
+    logger.info("Generating strain report")
+    strains_report = os.path.join(StRainyArgs().output, "phased_stats.txt")
+    strain_stats_report(StRainyArgs().reference_unitig_info_table_path,
+                        StRainyArgs().phased_unitig_info_table_path, open(strains_report, "w"))
+
+    logger.info("Generating strain variant calls")
+    strain_utgs_fasta = os.path.join(intermediate_dir, "strain_utgs.fasta")
+    strain_utgs_aln = strain_utgs_fasta + "_ref_aln.bam"
+    gfa_to_fasta(out_clusters, strain_utgs_fasta)
+    vcf_strain_variants = os.path.join(StRainyArgs().output, "phased_strain_variants.vcf")
+    produce_strainy_vcf(StRainyArgs().fa, strain_utgs_fasta, StRainyArgs().threads,
+                        strain_utgs_aln, open(vcf_strain_variants, "w"))
+
     flye_consensus.print_cache_statistics()
     logger.info("### Done!")
-
-
-
-if __name__ == "__main__":
-    transform_main()

@@ -33,9 +33,9 @@ def gfa_to_fasta(gfa_file, output_file):
     """
     fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {gfa_file} > {output_file}"""
     try:
-        logger.info(f"Creating fasta file from the gfa file {gfa_file}")
+        logger.debug(f"Creating fasta file from the gfa file {gfa_file}")
         subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
-        logger.info("Done!")
+        #logger.info("Done!")
 
     except subprocess.CalledProcessError as e:
         logger.error(e)
