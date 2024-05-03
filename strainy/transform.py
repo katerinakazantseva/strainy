@@ -44,15 +44,15 @@ def format_rounding(number):
 
 def write_phased_unitig_csv():
     columns = [
-        'Strain unitig',
-        'Reference unitig',
+        'Strain_unitig',
+        'Reference_unitig',
         'Length',
         'Coverage',
-        'Abundance Ratio',
+        'Abundance_Ratio',
         '#SNP',
-        'SNP density',
-        'Start positioin',
-        'End position'
+        'SNP_density',
+        'Start_positioin',
+        'End_position'
         ]
     
     with open(StRainyArgs().phased_unitig_info_table_path, 'w') as f:
@@ -64,12 +64,12 @@ def write_phased_unitig_csv():
 
 def write_reference_unitig_csv():
     columns=[
-        'Reference unitig',
+        'Reference_unitig',
         'Length',
-        '#SNP',
-        'SNP density',
-        'Is processed',
-        'Is phased'
+        'Coverage',
+        'SNP_density',
+        'Is_processed',
+        'Is_phased'
         ]
     
     with open(StRainyArgs().reference_unitig_info_table_path, 'w') as f:
@@ -114,10 +114,10 @@ def store_phased_unitig_info(strain_unitig, reference_unitig, n_SNPs, start, end
         ]
     
 
-def store_reference_unitig_info():
+def store_reference_unitig_info(ref_coverage):
     graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
     phased_unitig_df = pd.read_csv(StRainyArgs().phased_unitig_info_table_path, sep='\t')
-    counter = Counter(list(phased_unitig_df['Reference unitig']))
+    counter = Counter(list(phased_unitig_df['Reference_unitig']))
     for reference_unitig in graph.segments:
 
         # Number of phased unitigs created from this reference unitig
@@ -134,7 +134,7 @@ def store_reference_unitig_info():
         StRainyArgs().reference_unitig_info_table[reference_unitig.name] = [
             reference_unitig.name,
             reference_unitig.length,
-            n_SNPs,
+            ref_coverage[reference_unitig.name],
             format_rounding(n_SNPs / reference_unitig.length),
             reference_unitig.name in StRainyArgs().edges_to_phase,
             n_phased_unitigs > 1
@@ -981,9 +981,11 @@ def transform_main(args):
     initial_graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
     #Setting up coverage for all unitigs based on bam alignment depth
     logger.info("Re-setting unitigs coverage")
+    ref_coverage = {}
     for edge in StRainyArgs().edges:
         edge_cov = pysam.samtools.coverage("-r", edge, StRainyArgs().bam, "--no-header").split()[6]
         initial_graph.try_get_segment(edge).dp = round(float(edge_cov))
+        ref_coverage[edge] = round(float(edge_cov))
 
     logger.info("Loading phased unitigs dictionary")
     try:
@@ -1005,7 +1007,7 @@ def transform_main(args):
     write_phased_unitig_csv()
     #logger.info('Done!')
     logger.info('Creating csv file with reference unitigs...')
-    store_reference_unitig_info()
+    store_reference_unitig_info(ref_coverage)
     write_reference_unitig_csv()
     #logger.info('Done!')
 

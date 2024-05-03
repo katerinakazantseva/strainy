@@ -36,8 +36,8 @@ def get_lengths_and_coverage(ref_utgs_table):
         if line.startswith("Reference"):
             continue
         fields = line.strip().split("\t")
-        name, length, snp_rate, processed, phased = \
-            fields[0], int(fields[1]), float(fields[3]), fields[4] == "True", fields[5] == "True"
+        name, length, coverage, snp_rate, processed, phased = \
+            fields[0], int(fields[1]), int(fields[2]), float(fields[3]), fields[4] == "True", fields[5] == "True"
         ref_utgs[name] = RefInfo(name, length, snp_rate, processed, phased)
 
     return ref_utgs
