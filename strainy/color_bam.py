@@ -14,8 +14,8 @@ from strainy.params import *
 
 def write_bam(edge, I, AF):
     infile = pysam.AlignmentFile(StRainyArgs().bam, "rb")
-    outfile = pysam.AlignmentFile("%s/bam/coloredBAM_unitig_%s.bam" % (StRainyArgs().output, edge), "wb", template=infile)
-    cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, AF),keep_default_na=False)
+    outfile = pysam.AlignmentFile("%s/bam/coloredBAM_unitig_%s.bam" % (StRainyArgs().output_intermediate, edge), "wb", template=infile)
+    cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, edge, I, AF),keep_default_na=False)
     iter = infile.fetch(edge,until_eof=True)
     cmap = plt.get_cmap("viridis")
     cl.loc[cl["Cluster"] == "NA", "Cluster"] = 0

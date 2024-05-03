@@ -160,7 +160,7 @@ class FlyeConsensus:
         reads_from_curr_cluster = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
         start_pos_of_reads = cl.loc[cl["Cluster"] == cluster]["Start"].to_numpy()
         salt = random.randint(1000, 10000)
-        fprefix = "%s/flye_inputs/" % StRainyArgs().output
+        fprefix = "%s/flye_inputs/" % StRainyArgs().output_intermediate
         bam_subset = f"{fprefix}{edge}_cluster_{cluster}_reads_{salt}.bam"
         bam_subset_sorted = f"{fprefix}{edge}_cluster_{cluster}_reads_{salt}_sorted.bam"
         cluster_start, cluster_end, read_limits = self._extract_reads(reads_from_curr_cluster, start_pos_of_reads,
@@ -191,7 +191,7 @@ class FlyeConsensus:
             logger.error(traceback.format_exc())
 
         #  Polisher arguments for to call _run_polisher_only(polish_args)
-        flye_out_dir = f"{StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
+        flye_out_dir = f"{StRainyArgs().output_intermediate}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         polish_args = Namespace(polish_target=f"{fname}.fa",
                                 reads=[bam_subset_sorted],
                                 out_dir=flye_out_dir,
@@ -202,7 +202,7 @@ class FlyeConsensus:
 
         # polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa --threads {self._num_processes}" \
         #              f" {self._mode} {fprefix}cluster_{cluster}_reads_sorted_{salt}.bam " \
-        #              f"-o {StRainyArgs().output}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
+        #              f"-o {StRainyArgs().output_intermediate}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
         try:
             logger.debug("Running Flye polisher")
             # subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))

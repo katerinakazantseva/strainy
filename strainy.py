@@ -108,9 +108,10 @@ def main():
             print("{} not installed".format(tool), file=sys.stderr)
             return 1
         
-    if not os.path.isdir(StRainyArgs().output):
-        os.mkdir(StRainyArgs().output)
-    set_thread_logging(StRainyArgs().output, "root", None)
+    os.makedirs(StRainyArgs().output, exist_ok=True)
+    os.makedirs(StRainyArgs().output_intermediate, exist_ok=True)
+    os.makedirs(StRainyArgs().log_phase, exist_ok=True)
+    set_thread_logging(StRainyArgs().log_phase, "phase_root", None)
 
     preprocess_cmd_args(args)
 
@@ -132,14 +133,14 @@ def main():
         phase_main(args)
         logger.info("Phase stage completed, starting transform now...")
         pr_phase.disable()
-        pr_phase.dump_stats(f'{StRainyArgs().output}/phase.prof')
+        pr_phase.dump_stats(f'{StRainyArgs().output_intermediate}/phase.prof')
 
         pr_transform = cProfile.Profile()
         pr_transform.enable()
         transform_main(args)
         logger.info("Transform stage completed, exiting...")
         pr_transform.disable()
-        pr_transform.dump_stats(f'{StRainyArgs().output}/transform.prof')
+        pr_transform.dump_stats(f'{StRainyArgs().output_intermediate}/transform.prof')
 
 
 if __name__ == "__main__":

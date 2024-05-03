@@ -69,7 +69,9 @@ def color_bam(edges):
     for e in edges:
         color(e)
 
-    out_bam_dir = os.path.join(StRainyArgs().output, "bam")
+    out_bam_dir = os.path.join(StRainyArgs().output_intermediate, "bam")
+    final_aln = os.path.join(StRainyArgs().output, "alignment_phased.bam")
+
     files_to_be_merged = []
     for fname in subprocess.check_output(f'find {out_bam_dir} -name "*unitig*.bam"', shell = True, universal_newlines = True).split("\n"):
         if len(fname):
@@ -79,19 +81,19 @@ def color_bam(edges):
     for i, bam_file in enumerate(files_to_be_merged):
         # fetch the header and put it at the top of the file, for the first bam_file only
         if i == 0:
-            subprocess.check_output(f'samtools view -H {bam_file} > {StRainyArgs().output}/bam/coloredSAM.sam', shell = True)
+            subprocess.check_output(f'samtools view -H {bam_file} > {out_bam_dir}/coloredSAM.sam', shell = True)
 
         # convert bam to sam, append to the file
-        subprocess.check_output(f'samtools view {bam_file} >> {StRainyArgs().output}/bam/coloredSAM.sam', shell = True)
+        subprocess.check_output(f'samtools view {bam_file} >> {out_bam_dir}/coloredSAM.sam', shell = True)
 
     # convert the file to bam and sort
-    subprocess.check_output(f'samtools view -b {StRainyArgs().output}/bam/coloredSAM.sam >> {StRainyArgs().output}/bam/unsortedBAM.bam', shell = True)
-    pysam.samtools.sort(f'{StRainyArgs().output}/bam/unsortedBAM.bam', "-o", f'{StRainyArgs().output}/bam/coloredBAM.bam')
-    pysam.samtools.index(f'{StRainyArgs().output}/bam/coloredBAM.bam', f'{StRainyArgs().output}/bam/coloredBAM.bai')
+    subprocess.check_output(f'samtools view -b {out_bam_dir}/coloredSAM.sam >> {out_bam_dir}/unsortedBAM.bam', shell = True)
+    pysam.samtools.sort(f'{out_bam_dir}/unsortedBAM.bam', "-o", final_aln)
+    pysam.samtools.index(final_aln)
 
     # remove unnecessary files
-    os.remove(f'{StRainyArgs().output}/bam/unsortedBAM.bam')
-    os.remove(f'{StRainyArgs().output}/bam/coloredSAM.sam')
+    os.remove(f'{out_bam_dir}/unsortedBAM.bam')
+    os.remove(f'{out_bam_dir}/coloredSAM.sam')
     for f in files_to_be_merged:
         os.remove(f)
 
@@ -99,34 +101,27 @@ def color_bam(edges):
 def phase_main(args):
     #logging.info(StRainyArgs)
     logger.info("Starting phasing")
-    dirs = ("%s/vcf/" % StRainyArgs().output,
-            "%s/clusters/" % StRainyArgs().output,
-            "%s/bam/" % StRainyArgs().output,
-            "%s/bam/clusters" % StRainyArgs().output,
-            "%s/flye_inputs" % StRainyArgs().output,
-            "%s/flye_outputs" % StRainyArgs().output
+    dirs = ("%s/vcf/" % StRainyArgs().output_intermediate,
+            "%s/clusters/" % StRainyArgs().output_intermediate,
+            "%s/bam/" % StRainyArgs().output_intermediate,
+            "%s/bam/clusters" % StRainyArgs().output_intermediate,
+            "%s/flye_inputs" % StRainyArgs().output_intermediate,
+            "%s/flye_outputs" % StRainyArgs().output_intermediate
     )
     
-    debug_dirs = ("%s/graphs/" % StRainyArgs().output,
-                  "%s/adj_M/" % StRainyArgs().output
+    debug_dirs = ("%s/graphs/" % StRainyArgs().output_intermediate,
+                  "%s/adj_M/" % StRainyArgs().output_intermediate
     )
 
     for dir in dirs:
-        try:
-            os.stat(dir)
-        except:
-            os.makedirs(dir)
+        os.makedirs(dir, exist_ok=True)
 
     if StRainyArgs().debug:
-        for dir in debug_dirs:
-            try:
-                os.stat(dir)
-            except:
-                os.makedirs(dir)
+        os.makedirs(dir, exist_ok=True)
 
     consensus_dict = phase(StRainyArgs().edges_to_phase, args)
     if write_consensus_cache:
-        with open(os.path.join(StRainyArgs().output, consensus_cache_path), "wb") as f:
+        with open(os.path.join(StRainyArgs().output_intermediate, consensus_cache_path), "wb") as f:
             pickle.dump(consensus_dict, f)
     color_bam(StRainyArgs().edges)
     logger.info("Done")

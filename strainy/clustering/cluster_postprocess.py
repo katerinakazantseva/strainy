@@ -122,7 +122,7 @@ def join_clusters(cons, cl, Rcl, edge, consensus, only_with_common_snip=True,set
     if StRainyArgs().debug and max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
         G_vis_before = nx.nx_agraph.to_agraph(G_vis)
         G_vis_before.layout(prog = "dot")
-        G_vis_before.draw("%s/graphs/linear_phase_%s.png" % (StRainyArgs().output, edge))
+        G_vis_before.draw("%s/graphs/linear_phase_%s.png" % (StRainyArgs().output_intermediate, edge))
         CUT_OFF=5
 
     path_remove = []
@@ -156,7 +156,7 @@ def join_clusters(cons, cl, Rcl, edge, consensus, only_with_common_snip=True,set
     if StRainyArgs().debug and max(G_vis.number_of_nodes(), G_vis.number_of_edges()) < MAX_VIS_SIZE:
         G_vis = nx.nx_agraph.to_agraph(G_vis)
         G_vis.layout(prog="dot")
-        G_vis.draw("%s/graphs/linear_phase_simplified_%s.png" % (StRainyArgs().output, edge))
+        G_vis.draw("%s/graphs/linear_phase_simplified_%s.png" % (StRainyArgs().output_intermediate, edge))
 
     G = gfa_ops.from_pandas_adjacency_notinplace(M)
 
@@ -285,7 +285,7 @@ def postprocess(bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge
     reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
     cons = build_data.build_data_cons(cl, SNP_pos, data, edge, reference_seq)
     if StRainyArgs().debug:
-        cl.to_csv("%s/clusters/%s_1.csv" % (StRainyArgs().output,edge))
+        cl.to_csv("%s/clusters/%s_1.csv" % (StRainyArgs().output_intermediate, edge))
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))
 
 

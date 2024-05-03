@@ -17,15 +17,15 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
 
     if vcf_file == None:
         if cluster == None:
-            snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD --annotate FORMAT/ADR --annotate FORMAT/ADF   2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP %ADR %ADF  %REF %ALT]\n"  >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs().output, edge)
+            snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD --annotate FORMAT/ADR --annotate FORMAT/ADF   2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP %ADR %ADF  %REF %ALT]\n"  >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs().output_intermediate, edge)
 
             subprocess.check_output(snpos, shell=True, capture_output=False)
-            filtered_file='{}/vcf/vcf_{}_filtered.vcf'.format(StRainyArgs().output,edge)
+            filtered_file='{}/vcf/vcf_{}_filtered.vcf'.format(StRainyArgs().output_intermediate, edge)
             if not os.path.exists(filtered_file):
                 vcf_file_f = open(filtered_file, "a+")
                 vcf_file_f.write("##fileformat=VCFv4.2\n")
                 vcf_file_f.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
-            with open("%s/vcf/vcf_%s.txt" % (StRainyArgs().output, edge)) as f:
+            with open("%s/vcf/vcf_%s.txt" % (StRainyArgs().output_intermediate, edge)) as f:
                 lines = f.readlines()
                 for line in lines:
                     try:

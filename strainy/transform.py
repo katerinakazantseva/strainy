@@ -301,7 +301,7 @@ def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
     graph_str = str(nx.nx_agraph.to_agraph(G_vis))
     graph_vis = gv.AGraph(graph_str)
     graph_vis.layout(prog = "dot") # TODO: this line may cause an error
-    graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output, edge))
+    graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output_intermediate, edge))
 
 
 def find_full_paths(G, paths_roots, paths_leafs):
@@ -610,7 +610,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
 
     cl = None
     try:
-        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, StRainyArgs().AF), keep_default_na = False)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, edge, I, StRainyArgs().AF), keep_default_na = False)
     except(FileNotFoundError, IndexError):
         logger.debug("%s: No clusters" % edge)
         clusters = []
@@ -742,7 +742,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             link_clusters_sink[edge] = list(full_clusters) + list(
                 set(full_paths_leafs).intersection(set([j for i in full_paths for j in i])))
 
-    stats = open("%s/stats_clusters.txt" % StRainyArgs().output, "a")
+    stats = open("%s/stats_clusters.txt" % StRainyArgs().output_intermediate, "a")
     fcN = 0
     fpN = 0
 
@@ -773,7 +773,7 @@ def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_cl
     clusters = link_clusters[edge]
 
     try:
-        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, edge, I, StRainyArgs().AF), keep_default_na = False)
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, edge, I, StRainyArgs().AF), keep_default_na = False)
     except(FileNotFoundError):
         pass
     link_unitigs = []
@@ -826,7 +826,8 @@ def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_cl
             #print(f"\tPROCESSING outgoing segment {next_seg}")
             fr_or, to_or = orient[next_seg]
             try:
-                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output, next_seg, I, StRainyArgs().AF), keep_default_na = False)
+                cl_n = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, next_seg,
+                                                                          I, StRainyArgs().AF), keep_default_na = False)
             except(FileNotFoundError):
                 gfa_ops.add_link(graph, f"{edge}_{cur_clust}", fr_or, next_seg, to_or, 555)
                 continue
@@ -953,20 +954,12 @@ def clean_graph(g):
 def transform_main(args):
     init_global_args_storage(args)
 
-    intermediate_dir = os.path.join(StRainyArgs().output, "intermediate")
-    if not os.path.isdir(intermediate_dir):
-        os.mkdir(intermediate_dir)
-
-    debug_dir = os.path.join(StRainyArgs().output, "debug")
-    if not os.path.isdir(debug_dir):
-        os.mkdir(debug_dir)
-
     if os.path.isdir(StRainyArgs().log_transform):
         shutil.rmtree(StRainyArgs().log_transform)
     os.mkdir(StRainyArgs().log_transform)
-    set_thread_logging(StRainyArgs().log_transform, "transform", None)
+    set_thread_logging(StRainyArgs().log_transform, "transform_root", None)
 
-    stats = open("%s/stats_clusters.txt" % StRainyArgs().output, "a")
+    stats = open("%s/stats_clusters.txt" % StRainyArgs().output_intermediate, "a")
     stats.write("Edge" + "\t" + "Fill Clusters" + "\t" + "Full Paths Clusters" + "\n")
     stats.close()
 
@@ -994,7 +987,7 @@ def transform_main(args):
 
     logger.info("Loading phased unitigs dictionary")
     try:
-        with open(os.path.join(StRainyArgs().output, consensus_cache_path), "rb") as f:
+        with open(os.path.join(StRainyArgs().output_intermediate, consensus_cache_path), "rb") as f:
             logger.debug(f"searching consensus cache in {os.getcwd()}")
             consensus_dict = pickle.load(f)
     except FileNotFoundError:
@@ -1033,37 +1026,41 @@ def transform_main(args):
             initial_graph.rm(link)
 
     clean_graph(initial_graph)
-    out_clusters = os.path.join(intermediate_dir, "10_fine_clusters.gfa")
+    out_clusters = os.path.join(StRainyArgs().output_intermediate, "10_fine_clusters.gfa")
     gfapy.Gfa.to_file(initial_graph, out_clusters)
+
+    strainy_utgs = os.path.join(StRainyArgs().output, "strain_unitigs.gfa")
+    shutil.copyfile(out_clusters, strainy_utgs)
 
     phased_graph = gfapy.Gfa.from_file(out_clusters)    #parsing again because gfapy can"t copy
     gfapy.GraphOperations.merge_linear_paths(phased_graph)
     clean_graph(phased_graph)
-    out_merged = os.path.join(intermediate_dir, "20_extended_haplotypes.gfa")
+    out_merged = os.path.join(StRainyArgs().output_intermediate, "20_extended_haplotypes.gfa")
     gfapy.Gfa.to_file(phased_graph, out_merged)
-    strainy_final = os.path.join(StRainyArgs().output, "strainy_final.gfa")
+
+    strainy_final = os.path.join(StRainyArgs().output, "strain_contigs.gfa")
     shutil.copyfile(out_merged, strainy_final)
 
     logger.info("### Simplify graph")
     smpl.simplify_links(initial_graph)
-
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
     clean_graph(initial_graph)
-    out_simplified = os.path.join(intermediate_dir, "30_links_simplification.gfa")
+
+    out_simplified = os.path.join(StRainyArgs().output_intermediate, "30_links_simplification.gfa")
     gfapy.Gfa.to_file(initial_graph, out_simplified)
     if args.link_simplify:
         shutil.copyfile(out_merged, strainy_final)
 
     logger.info("Generating strain report")
-    strains_report = os.path.join(StRainyArgs().output, "phased_stats.txt")
+    strains_report = os.path.join(StRainyArgs().output, "multiplicity_stats.txt")
     strain_stats_report(StRainyArgs().reference_unitig_info_table_path,
                         StRainyArgs().phased_unitig_info_table_path, open(strains_report, "w"))
 
     logger.info("Generating strain variant calls")
-    strain_utgs_fasta = os.path.join(intermediate_dir, "strain_utgs.fasta")
+    strain_utgs_fasta = os.path.join(StRainyArgs().output_intermediate, "strain_utgs.fasta")
     strain_utgs_aln = strain_utgs_fasta + "_ref_aln.bam"
     gfa_to_fasta(out_clusters, strain_utgs_fasta)
-    vcf_strain_variants = os.path.join(StRainyArgs().output, "phased_strain_variants.vcf")
+    vcf_strain_variants = os.path.join(StRainyArgs().output, "strain_variants.vcf")
     produce_strainy_vcf(StRainyArgs().fa, strain_utgs_fasta, StRainyArgs().threads,
                         strain_utgs_aln, open(vcf_strain_variants, "w"))
 

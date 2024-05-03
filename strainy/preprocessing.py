@@ -190,8 +190,7 @@ def preprocess_cmd_args(args):
             raise Exception("Arguments exception")
 
     preprocessing_dir = os.path.join(args.output, "preprocessing_data")
-    if not os.path.isdir(preprocessing_dir):
-        os.mkdir(preprocessing_dir)
+    os.makedirs(preprocessing_dir, exist_ok=True)
     input_graph = gfapy.Gfa.from_file(args.gfa)
     if args.unitig_split_length != 0:
         split_long_unitigs(input_graph,
@@ -218,7 +217,7 @@ def preprocess_cmd_args(args):
     # args.graph_edges = args.edges_to_phase
 
     # log filtered out files
-    with open(f'{args.output}/filtered_out_unitigs.txt', 'w+') as f:
+    with open(f'{StRainyArgs().output_intermediate}/filtered_out_unitigs.txt', 'w+') as f:
         for i in filtered_out:
             f.write(f'{i}\n')
 
