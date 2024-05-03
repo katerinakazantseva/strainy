@@ -107,9 +107,11 @@ def main():
         if not shutil.which(tool):
             print("{} not installed".format(tool), file=sys.stderr)
             return 1
-        
+
     os.makedirs(StRainyArgs().output, exist_ok=True)
     os.makedirs(StRainyArgs().output_intermediate, exist_ok=True)
+    if os.path.isdir(StRainyArgs().log_phase):
+        shutil.rmtree(StRainyArgs().log_phase)
     os.makedirs(StRainyArgs().log_phase, exist_ok=True)
     set_thread_logging(StRainyArgs().log_phase, "phase_root", None)
 

@@ -37,9 +37,7 @@ def _thread_fun(i, shared_flye_consensus, args):
 
 def phase(edges, args):
     logger.info("CMD: " + " ".join(sys.argv[1:]))
-    if os.path.isdir(StRainyArgs().log_phase):
-        shutil.rmtree(StRainyArgs().log_phase)
-    os.mkdir(StRainyArgs().log_phase)
+
     empty_consensus_dict = {}
     default_manager = multiprocessing.Manager()
     shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, empty_consensus_dict, default_manager)
