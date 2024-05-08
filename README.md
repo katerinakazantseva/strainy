@@ -50,11 +50,12 @@ stRainy to larger metagenomes is a work in progress.
 stRainy supports PacBio HiFi and Nanopore (Guppy5+) sequencing. 
 
 The two main inputs to stRainy are:
-1. GFA file (can be produced with [**metaFlye**](https://github.com/fenderglass/Flye) or minigraph) 
-and
-2. FASTQ file (containing reads to be aligned to the fasta reference generated from the GFA file).
+1. GFA file: A de novo metagenomic assembly that can be produced with [**metaFlye**](https://github.com/fenderglass/Flye) or minigraph).
+For metaFlye parameters please check **Improving de novo metagenomic assemblies** below.
+You can also try to format fasta into a gfa file in the case of a linear genome (experimentally,not tested)
+3. FASTQ file (containing reads to be aligned to the fasta reference generated from the GFA file).
 
-## Improving de novo metagenomic assmbelies
+## Improving de novo metagenomic assemblies
 
 We have tested stRainy using metaFlye metagenoimic assembly graphs as input. The recommended
 set of parameters is `--meta --keep-haplotypes --no-alt-contigs -i 0`. 
@@ -87,31 +88,21 @@ stRainy has 2 stages: **phase** and **transform**. With the command below, stRai
 
 ## Parameter description
 
-```
-usage: strainy.py [-h] -o OUTPUT -g GFA -m {hifi,nano} -q FASTQ [-stage {phase,transform,e2e}] [-s SNP] [-t THREADS] [-f FASTA] [-b BAM] [--unitig-split-length UNITIG_SPLIT_LENGTH]
-
-options:
-  -h, --help            show this help message and exit
-  -stage {phase,transform,e2e}
-                        stage to run: either phase, transform or e2e (phase + transform) (default: e2e)
-  -s SNP, --snp SNP     vcf file (default: None)
-  -t THREADS, --threads THREADS
-                        number of threads to use (default: 4)
-  -f FASTA, --fasta FASTA
-                        fasta file (default: None)
-  -b BAM, --bam BAM     bam file (default: None)
-  --unitig-split-length UNITIG_SPLIT_LENGTH
-                        The length (in kb) which the unitigs that are longer will be split, set 0 to disable (default: 50)
-
-Required named arguments:
-  -o OUTPUT, --output OUTPUT
-                        directory that will contain the output files (default: None)
-  -g GFA, --gfa GFA     gfa file (default: None)
-  -m {hifi,nano}, --mode {hifi,nano}
-                        type of reads (default: None)
-  -q FASTQ, --fastq FASTQ
-                        fastq file containing reads to perform alignment, used to create a .bam file (default: None)
-```
+| Key  | Description |
+| ------------- | ------------- |
+|-o	|directory that will contain the output files (default: None)|
+|-g	|assembly gfa file (may be produced with metaFlye or minigraph)|
+|-q	|FASTQ file ( PacBio HiFi or  Nanopore sequencing)|
+|-m	|type of reads {hifi,nano}|
+| -snp (Optional)	|you can provide your own vcf file, with variants of the desired AF. Otherwise stRainy will use the built-in pileup-based caller(default: None)|
+| -a (Optional)	|ALLELE_FREQUENCY: allele frequency trhreshhold for built-in pileup-based caller. Will only work if snp=None (default: None)|
+| -d (Optional)|	CLUSTER_DIVERGENCE: Cluster sensitivyty-maximum number of total mismatches allowed in the cluster per 1kbp. Should be selected depending on SNP rates and their accuracy. Increasing the parameter can reduce high fragmentation but at the same time reduce clustering accuracy (default: None)|
+| -unitig-split-length (Optional)	|stRainy splits the unitigs of the original graph to improve performance so that they do not exceed the threshold (defailt: 50K)|
+|-b (Optional)	| BAM: If you want, you can use a prebuilt bam file (aligned reads per assembly), but this will only work in case of --unitig-split-length 0 or (default: None)|
+|-s (Optional)	| stage to run: either phase, transform or e2e (phase + transform) (default: e2e)|
+|--min-unitig-coverage/--max-unitig-coverage (Optional)	|thresholds to determine which unitigss to phase|
+|-threads (Optional)	|number of threads to use (default: 4)|
+|-debug (Optional) |	debug mode enable |
 
 ## Acknowledgements
 
