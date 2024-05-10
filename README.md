@@ -104,6 +104,31 @@ stRainy has 2 stages: **phase** and **transform**. With the command below, stRai
 |-threads (Optional)	|number of threads to use (default: 4)|
 |-debug (Optional) |	debug mode enable |
 
+## Output description
+
+
+
+
+| Path  | Description | Example |
+| ------------- | ------------- | ------------- | 
+| strain_contigs.gfa | phased graph (before simplifying links and merging contigs) | <img width="170" alt="image" src="https://github.com/katerinakazantseva/stRainy/assets/82141791/71347e47-d18d-4d35-a3c8-3f36561ae970"> 
+| strain_unitigs.gfa	| phased graph (after simplifying links and merging contigs) | <img width="170" alt="image" src="https://github.com/katerinakazantseva/stRainy/assets/82141791/6c254095-d7f7-4104-bc94-f8b1a15a8c07"> 
+| strain_variants.vcf |	vcf produced by stRainy build-in caller if not provided by user  | 
+|alignment_phased.bam	| alignment (input reads to the input gfa) if not provided by user | <img width="170" alt="image" src="https://github.com/katerinakazantseva/stRainy/assets/82141791/5f67678c-969d-4121-a694-dfddf694c0ce">
+| multiplicity_stats.txt      | output statistics file (multiplicity and strain divergence info) | 
+|phased_unitig_info_table.csv |  output statistics file (Length,Coverage, SNP rate) for phased unitigs | 
+|reference_unitig_info_table.csv	|output statistics file (Length,Coverage, SNP rate) for reference unitigs | 
+|preprocessing_data/ |	directory with files produced by stRainy (bam, fasta, etc) if not provided by user, also contain splitted gfa/fa/bam if split long unitigs enabled ||
+|intermediate/10_fine_clusters.gfa | gfa with phased contigs only (same strain_unitigs.gfa) ||
+|intermediate/20_extended_haplotypes.gfa |	gfa with phased and connected  contigs only (same strain_contigs.gfa)||
+|intermediate/30_links_simplification.gfa | gfa after link simplification||
+|intermediate/filtered_out_unitigs.txt | list of unitigs have not been processed (i.e. filtered by coverage) ||
+|intermediate/bam/ | bam files with color tag based on cluster ID (availible only in debug mode) |<img width="170" alt="image" src="https://github.com/katerinakazantseva/stRainy/assets/82141791/565c08b4-da2b-4923-a4d2-5f3c8ed943df">
+|intermediate/clusters/ |	csv files containing read names and corresponding cluster IDs |<img width="240" alt="image" src="https://github.com/katerinakazantseva/stRainy/assets/82141791/3665d84e-7486-405f-af79-de90874d5627">
+|log_phase | log directory (phasing stage) ||
+|log_transform	| log directory (transform stage) ||
+
+
 ## Acknowledgements
 
 Consensus function of stRainy is [**Flye**](https://github.com/fenderglass/Flye)
