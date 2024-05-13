@@ -107,33 +107,31 @@ Strainy has 2 stages: **phase** and **transform**. By default, Strainy will perf
 
 **strain_contigs.gfa**
 
-phased graph (before simplifying links and merging contigs)
+The graph (GFA format) represents the  phased  assembly before simplifying links and merging contigs. In this version, the  graph includes the phasing result of each individual unitig only.
 
  **strain_unitigs.gfa**
  
-phased graph (after simplifying links and merging contigs)
+The graph (GFA format) represents the  phased  assembly after simplifying links and merging contigs. This is the final version of the graph showing the connections between unitigs and containing extended haplotypes.
 
 **strain_variants.vcf** 
 
-
-vcf produced by Strainy build-in caller if not provided by user  
+When users don't provide their own VCF file, stRainy utilizes its built-in variant caller to produce a VCF file containing the detected variants. The caller is based on mpileup and includes strand-bias detection. Frequency will be processed according to the specified AF parameter or its default value.
 
 **alignment_phased.bam**	
 
-
-alignment (input reads to the input gfa) if not provided by user 
+When users do not provide their own alignments, stRainy conducts the alignment of input reads to the input GFA using mpuleup
 
 **multiplicity_stats.txt** 
 
-output statistics file (multiplicity and strain divergence info)
+The output statistics file provides information regarding the multiplicity and strain divergence info)
 
 **phased_unitig_info_table.csv**
 
-output statistics file (Length,Coverage, SNP rate) for phased unitigs 
+The output statistics file provides key metrics (length, coverage, SNP rate) of the phased unitigs.
 
 **reference_unitig_info_table.csv**
 
-output statistics file (Length,Coverage, SNP rate) for reference unitigs
+The output statistics file provides key metrics (length, coverage, SNP rate) of the reference unitigs.
 
 ## Acknowledgements
 
