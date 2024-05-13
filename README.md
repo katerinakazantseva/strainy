@@ -21,7 +21,7 @@ Third, Strainy enables assembly-based analysis, which is useful in the absence o
 * [Parameters description](#parameters-description)
 * [Output Files](#output-files)
 * [Strainy tutorial](#strainy-tutorial)
-* [Recommendations for large metagenomic datasets](#recommendations-for-large-metagenomic-datasets)
+* [Recommendations for complex metagenomic datasets](#recommendations-for-complex-metagenomic-datasets)
 * [Overview of the Strainy algorithm](#overview-of-the-strainy-algorithm)
 
 
@@ -75,8 +75,14 @@ The two main inputs to Strainy are:
 For metaFlye parameters, please see [Preparing de novo metagenomic assemblies](#preparing-de-novo-metagenomic-assemblies).
 Alternatively, a reference in fasta format could be converted into a gfa and provided as input.
 
-* `FASTQ file` containing reads that need to be assmebled / phased. In the case of improving collapsed de novo assembly,
+* `Reads (fasta/fastq)` containing reads that need to be assmebled / phased. In the case of improving collapsed de novo assembly,
 same reads should be used for the assembler input.
+
+* `Optinal alignment / variant calls`. A user can provide their own alignment in `bam` format and
+variant calls in `vcf` format (that will be used for phasing). If these files are provided, splitting
+of long unitigs must be disabled by adding `--unitig-split-length 0`. It is recommended
+to split long sequences prior to producing alignment / variant calls, for example using the Strainy 
+`--only-split` option. Long unitigs (50 kb+) may significantly slow down Strainy.
 
 ## Preparing de novo metagenomic assemblies
 
@@ -144,7 +150,7 @@ Here we illustrate Strainy usage scenario using the simulated metagenomic datase
 
 XXX
 
-## Recommendations for large metagenomic datasets
+## Recommendations for complex metagenomic datasets
 
 YYY
 
