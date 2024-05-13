@@ -142,6 +142,8 @@ The output statistics file provides key metrics (length, coverage, SNP rate) of 
 
 ## Overview of the Strainy algorithm
 
+![Strainy overview](img/overview.png)
+
 This is a brief description, and more details are available in [our preprint](https://www.biorxiv.org/content/10.1101/2023.01.31.526521v2).
 
 The goal of the Strainy is to recover collapsed strain haplotypes from the input graph. 
