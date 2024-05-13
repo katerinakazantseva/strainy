@@ -20,7 +20,9 @@ Third, Strainy enables assembly-based analysis, which is useful in the absence o
 * [Preparing de novo metagenomic assemblies](#preparing-de-novo-metagenomic-assemblies)
 * [Parameters description](#parameters-description)
 * [Output Files](#output-files)
-* [Overview of the Strainy algorithm](#overview-of-the-severus-algorithm)
+* [Strainy tutorial](#strainy-tutorial)
+* [Recommendations for large metagenomic datasets](#recommendations-for-large-metagenomic-datasets)
+* [Overview of the Strainy algorithm](#overview-of-the-strainy-algorithm)
 
 
 ## Installation
@@ -62,16 +64,18 @@ The output directory `out_strainy` will contain strain-level assmebly `strain_co
 phased alignment `alignment_phased.bam`, strain variants calls `strain_variants.vcf` and other info.
 See below for the details on how to interpret strainy output.
 
+Also see a more detailed [tutorial](#strainy-tutorial) for the example of how to use Strainy.
+
 ## Strainy input
 
 Strainy supports PacBio HiFi, Nanopore R9 (Guppy5+) and R10 sequencing. 
 
 The two main inputs to Strainy are:
-* **GFA file**: A collapsed de novo metagenomic assembly that can be produced with [**metaFlye**](https://github.com/fenderglass/Flye). 
+* `GFA file` A collapsed de novo metagenomic assembly that can be produced with [**metaFlye**](https://github.com/fenderglass/Flye). 
 For metaFlye parameters, please see [Preparing de novo metagenomic assemblies](#preparing-de-novo-metagenomic-assemblies).
 Alternatively, a reference in fasta format could be converted into a gfa and provided as input.
 
-* **FASTQ file** containing reads that need to be assmebled / phased. In the case of improving collapsed de novo assembly,
+* `FASTQ file` containing reads that need to be assmebled / phased. In the case of improving collapsed de novo assembly,
 same reads should be used for the assembler input.
 
 ## Preparing de novo metagenomic assemblies
@@ -112,33 +116,37 @@ variations between strains on the assembly graph. `--no-alt-contigs` disables th
 
 ## Output files
 
-**strain_contigs.gfa**
+* `alignment_phased.bam`	Phased input alignemnt. Phased is defined via `YC` tag, which could also be used for IGV visualization.
+The matching reference could be found at `preprocessing_data/gfa_converted.fasta`.
+If (unphased) alignment was not provided as input,  Strainy produced alignment against the input gfa using minimap2.
 
-The graph (GFA format) represents the  phased  assembly before simplifying links and merging contigs. In this version, the  graph includes the phasing result of each individual unitig only.
+* `strain_unitigs.gfa` Tranformed graph that incorporates assmebled strain haplotypes. These are "finer" strain
+unitigs that match the CSV tables with additional info below.
 
- **strain_unitigs.gfa**
- 
-The graph (GFA format) represents the  phased  assembly after simplifying links and merging contigs. This is the final version of the graph showing the connections between unitigs and containing extended haplotypes.
+* `strain_contigs.gfa` A simplified and extended version of teh graph after final simplification.
+Some strain unitigs are joined into longer contigs, so these sequenced may no longer have
+IDs matching to the CSV tables below.
 
-**strain_variants.vcf** 
+* `strain_variants.vcf` A file with variant produced from assembled strain haplotypes in VCF format.
+In the INFO field, `ALT_HAP` refers to strain unitigs that support the ALT version of the variant,
+and `REF_HAP` correspond to the list of unitigs that contain no variant (reference state).
 
-When users don't provide their own VCF file, stRainy utilizes its built-in variant caller to produce a VCF file containing the detected variants. The caller is based on mpileup and includes strand-bias detection. Frequency will be processed according to the specified AF parameter or its default value.
+* `reference_unitig_info_table.csv` Additional statistics for **reference** sequences (such as length, coverage, SNP rate).
 
-**alignment_phased.bam**	
+* `phased_unitig_info_table.csv` Statistics for each phased strain unitig (matching the `strain_unitigs.gfa` file).
+For each strain unitig, its length, coverage, SNP rate and other statistics are reported.
 
-When users do not provide their own alignments, stRainy conducts the alignment of input reads to the input GFA using mpuleup
+* `multiplicity_stats.txt` Dataset-level summary of strain multiplicity and strain divergence, along with other assembly-based statistics.
 
-**multiplicity_stats.txt** 
+## Strainy tutorial
 
-The output statistics file provides information regarding the multiplicity and strain divergence info)
+Here we illustrate Strainy usage scenario using the simulated metagenomic dataset of five E. coli strains.
 
-**phased_unitig_info_table.csv**
+XXX
 
-The output statistics file provides key metrics (length, coverage, SNP rate) of the phased unitigs.
+## Recommendations for large metagenomic datasets
 
-**reference_unitig_info_table.csv**
-
-The output statistics file provides key metrics (length, coverage, SNP rate) of the reference unitigs.
+YYY
 
 ## Overview of the Strainy algorithm
 
