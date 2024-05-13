@@ -1,27 +1,39 @@
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 
-# Strainy
+## Strainy
 
-Strainy is a graph-based phasing algorithm, that takes a de novo assembly graph (in gfa format) and simplifies it by combining phasing information and graph structure.
+### Version 1.0
 
-<p align="center">
-<img width="694" alt="Screenshot 2023-01-30 at 16 47 16" src="https://user-images.githubusercontent.com/82141791/215481164-2b23544f-589d-4cd2-83f9-a6668ecb8ca6.png">
-</p>
+Strainy is a tool for phasing and assembly of bacterial strains from long-read sequencing data (either Oxford Nanopore or PacBio).
+Given a reference (or collapsed de novo assembly) and set of aligned reads as input, Strainy produces 
+multi-allelic phasing, individual strain haplotypes and strain-specific variant calls.
 
-## Conda Installation
+Compared to the current metagenomic strain profiling approaches, Strainy offers multiple unique features. 
+First, it provides direct phasing of strains-specific variants, enabling evolutionary analysis of haplotypes rather than individual mutations. 
+Second, Strainy provides a method to quantity strains and distinguish the most abundant and/or most divergent strains. 
+Third, Strainy enables assembly-based analysis, which is useful in the absence of a high quality reference genome, especially in cross-samples comparison.
+
+## Contents
+* [Installation](#installation)
+* [Quick Usage](#quick-usage)
+* [Strainy input](#strainy-input)
+* [Preparing de novo metagenomic assemblies](#preparing-de-novo-metagenomic-assemblies)
+* [Parameters description](#parameters-description)
+* [Output Files](#output-files)
+* [Overview of the Strainy algorithm](#overview-of-the-severus-algorithm)
+
+
+## Installation
 
 The recommended way of installing is through [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html):
 
 ```
-git clone https://github.com/katerinakazantseva/stRainy
-cd stRainy
+git clone https://github.com/katerinakazantseva/strainy
+cd strainy
 git submodule update --init
 make -C submodules/Flye
 conda env create -f environment.yml -n strainy
 ```
-
-Note that if you use an M1 conda installation, you should run `conda config --add subdirs osx-64` before installation. 
-Find details [**here**](https://github.com/conda/conda/issues/11216)
 
 Once installed, you will need to activate the conda environment prior to running:
 
@@ -30,26 +42,39 @@ conda activate strainy
 ./strainy.py -h
 ```
 
-## Quick usage example
+Note that if you use an M1 conda installation, you should run `conda config --add subdirs osx-64` before installation. 
+Find details [**here**](https://github.com/conda/conda/issues/11216)
+
+## Quick usage
 
 After successful installation, you should be able to run:
 
 ```
 conda activate strainy
-./strainy.py -g test_set/toy.gfa -q test_set/toy.fastq.gz -o out_strainy -m hifi 
+./strainy.py --gfa test_set/toy.gfa --fastq test_set/toy.fastq.gz --output out_strainy --mode hifi --threads 8
 ```
 
+The `--gfa` specifices input strain-collapsed graph (e.g. from de novo metagenomic assembly). `--fastq`
+specifies the matching long-read data. `--output` is the output directory, `--mode` speficies read type (either hifi or nano), 
+`--threads` specifices the number of threads o use.
 
-## Input requirements
+The output directory `out_strainy` will contain strain-level assmebly `strain_contigs.gfa` along with 
+phased alignment `alignment_phased.bam`, strain variants calls `strain_variants.vcf` and other info.
+See below for the details on how to interpret strainy output.
 
-Strainy supports PacBio HiFi and Nanopore (Guppy5+) sequencing. 
+## Strainy input
+
+Strainy supports PacBio HiFi, Nanopore R9 (Guppy5+) and R10 sequencing. 
 
 The two main inputs to Strainy are:
-1. **GFA file**: A de novo metagenomic assembly that can be produced with [**metaFlye**](https://github.com/fenderglass/Flye) or minigraph.
-For metaFlye parameters, please see **Improving de novo metagenomic assemblies** below.
-2. **FASTQ file** containing reads to be aligned to the fasta reference generated from the GFA file).
+* **GFA file**: A collapsed de novo metagenomic assembly that can be produced with [**metaFlye**](https://github.com/fenderglass/Flye). 
+For metaFlye parameters, please see [Preparing de novo metagenomic assemblies](#preparing-de-novo-metagenomic-assemblies).
+Alternatively, a reference in fasta format could be converted into a gfa and provided as input.
 
-## Improving de novo metagenomic assemblies
+* **FASTQ file** containing reads that need to be assmebled / phased. In the case of improving collapsed de novo assembly,
+same reads should be used for the assembler input.
+
+## Preparing de novo metagenomic assemblies
 
 We have developed Strainy using metaFlye metagenomic assembly graphs as input. The recommended
 set of parameters is `--meta --keep-haplotypes --no-alt-contigs -i 0`. 
@@ -59,28 +84,9 @@ to bubble branches during `minimap2` realignment. `--keep-haplotypes` retains st
 variations between strains on the assembly graph. `--no-alt-contigs` disables the output of
 "alternative" contigs, which can later confuse the read aligner.
 
-## Usage and outputs
-Strainy has 2 stages: **phase** and **transform**. By default, Strainy will perform both. Please see Parameter Description section for the full list of available arguments:
+## Parameters description
 
-```
-./strainy.py -g [gfa_file] -q [fastq_file] -m [mode] -o [output_dir]
-```  
-
- **1. phase** stage performs read clustering, and produces csv files detailing these clusters. A bam file is also produced, which can be used to visualize the clusters.
-
-<p align="center">
-<img width="500" alt="Screenshot 2023-01-30 at 17 01 47" src="https://user-images.githubusercontent.com/82141791/215484889-6a032cc0-9c90-4a26-9689-7d5cb41a2ab5.png">
-</p>
-
-<br>
-
-**2. transform** stage transforms and simplifies the initial assembly graph, producing the strain resolved gfa file: `strain_unitigs.gfa`
-
-<p align="center">
-<img width="500" alt="Screenshot 2023-01-30 at 16 45 20" src="https://user-images.githubusercontent.com/82141791/215480788-3b895736-c43e-43db-a820-6f46c3216a81.png">
-</p>
-
-## Parameter description
+### Required
 
 | Argument  | Description |
 | ------------- | ------------- |
@@ -88,22 +94,23 @@ Strainy has 2 stages: **phase** and **transform**. By default, Strainy will perf
 |-g, --gfa	|Input assembly graph (.gfa) (may be produced with metaFlye or minigraph)|
 |-q, --fastq	|FASTQ file containing reads ( PacBio HiFi or  Nanopore sequencing)|
 |-m, --mode	|Type of the reads {hifi,nano}|
-|-s, --stage (Optional)	| Stage to run: phase, transform or e2e (phase + transform) (default: e2e)|
-| --snp (Optional)	| .vcf file, with variants of the desired allele frequency. If not provided, Strainy will use the built-in pileup-based caller|
-|-b, --bam (Optional)	| .bam file generated by aligning the input reads to the input graph, minimap2 will be used to generate a .bam file if not provided|
-| -a, --allele-frequency (Optional)	| Allele frequency threshold for built-in pileup-based caller. Will only work if --snp is not used (default: None)|
-| -d, --cluster-divergence (Optional)|	The maximum number of total mismatches allowed in the cluster per 1 kbp. Should be selected depending on SNP rates and their accuracy. Higher values can reduce high fragmentation at the cost of clustering accuracy (default: None)|
-| --unitig-split-length (Optional)	|The length (in kb) which the unitigs that are longer will be split, set 0 to disable (default: 50 kb)|
-|--min-unitig-coverage (Optional)	|The minimum coverage threshold for phasing unitigs, unitigs with lower coverage will not be phased (default: 20)|
-|--max-unitig-coverage (Optional)	|The maximum coverage threshold for phasing unitigs, unitigs with higher coverage will not be phased (default: 500)|
-|-t, --threads (Optional)	| Number of threads to use (default: 4)|
-|--debug (Optional) |	Enables debug mode for extra logs and output |
 
-## Output description
+### Optional
 
+| Argument  | Description |
+| ------------- | ------------- |
+| --snp 	| .vcf file, with variants of the desired allele frequency. If not provided, Strainy will use the built-in pileup-based caller|
+|-b, --bam 	| .bam file generated by aligning the input reads to the input graph, minimap2 will be used to generate a .bam file if not provided|
+| -a, --allele-frequency 	| Allele frequency threshold for built-in pileup-based caller. Will only work if --snp is not used (default: None)|
+| -d, --cluster-divergence |	The maximum number of total mismatches allowed in the cluster per 1 kbp. Should be selected depending on SNP rates and their accuracy. Higher values can reduce high fragmentation at the cost of clustering accuracy (default: None)|
+| --unitig-split-length 	|The length (in kb) which the unitigs that are longer will be split, set 0 to disable (default: 50 kb)|
+|--min-unitig-coverage 	|The minimum coverage threshold for phasing unitigs, unitigs with lower coverage will not be phased (default: 20)|
+|--max-unitig-coverage  |The maximum coverage threshold for phasing unitigs, unitigs with higher coverage will not be phased (default: 500)|
+|-t, --threads 	| Number of threads to use (default: 4)|
+|--debug  |	Enables debug mode for extra logs and output |
+|-s, --stage	| Stage to run: phase, transform or e2e (phase + transform) (default: e2e)|
 
-
-
+## Output files
 
 **strain_contigs.gfa**
 
@@ -133,6 +140,27 @@ The output statistics file provides key metrics (length, coverage, SNP rate) of 
 
 The output statistics file provides key metrics (length, coverage, SNP rate) of the reference unitigs.
 
+## Overview of the Strainy algorithm
+
+This is a brief description, and more details are available in [our preprint](https://www.biorxiv.org/content/10.1101/2023.01.31.526521v2).
+
+The goal of the Strainy is to recover collapsed strain haplotypes from the input graph. 
+First, input reads are mapped against the input assembly graph and the alignment is used to call SNP variants (which could also be provided as input). 
+Then, the phasing module is used to group aligned reads into strain clusters. Afterwards, strain haplotypes are reassembled from clustered reads.
+
+In brief, the phasing module works as follows. First, for each strain-collapsed input contig, Strainy builds a connection graph, which encodes the pairwise distances between reads aligned to this contig. 
+Next, it clusters reads based on the strain of origin using the community detection approach. 
+While initial clustering separates the most divergent strains, closely related strains (with less variants between them) may remain collapsed. 
+To overcome this, Strainy recursively repeats the clustering procedure with the increased sensitivity to strain variants 
+Clustering stringency threshold may be increased to allow collapsing of very similar strains, while separating more divergent strains.
+
+Clustered reads are then reassembled locally using the Flye polisher, forming strain haplotigs. 
+Strainy builds an overlap graph of these haplotigs, where paths on the graph correspond to phased strain sequence, interleaved by unphased sequences. 
+Finally, Strainy applies graph simplification algorithms to improve the assembly contiguity. 
+As output, Strainy provides assembled strain haplotypes, along with phased read alignment, strain variant calls (small and structural) 
+and information about strain multiplicity and divergence.
+
+
 ## Acknowledgements
 
 Consensus function of Strainy is [**Flye**](https://github.com/fenderglass/Flye)
@@ -150,13 +178,11 @@ Code contributors:
 
 ## Citation
 
-Ekaterina Kazantseva, Ataberk Donmez, Mihai Pop, Mikhail Kolmogorov.
+Ekaterina Kazantseva, Ataberk Donmez, Maria Frolova, Mihai Pop, Mikhail Kolmogorov.
 "Strainy: assembly-based metagenomic strain phasing using long reads"
-bioRxiv 2023, https://doi.org/10.1101/2023.01.31.526521
+bioRxiv 2023, [https://doi.org/10.1101/2023.01.31.526521](https://www.biorxiv.org/content/10.1101/2023.01.31.526521v2)
 
 ## License
-
-Shield: [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
 
 This work is licensed under a
 [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
