@@ -21,7 +21,6 @@ Third, Strainy enables assembly-based analysis, which is useful in the absence o
 * [Parameters description](#parameters-description)
 * [Output Files](#output-files)
 * [Strainy tutorial](#strainy-tutorial)
-* [Recommendations for complex metagenomic datasets](#recommendations-for-complex-metagenomic-datasets)
 * [Overview of the Strainy algorithm](#overview-of-the-strainy-algorithm)
 
 
@@ -147,12 +146,101 @@ For each strain unitig, its length, coverage, SNP rate and other statistics are 
 ## Strainy tutorial
 
 Here we illustrate Strainy usage scenario using the simulated metagenomic dataset of five E. coli strains.
+Download the input data:
 
-XXX
+```
+wget XXX
+tar -xvf strainy_ecoli_example.tar.gz
+```
 
-## Recommendations for complex metagenomic datasets
+It contains simulated reads and metaFlye assembly graph. Optionally, if you want to reproduce the metaFlye assembly, you can run:
 
-YYY
+```
+flye --nano-hq strainy_ecoli_example/ecoli_5strain_sim_badread.fastq.gz -o metaflye -t 30 --meta --no-alt-contigs --keep-haplotypes -i 0
+```
+
+Then, you can run Strainy using:
+
+```
+./strainy.py --gfa strainy_ecoli_example/ecoli_5strain_metaflye_hap.gfa --fastq strainy_ecoli_example/ecoli_5strain_sim_badread.fastq.gz --mode nano -t 30 --output strainy_out
+```
+
+This run may take ~2h in 30 threads. If you don't want to wait, you can download results from here:
+
+```
+wget YYY
+tar -xvf strainy_ecoli_out.tar.gz
+```
+
+Now, let's take a look at the results! `multiplicity_info.txt` will contain some assembly stats, and the information about strain multiplicity:
+
+```
+Reference utgs input:	len: 6459094	num: 515	N50:28856
+Reference utgs select:	len: 6367432	num: 433	N50:29273
+Reference utgs phased:	len: 5439417	num: 319	N50:31133
+Strain utgs asmembled:	len: 20620769	num: 1729	N50:16393
+
+Multiplicity
+Mul	RefSeqLength
+1	   1653400	********************
+2	    455200	*****
+3	    770300	*********
+4	   1634900	*******************
+5	   1547500	******************
+6	    246800	**
+7	     21700	
+8	      8300	
+10	      1800
+```
+
+The total input size was ~6.4Mb, and Strainy transformed it into 20.6 Mb of strain-specific sequence. ~1.6 of the input reference
+strain had multiplicity 1 - e.g. not collapsed, but the rest corresponded to 2+ strains. Most collapsed sequence had either 4 or 5.
+The bottom of the file also contains info about the divergence of the assembled strain (wrt to the collapsed reference):
+
+```
+SNP divergence
+Rate	StrainSeq
+0.03981	371500	**
+0.03162	1099100	*******
+0.02512	1563900	**********
+0.01995	1495400	*********
+0.01585	2964600	*******************
+0.01259	2523100	****************
+0.01000	3052800	********************
+0.00794	1685300	***********
+0.00631	1516200	*********
+0.00501	861600	*****
+0.00398	586200	***
+0.00316	374300	**
+0.00251	301800	*
+0.00200	233500	*
+```
+
+Next, let's use [IGV](https://igv.org/) to look in more detail. Open `preprocessing_data/gfa_converted.fasta` as a reference,
+and `alignment_phased.bam` as a track. This shows the phased alignment, and you can enable coloring and grouping by `YC` tag.
+In addition, you can add `intermediate/strain_utgs.fasta_ref_aln.bam` track with the assmebled strain haplotgs. It may look
+something like this, clearly showing 5 read clusters and assembled haplotypes:
+
+![Strainy overview](img/igv_simple.png)
+
+Each variant position will be described in `strain_variants.vcf`. For example, the following VCF entry tells that the substitution is supported
+by 2 strains (enumerated in `ALT_HAP`), and 3 strains have reference state (enumerated in `REF_HAP`).
+
+```
+edge_308    3453    Strainy_SNP_17146   G   T   60  PASS    ALT_HAP=edge_308_119,edge_308_1000107;REF_HAP=edge_308_10015,edge_308_10014,edge_308_20016  GT:DV:D      P    0/1:2:5
+```
+
+But often, it may look a bit more complex. On the example  eblow you see more strain clusters that sometimes do not span the entire reference unitig.
+This often happens if there is not enough heterozygosity to separate two or more strains:
+
+![Strainy overview](img/igv_complex.png)
+
+In fact, if you visualize the `strain_unitigs.gfa` with [Bandage](https://github.com/rrwick/Bandage), you can see how
+these strain unitigs are connected together:
+
+![Strainy overview](img/bandage.png)
+
+Finally, `phased_unitig_info_table.csv` contains statistics about individual phased strain unitigs.
 
 ## Overview of the Strainy algorithm
 
