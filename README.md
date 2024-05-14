@@ -149,7 +149,7 @@ Here we illustrate Strainy usage scenario using the simulated metagenomic datase
 Download the input data:
 
 ```
-wget XXX
+wget https://zenodo.org/records/11187925/files/strainy_ecoli_example.tar.gz
 tar -xvf strainy_ecoli_example.tar.gz
 ```
 
@@ -168,7 +168,7 @@ Then, you can run Strainy using:
 This run may take ~2h in 30 threads. If you don't want to wait, you can download results from here:
 
 ```
-wget YYY
+wget https://zenodo.org/records/11187925/files/strainy_ecoli_out.tar.gz
 tar -xvf strainy_ecoli_out.tar.gz
 ```
 
@@ -244,7 +244,9 @@ Finally, `phased_unitig_info_table.csv` contains statistics about individual pha
 
 ## Overview of the Strainy algorithm
 
-![Strainy overview](img/overview.png)
+<p align="center">
+  <img src="img/overview.png" />
+</p>
 
 This is a brief description, and more details are available in [our preprint](https://www.biorxiv.org/content/10.1101/2023.01.31.526521v2).
 
