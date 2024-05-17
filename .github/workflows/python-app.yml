@@ -43,5 +43,5 @@ jobs:
       run: |
         pip install -U pytest
         pip install gfapy
-        pytest toy.py
+        pytest test_set/toy.py
         
