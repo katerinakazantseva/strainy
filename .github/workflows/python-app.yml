@@ -31,10 +31,10 @@ jobs:
         ~/miniconda3/bin/conda init zsh
     - name: Strainy Install 
       run: |
-        cd strainy
+        #cd strainy
         ls
-        #git submodule update --init
-        #make -C submodules/Flye
+        git submodule update --init
+        make -C submodules/Flye
         conda env create -f environment.yml -n strainy
     - name: Test strainy
       run: |
