@@ -38,4 +38,10 @@ jobs:
         conda env create -f environment.yml -n strainy
     - name: Test strainy
       run: |
-        conda run -n strainy ./strainy.py --gfa test_set/toy.gfa --fastq test_set/toy.fastq.gz --output out_strainy --mode hifi --threads 8
+        conda run -n strainy ./strainy.py --gfa test_set/toy.gfa --fastq test_set/toy.fastq.gz --output out_strainy --mode hifi --threads 16
+    - name: Check gfa
+      run: |
+        pip install -U pytest
+        pip install gfapy
+        pytest toy.py
+        
