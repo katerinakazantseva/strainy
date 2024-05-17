@@ -21,11 +21,15 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: "3.10"
-    - name: Before install
+    - name: Conda installation
       run: |
-        sudo apt-get update
-        sudo apt-get install conda
-    - name: Install 
+        mkdir -p ~/miniconda3
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+        bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+        rm -rf ~/miniconda3/miniconda.sh
+        ~/miniconda3/bin/conda init bash
+        ~/miniconda3/bin/conda init zsh
+    - name: Strainy Install 
       run: |
         cd strainy
         git submodule update --init
