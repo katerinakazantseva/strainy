@@ -16,6 +16,7 @@ Third, Strainy enables assembly-based analysis, which is useful in the absence o
 ## Contents
 * [Installation](#installation)
 * [Quick Usage](#quick-usage)
+* [Docker container](#docker-container)
 * [Strainy input](#strainy-input)
 * [Preparing de novo metagenomic assemblies](#preparing-de-novo-metagenomic-assemblies)
 * [Parameters description](#parameters-description)
@@ -48,7 +49,7 @@ Find details [**here**](https://github.com/conda/conda/issues/11216)
 
 ## Quick usage
 
-After successful installation, you should be able to run:
+After repository cloning/installation, you should be able to run:
 
 ```
 conda activate strainy
@@ -64,6 +65,15 @@ phased alignment `alignment_phased.bam`, strain variants calls `strain_variants.
 See below for the details on how to interpret strainy output.
 
 Also see a more detailed [tutorial](#strainy-tutorial) for the example of how to use Strainy.
+
+## Docker container
+
+Alternatively, you can use a Docker container (using the example provided in `test_set` Strainy directory):
+
+```
+ST_DIR=`pwd`
+docker run -v $ST_DIR:$ST_DIR -u `id -u`:`id -g` mkolmogo/strainy:1.0 strainy --gfa $ST_DIR/test_set/toy.gfa --fastq $ST_DIR/test_set/toy.fastq.gz -o $ST_DIR/out_strainy --threads 8 --mode hifi
+```
 
 ## Strainy input
 
