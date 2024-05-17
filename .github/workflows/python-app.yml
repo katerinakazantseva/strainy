@@ -33,5 +33,5 @@ jobs:
         conda env create -f environment.yml -n strainy
     - name: Test strainy
         run: |
-          conda activate strainy
-          ./strainy.py --gfa test_set/toy.gfa --fastq test_set/toy.fastq.gz --output out_strainy --mode hifi --threads 8
+        conda activate strainy
+        ./strainy.py --gfa test_set/toy.gfa --fastq test_set/toy.fastq.gz --output out_strainy --mode hifi --threads 8
