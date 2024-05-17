@@ -13,6 +13,7 @@ from strainy.transform import transform_main
 from strainy.params import StRainyArgs, init_global_args_storage
 from strainy.logging import set_thread_logging
 from strainy.preprocessing import preprocess_cmd_args
+from strainy.__version__ import __version__
 
 
 logger = logging.getLogger()
@@ -31,6 +32,10 @@ def get_processor_name():
             if "model name" in line:
                 return re.sub( ".*model name.*:", "", line,1)
     return ""
+
+
+def _version():
+    return __version__
 
 
 def main():
@@ -77,6 +82,7 @@ def main():
                         required=False,
                         type=int,
                         default=500)
+    parser.add_argument("-v", "--version", action="version", version=_version())
 
     args = parser.parse_args()
     #args.strainy_root = strainy_root
