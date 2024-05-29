@@ -12,7 +12,7 @@ import pysam
 import time
 import traceback
 import csv
-
+from strainy.color_bam import color
 import strainy.clustering.build_adj_matrix as matrix
 import strainy.clustering.cluster_postprocess as postprocess
 import strainy.simplification.simplify_links as smpl
@@ -24,6 +24,7 @@ from strainy.logging import set_thread_logging
 from strainy.reports.strainy_stats import strain_stats_report
 from strainy.reports.call_variants import produce_strainy_vcf
 from strainy.preprocessing import gfa_to_fasta
+from strainy.phase import color_bam
 
 logger = logging.getLogger()
 
@@ -1035,8 +1036,12 @@ def transform_main(args):
     shutil.copyfile(out_clusters, strainy_utgs)
 
     phased_graph = gfapy.Gfa.from_file(out_clusters)    #parsing again because gfapy can"t copy
+
+    segs_unmerged=phased_graph.segment_names
     gfapy.GraphOperations.merge_linear_paths(phased_graph)
     clean_graph(phased_graph)
+    segs_merged = phased_graph.segment_names
+
     out_merged = os.path.join(StRainyArgs().output_intermediate, "20_extended_haplotypes.gfa")
     gfapy.Gfa.to_file(phased_graph, out_merged)
 
@@ -1066,5 +1071,26 @@ def transform_main(args):
     produce_strainy_vcf(StRainyArgs().fa, strain_utgs_fasta, StRainyArgs().threads,
                         strain_utgs_aln, open(vcf_strain_variants, "w"))
 
+    logger.info("Update clusters and colored BAM")
+    merged_clusters={}
+    AF = StRainyArgs().AF
+    #I = StRainyArgs().I
+    for seg in [i for i in segs_unmerged if i not in segs_merged]:
+        seg_merged = [k for k in segs_merged if re.search(seg, k) != None][0]
+        merged_clusters[seg] = seg_merged
+
+    for edge in StRainyArgs().edges:
+        try:
+            cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, edge, I, AF),
+                         keep_default_na=False)
+            clusters = sorted(set(cl['Cluster']))
+            for cluster in clusters:
+                seg=str(edge)+"_"+str(cluster)
+                if  seg in merged_clusters.keys():
+                    cl.loc[cl['Cluster'] == cluster, 'Cluster'] = merged_clusters[seg]
+            cl.to_csv("%s/clusters/clusters_%s_%s_%s_MERGED.csv" % (StRainyArgs().output_intermediate, edge, I, AF))
+        except(FileNotFoundError): pass
+        os.makedirs("%s/bam/merged/" % StRainyArgs().output_intermediate, exist_ok=True)
+    color_bam(StRainyArgs().edges, transfrom_stage=True)
     flye_consensus.print_cache_statistics()
     logger.info("### Done!")

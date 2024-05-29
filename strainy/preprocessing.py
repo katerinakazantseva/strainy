@@ -1,8 +1,8 @@
-import subprocess
 import os
 import logging
 import pysam
 import gfapy
+import subprocess
 
 from strainy.params import StRainyArgs
 

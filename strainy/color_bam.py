@@ -12,14 +12,21 @@ import os
 from strainy.params import *
 
 
-def write_bam(edge, I, AF):
+def write_bam(edge, I, AF, cl_file=None,file=None):
     infile = pysam.AlignmentFile(StRainyArgs().bam, "rb")
-    outfile = pysam.AlignmentFile("%s/bam/coloredBAM_unitig_%s.bam" % (StRainyArgs().output_intermediate, edge), "wb", template=infile)
-    cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, edge, I, AF),keep_default_na=False)
+    if file==None:
+        outfile = pysam.AlignmentFile("%s/bam/coloredBAM_unitig_%s.bam" % (StRainyArgs().output_intermediate, edge), "wb", template=infile)
+    else:
+        outfile = pysam.AlignmentFile(file,"wb", template=infile)
+    if cl_file==None:
+        cl = pd.read_csv("%s/clusters/clusters_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, edge, I, AF),keep_default_na=False)
+    else:
+        cl = pd.read_csv(cl_file,keep_default_na=False)
     iter = infile.fetch(edge,until_eof=True)
     cmap = plt.get_cmap("viridis")
     cl.loc[cl["Cluster"] == "NA", "Cluster"] = 0
-    clusters=sorted(set(cl["Cluster"].astype(int)))
+    #clusters=sorted(set(cl["Cluster"].astype(int)))
+    clusters = set(cl["Cluster"])
     cmap = cmap(np.linspace(0, 1, len(clusters)))
     colors={}
     i=0
@@ -35,7 +42,8 @@ def write_bam(edge, I, AF):
 
     for read in iter:
         try:
-            clN = int(cl_dict[str(read).split()[0]])
+            #clN = int(cl_dict[str(read).split()[0]])
+            clN = cl_dict[str(read).split()[0]]
             tag = colors[clN]
             read.set_tag("YC", tag, replace=False)
             outfile.write(read)
@@ -44,9 +52,9 @@ def write_bam(edge, I, AF):
     outfile.close()
 
 
-def color(edge):
+def color(edge,cl_file=None,file=None):
     try:
-        write_bam(edge, I, StRainyArgs().AF)
+        write_bam(edge, I, StRainyArgs().AF,cl_file,file)
     except (FileNotFoundError):
         pass
 

@@ -6,10 +6,9 @@ import platform
 import re
 import subprocess
 import argparse
-import gfapy
 import logging
 import shutil
-
+import cProfile
 import gfapy
 
 
@@ -52,23 +51,21 @@ def get_processor_name():
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument("-o", "--output", help="output directory",required=True)
     requiredNamed.add_argument("-g", "--gfa", help="input gfa to uncollapse",required=True)
-    requiredNamed.add_argument("-m", "--mode", help="type of reads", choices=["hifi", "nano"], required=True)
-    requiredNamed.add_argument("-q", "--fastq",
-                               help="fastq file with reads to phase / assemble",
+    requiredNamed.add_argument("-m", "--mode", help="type of reads", choices=["hifi", "nano"],
                                required=True)
-    
+    requiredNamed.add_argument("-q", "--fastq",help="fastq file with reads to phase / assemble",
+                               required=True)
     parser.add_argument("-s", "--stage", help="stage to run: either phase, transform or e2e (phase + transform)",
                         choices=["phase", "transform", "e2e"], default="e2e")
     parser.add_argument("--snp", help="path to vcf file with SNP calls to use", default=None)
     parser.add_argument("-t", "--threads", help="number of threads to use", type=int, default=4)
     parser.add_argument("-f", "--fasta", required=False, help=argparse.SUPPRESS)
     parser.add_argument("-b", "--bam", help="path to indexed alignment in bam format",required=False)
-    parser.add_argument("--link-simplify", required=False, action="store_true", default=False, dest="link_simplify",
-                        help="Enable agressive graph simplification")
+    parser.add_argument("--link-simplify", required=False, action="store_true", default=False,
+                        dest="link_simplify",help="Enable agressive graph simplification")
     parser.add_argument("--debug", required=False, action="store_true", default=False,
                         help="Generate extra output for debugging")
     parser.add_argument("--unitig-split-length",
@@ -76,9 +73,11 @@ def main():
                         required=False,
                         type=int,
                         default=50)
-    parser.add_argument("--only-split",help="Do not run stRainy, only split long gfa unitigs", default='False', required=False)
+    parser.add_argument("--only-split",help="Do not run stRainy, only split long gfa unitigs", default='False',
+                        required=False)
     parser.add_argument("-d","--cluster-divergence",help="cluster divergence", type=float, default=0, required=False)  
-    parser.add_argument("-a","--allele-frequency",help="Set allele frequency for internal caller only (pileup)", type=float, default=0.2, required=False)
+    parser.add_argument("-a","--allele-frequency",help="Set allele frequency for internal caller only (pileup)",
+                        type=float, default=0.2, required=False)
     parser.add_argument("--min-unitig-length",
                         help="The length (in kb) which the unitigs that are shorter will not be phased",
                         required=False,
@@ -129,7 +128,6 @@ def main():
     elif args.stage == "transform":
         sys.exit(transform_main(args))
     elif args.stage == "e2e":
-        import cProfile
         pr_phase = cProfile.Profile()
         pr_phase.enable()
         phase_main(args)
