@@ -12,13 +12,12 @@ import pysam
 import time
 import traceback
 import csv
-from strainy.color_bam import color
-import strainy.clustering.build_adj_matrix as matrix
-import strainy.clustering.cluster_postprocess as postprocess
-import strainy.simplification.simplify_links as smpl
-import strainy.gfa_operations.gfa_ops as gfa_ops
+from strainy.clustering import build_adj_matrix as matrix
+from strainy.clustering import cluster_postprocess as postprocess
+from strainy.simplification import simplify_links as smpl
+from strainy.gfa_operations import gfa_ops
 from strainy.flye_consensus import FlyeConsensus
-import strainy.clustering.build_data as build_data
+from strainy.clustering import build_data
 from strainy.params import *
 from strainy.logging import set_thread_logging
 from strainy.reports.strainy_stats import strain_stats_report
@@ -27,6 +26,11 @@ from strainy.preprocessing import gfa_to_fasta
 from strainy.phase import color_bam
 
 logger = logging.getLogger()
+
+
+from dataclasses import dataclass
+
+
 
 def format_rounding(number):
     n = abs(number)
@@ -38,9 +42,10 @@ def format_rounding(number):
         s = f'{n:.99f}'
         index = re.search('[1-9]', s).start()
         return s[:index + 3]
-    else:
-        # We want 2 digits after decimal point.
-        return str(round(n, 2))
+
+    # We want 2 digits after decimal point.
+    return str(round(n, 2))
+
     
 
 def write_phased_unitig_csv():
@@ -159,13 +164,9 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
     else:
         seq = str(consensus["consensus"])[left - consensus_start : right - consensus_start + cons_length_diff + 1]
 
-    g.add_line("S\t%s_%s\t*" % (edge, clN))
-    new_line = g.try_get_segment("%s_%s" % (edge, clN))
-    new_line.name = str(edge) + "_" + str(clN)
-    new_line.sid = str(edge) + "_" + str(clN)
-    new_line.dp = round(cons[clN]["Cov"])  # TODO: what to do with coverage?
-    #remove_zeroes.append("S\t%s_%s\t*" % (edge, clN))
-    if change_seq==True:
+    new_line=gfa_ops.add_edge(g, edge, clN, round(cons[clN]["Cov"]))
+
+    if change_seq==True: ##TODO: move to gfa_ops.add_edge
         if len(seq) == 0:
             new_line.sequence = "A"
         else:
@@ -174,7 +175,6 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
         new_line.sequence = g.try_get_segment("%s" % edge).sequence
 
     logger.debug("Unitig created  %s_%s" % (edge, clN))
-
     store_phased_unitig_info(new_line,
                     edge,
                     len(cons[clN]) - 7,
@@ -382,9 +382,9 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
     while Members:
         member=Members.pop(0)
         if cut_l[member] == None and cut_r[member] == None: #if the cluster does not already have boundaries, try the next one first
-                member_to_q=member
-                member=Members.pop(0)
-                Members.insert(0,member_to_q)
+            member_to_q=member
+            member=Members.pop(0)
+            Members.insert(0,member_to_q)
         if cut_l[member] != None and (cut_r[member] == None or member in paths_leafs):
             Q = deque()
             L = []
@@ -419,7 +419,7 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
                                     Q.append(path[path.index(n) + 1])
 
                         except (ValueError, IndexError):
-                                continue
+                            continue
             l_borders = []
             r_borders = []
             for i in L:
@@ -696,7 +696,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             # add_path_links(graph, edge, full_paths, G)
             graph_ops.append(['add_path_links', edge, full_paths, G])
 
-            othercl = list(set(clusters) - set(full_clusters) - set([j for i in full_paths for j in i]))
+            othercl = list(set(clusters) - set(full_clusters) - {j for i in full_paths for j in i})
             if len(othercl) > 0:
                 G = gfa_ops.from_pandas_adjacency_notinplace(cluster_distances.copy(), create_using = nx.DiGraph)
 
@@ -707,7 +707,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             for cluster in othercl_sorted:
                 neighbors = nx.all_neighbors(G, cluster)
                 A = set(neighbors)
-                B = set([j for i in full_paths for j in i])
+                B = {j for i in full_paths for j in i}
                 if len(A.intersection(set(full_clusters))) > 0 or len(A.intersection(B)) > 0: #remove close-to full to avoid duplication
                     try:
                         othercl.remove(cluster)
@@ -736,12 +736,12 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
                 remove_clusters.add(edge)
 
             link_clusters[edge] = list(full_clusters) + list(
-                set(full_paths_roots).intersection(set([j for i in full_paths for j in i]))) + list(
-                set(full_paths_leafs).intersection(set([j for i in full_paths for j in i])))
+                set(full_paths_roots).intersection({j for i in full_paths for j in i})) + list(
+                set(full_paths_leafs).intersection({j for i in full_paths for j in i}))
             link_clusters_src[edge] = list(full_clusters) + list(
-                set(full_paths_roots).intersection(set([j for i in full_paths for j in i])))
+                set(full_paths_roots).intersection({j for i in full_paths for j in i}))
             link_clusters_sink[edge] = list(full_clusters) + list(
-                set(full_paths_leafs).intersection(set([j for i in full_paths for j in i])))
+                set(full_paths_leafs).intersection({j for i in full_paths for j in i}))
 
     stats = open("%s/stats_clusters.txt" % StRainyArgs().output_intermediate, "a")
     fcN = 0
@@ -753,7 +753,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
         pass
 
     try:
-        fpN = len(set([j for i in full_paths for j in i]))
+        fpN = len({j for i in full_paths for j in i})
     except KeyError:
         pass
 
@@ -839,8 +839,8 @@ def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_cl
                 if read_adj == next_seg:
                     connecting_reads.append(read)
             connected_clusters = cl_n.loc[cl_n["ReadName"].isin(connecting_reads), "Cluster"]
-            connected_clusters_thld = list(set([x for x in list(Counter(list(connected_clusters)))
-                                            if Counter(list(connected_clusters))[x]  >= min_reads_cluster]))
+            connected_clusters_thld = list({x for x in list(Counter(list(connected_clusters)))
+                                            if Counter(list(connected_clusters))[x]  >= min_reads_cluster})
             #print("Connected clusters", connected_clusters)
             #print("Clusters thld", connected_clusters_thld)
 
@@ -894,8 +894,8 @@ def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_
             return False
         if sign == "+":
             return len(graph.segment(seg).dovetails_R) == 0
-        else:
-            return len(graph.segment(seg).dovetails_L) == 0
+
+        return len(graph.segment(seg).dovetails_L) == 0
 
     def neg_sign(sign):
         return "+" if sign == "-" else "-"

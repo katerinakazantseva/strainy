@@ -22,6 +22,19 @@ def add_link(graph, fr, fr_or, to, to_or, w):
         pass
 
 
+def add_edge(graph,edge, clN, cov):
+    """
+     Add gfa child edge
+    """
+    graph.add_line("S\t%s_%s\t*" % (edge, clN))
+    new_line = graph.try_get_segment("%s_%s" % (edge, clN))
+    new_line.name = str(edge) + "_" + str(clN)
+    new_line.sid = str(edge) + "_" + str(clN)
+    new_line.dp = cov  # TODO: what to do with coverage?
+    return new_line
+
+
+
 def gfa_to_nx(g):
     G = nx.Graph()
     for i in g.segment_names:
@@ -51,3 +64,6 @@ def from_pandas_adjacency_notinplace(df, create_using=None):
 
     G = nx.relabel.relabel_nodes(G, dict(enumerate(df.columns)), copy=True)
     return G
+
+
+
