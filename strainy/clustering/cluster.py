@@ -63,9 +63,9 @@ def cluster(i, flye_consensus):
     Rcl=StRainyArgs().Rcl
     R=Rcl/2
     logger.info("### Reading SNPs...")
-    SNP_pos = build_data.read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, StRainyArgs().AF)
+    snp_pos = build_data.read_snp(StRainyArgs().snp, edge, StRainyArgs().bam, StRainyArgs().AF)
     logger.info("### Reading Reads...")
-    data = build_data.read_bam(StRainyArgs().bam, edge, SNP_pos, min_mapping_quality,min_base_quality, min_al_len, de_max[StRainyArgs().mode])
+    data = build_data.read_bam(StRainyArgs().bam, edge, snp_pos, min_mapping_quality,min_base_quality, min_al_len, de_max[StRainyArgs().mode])
     cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Start'])
 
     for key, value in data.items():
@@ -82,7 +82,7 @@ def cluster(i, flye_consensus):
 
     if num_reads == 0:
         return
-    if len(SNP_pos) == 0:
+    if len(snp_pos) == 0:
         cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Start'])
         for key, value in data.items():
             row = pd.DataFrame({'ReadName':[key], 'Cluster':['NA'], 'Start':[value['Start']]})
@@ -94,7 +94,7 @@ def cluster(i, flye_consensus):
 
     #CALCULATE DISTANCE and ADJ MATRIX
     logger.info("### Calculatind distances/Building adj matrix...")
-    m = matrix.build_adj_matrix(cl, data, SNP_pos, I, StRainyArgs().bam, edge, R)
+    m = matrix.build_adj_matrix(cl, data, snp_pos, I, StRainyArgs().bam, edge, R)
     if StRainyArgs().debug:
         m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, edge, I, StRainyArgs().AF))
     logger.info("### Removing overweighed egdes...")
@@ -127,7 +127,7 @@ def cluster(i, flye_consensus):
     cl.loc[cl['Cluster'] == 'NA', 'Cluster'] = UNCLUSTERED_GROUP_N
     if clN != 0:
         logger.info("### Cluster post-processing...")
-        cl = postprocess(StRainyArgs().bam, cl, SNP_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge_cov)
+        cl = postprocess(StRainyArgs().bam, cl, snp_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge_cov)
     else:
         counts = cl['Cluster'].value_counts(dropna=False)
         cl = cl[~cl['Cluster'].isin(counts[counts < 6].index)]
