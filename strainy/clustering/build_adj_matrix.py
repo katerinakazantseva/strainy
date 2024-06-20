@@ -10,10 +10,10 @@ logger = logging.getLogger()
 
 class DistanceWrapper():
     # Wrapper for calling cdist with custom distance function
-    def __init__(self, cl, data, SNP_pos, R, only_with_common_snip):
+    def __init__(self, cl, data, snp_pos, R, only_with_common_snip):
         self.cl = cl
         self.data = data
-        self.SNP_pos = SNP_pos
+        self.snp_pos = snp_pos
         self.R = R
         self.only_with_common_snip = only_with_common_snip
 
@@ -21,16 +21,16 @@ class DistanceWrapper():
         return distance(first_read[0],
                         second_read[0],
                         self.data,
-                        self.SNP_pos,
+                        self.snp_pos,
                         self.R,
                         self.only_with_common_snip)
 
 
-def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=True):
+def build_adj_matrix(cl, data, snp_pos, I, file, edge, R, only_with_common_snip=True):
     m = pd.DataFrame(-1.0, index=cl['ReadName'], columns=cl['ReadName'])
     logger.debug("Building adjacency matrix with " + str(m.shape[1]) + " reads")
     if only_with_common_snip==False:
-        dw = DistanceWrapper(cl, data, SNP_pos, R, only_with_common_snip)
+        dw = DistanceWrapper(cl, data, snp_pos, R, only_with_common_snip)
         result = cdist(cl['ReadName'].to_frame(), cl['ReadName'].to_frame(), dw.distance_wrapper)
 
         # Set the first row and the column to -1
@@ -45,7 +45,7 @@ def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=
                          columns=cl['ReadName'])
     else:
 
-        dw = DistanceWrapper(cl, data, SNP_pos, R, only_with_common_snip)
+        dw = DistanceWrapper(cl, data, snp_pos, R, only_with_common_snip)
         result = cdist(cl['ReadName'].to_frame(), cl['ReadName'].to_frame(), dw.distance_wrapper)
 
         result[0,:] = -1
@@ -56,14 +56,14 @@ def build_adj_matrix(cl, data, SNP_pos, I, file, edge, R, only_with_common_snip=
     return result_df
 
 
-def distance(read1, read2, data, SNP_pos, R, only_with_common_snip=True):
+def distance(read1, read2, data, snp_pos, R, only_with_common_snip=True):
     d = -1
     firstSNPs = list(data[read1].keys())
     secondSNPs = list(data[read2].keys())
     keys=('End','Start', 'Rclip', 'Lclip')
     firstSNPs = [key for key in firstSNPs if key not in keys]
     secondSNPs= [key for key in secondSNPs if key not in keys]
-    commonSNP = sorted(set(firstSNPs).intersection(secondSNPs).intersection(SNP_pos))
+    commonSNP = sorted(set(firstSNPs).intersection(secondSNPs).intersection(snp_pos))
 
     if read1 == read2:
         return 0
@@ -122,7 +122,7 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
     d = -1
     firstSNPs = list(cons[first_cl].keys())
     secondSNPs = list(cons[second_cl].keys())
-    keys=('clSNP','clSNP2', 'Strange', 'Strange2','End','Start','Cov')
+    keys=('clust_snp','clust_snp2', 'Strange', 'Strange2','End','Start','Cov')
     firstSNPs = set([int(key) for key in firstSNPs if key not in keys])
     secondSNPs = set([int(key) for key in secondSNPs if key not in keys])
     commonSNP = set(sorted(firstSNPs.intersection(secondSNPs)))
@@ -130,7 +130,7 @@ def distance_clusters(edge,first_cl,second_cl, cons,cl, flye_consensus, only_wit
 
     if only_with_common_snip == False and len(commonSNP) == 0 and intersect > I:
         d = 0
-    elif only_with_common_snip == True and len(set(cons[first_cl]["clSNP2"]).intersection(set(cons[second_cl]["clSNP2"]))) == 0:
+    elif only_with_common_snip == True and len(set(cons[first_cl]["clust_snp2"]).intersection(set(cons[second_cl]["clust_snp2"]))) == 0:
     #elif only_with_common_snip == True and len(commonSNP) == 0:
         d = 1
     elif intersect > I:

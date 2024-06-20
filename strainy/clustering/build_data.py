@@ -13,8 +13,7 @@ logger = logging.getLogger()
 
 
 def read_snp(vcf_file, edge, bam, AF, cluster=None):
-    SNP_pos = []
-
+    snp_pos = []
     if vcf_file == None:
         if cluster == None:
             snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD --annotate FORMAT/ADR --annotate FORMAT/ADF   2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP %ADR %ADF  %REF %ALT]\n"  >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs().output_intermediate, edge)
@@ -51,7 +50,7 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                                 except ZeroDivisionError:
                                     continue
                             if var_freqF>=(AF)*0.6 and var_freqR >= (AF) * 0.6 and altF>2 and altR>2:
-                                SNP_pos.append(line.split()[1])
+                                snp_pos.append(line.split()[1])
                                 try:
                                     vcf_file_f.write(str(line.split()[0])+"\t"+str(line.split()[1])+"\t.\t"+str(line.split()[6])+"\t"+str(line.split()[7])+"\t.\tPASS\t.\n")
                                 except: pass
@@ -67,9 +66,9 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
         bcftools_cmd = f"bcftools view -f PASS -H {vcf_file} {edge} --types snps"
         bcf_proc = subprocess.Popen(bcftools_cmd, shell=True, stdout=subprocess.PIPE)
         for line in io.TextIOWrapper(bcf_proc.stdout, encoding="utf-8"):
-            SNP_pos.append(line.split()[1])
+            snp_pos.append(line.split()[1])
 
-    return SNP_pos
+    return snp_pos
 
 
 ReadSegment = namedtuple("ReadSegment", ["query_start", "query_end", "reference_start", "reference_end", "query_name", "reference_name",
@@ -127,7 +126,7 @@ def _neg_strand(strand):
     return "-" if strand == "+" else "+"
 
 
-def read_bam(bam, edge, SNP_pos, min_mapping_quality,min_base_quality, min_al_len, max_aln_error):
+def read_bam(bam, edge, snp_pos, min_mapping_quality,min_base_quality, min_al_len, max_aln_error):
     bamfile = pysam.AlignmentFile(bam, "rb")
     duplicates=[]
     all_reads=[]
@@ -206,7 +205,7 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality,min_base_quality, min_al_le
                     #    print(a1.reference_name, a1.strand, a2.reference_name, a2.strand)
                     #print("")
 
-    for pos in SNP_pos:
+    for pos in snp_pos:
         for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=min_base_quality,
                                            ignore_overlaps=False, min_mapping_quality=min_mapping_quality,
                                            ignore_orphans=False, truncate=True):
@@ -240,24 +239,24 @@ def read_fasta_seq(filename, seq_name):
     return reference_seq
 
 
-def build_data_cons(cl, SNP_pos, data, edge, reference_seq):
+def build_data_cons(cl, snp_pos, data, edge, reference_seq):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     cons = {}
     for cluster in clusters:
-        cons = cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
+        cons = cluster_consensuns(cl, cluster, snp_pos, data, cons, edge, reference_seq)
     return cons
 
 
-def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
+def cluster_consensuns(cl, cluster, snp_pos, data, cons, edge, reference_seq):
     strange = 0
     strange2 = 0
     val = {}
-    clSNP = []
+    clust_snp = []
     mpileup_snps = []
     mis_count=0
     Rcl=StRainyArgs().Rcl
     AF=StRainyArgs().AF
-    for pos in SNP_pos:
+    for pos in snp_pos:
         npos = []
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
             try:
@@ -284,15 +283,15 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
                 #print(cluster, pos, Counter(npos).most_common())
                 #strange = 1
                 mis_count=mis_count+1
-                clSNP.append(pos)
+                clust_snp.append(pos)
 
         except IndexError:
             continue
     
 
-    clSNP2 = mpileup_snps
-    val["clSNP"] = clSNP
-    val["clSNP2"] = clSNP2
+    clust_snp2 = mpileup_snps
+    val["clust_snp"] = clust_snp
+    val["clust_snp2"] = clust_snp2
 
     clStart = 1000000000000  # change fo ln
     clStop = 0
@@ -316,12 +315,12 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     except(IndexError):
         pass
     try:
-        if len(clSNP2) > 0 and max([int(clSNP2[i + 1]) - int(clSNP2[i])
-                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * I:
+        if len(clust_snp2) > 0 and max([int(clust_snp2[i + 1]) - int(clust_snp2[i])
+                                    for i in range(0, len(clust_snp2) - 1)]) > 1.5 * I:
             strange2 = 1
 
-        if (int(clSNP2[0]) - int(clStart)) > 1.5 * I or \
-                int(clStop) - int(clSNP2[len(clSNP2) - 1]) > 1.5 * I:
+        if (int(clust_snp2[0]) - int(clStart)) > 1.5 * I or \
+                int(clStop) - int(clust_snp2[len(clust_snp2) - 1]) > 1.5 * I:
             strange2 = 1
 
     except (ValueError, IndexError):

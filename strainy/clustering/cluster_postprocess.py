@@ -253,6 +253,9 @@ def join_clusters(cons, cl, Rcl, edge, consensus,only_with_common_snip=True,
     return cl
 
 
+
+
+
 def split_all(cl, cluster, data, cons,bam, edge, R, I, snp_pos,reference_seq,type):
     if type=="unclustered":
         factor="Strange"
@@ -260,8 +263,6 @@ def split_all(cl, cluster, data, cons,bam, edge, R, I, snp_pos,reference_seq,typ
     if type=="lowheterozygosity":
         factor="Strange2"
         snp_set="clust_snp2"
-
-
     if cons[cluster][factor] == 1:
         clust_snp = cons[cluster][snp_set]
         res = split_cluster(cl, cluster, data,cons, clust_snp, bam, edge, R, I)
@@ -273,10 +274,10 @@ def split_all(cl, cluster, data, cons,bam, edge, R, I, snp_pos,reference_seq,typ
             split_cluster(cl, new_cl_id_na, data, cons,
                           cons[new_cl_id_na][snp_set], bam, edge, R, I, False)
         clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
-
         if clN == 1: #STOP LOOP IF EXIST
             build_data.cluster_consensuns(cl,
                             new_cl_id_na + clN, snp_pos, data, cons, edge, reference_seq)
+
         for clstr in clusters:
             if clstr not in cons:
                 build_data.cluster_consensuns(cl,
@@ -287,6 +288,7 @@ def split_all(cl, cluster, data, cons,bam, edge, R, I, snp_pos,reference_seq,typ
 
 
 def postprocess(bam, cl, snp_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge_cov):
+
     reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
     cons = build_data.build_data_cons(cl, snp_pos, data, edge, reference_seq)
     if StRainyArgs().debug:
@@ -353,20 +355,21 @@ def postprocess(bam, cl, snp_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge
     clusters = sorted(set(cl.loc[cl["Cluster"] != splitna[0], "Cluster"].values))
     clusters = sorted(set(cl.loc[cl["Cluster"] != UNCLUSTERED_GROUP_N, "Cluster"].values))
 
-    cl=update_cluster_set(cl, cluster, snp_pos, data, cons, edge, reference_seq,mean_edge_cov)
+    cl=update_cluster_set(cl, snp_pos, data, cons, edge, reference_seq,mean_edge_cov)
 
     cl = join_clusters(cons, cl, Rcl, edge, flye_consensus)
-    cl=update_cluster_set(cl, cluster, snp_pos, data, cons, edge, reference_seq,mean_edge_cov)
+    cl=update_cluster_set(cl, snp_pos, data, cons, edge, reference_seq,mean_edge_cov)
     cl = join_clusters(cons, cl, Rcl, edge, flye_consensus, transitive=True)
-    cl=update_cluster_set(cl, cluster, snp_pos, data, cons, edge, reference_seq,mean_edge_cov)
+    cl=update_cluster_set(cl, snp_pos, data, cons, edge, reference_seq,mean_edge_cov)
     cl = join_clusters(cons, cl, Rcl, edge, flye_consensus)
-    cl=update_cluster_set(cl, cluster, snp_pos, data, cons,
+    cl=update_cluster_set(cl, snp_pos, data, cons,
                           edge,reference_seq,mean_edge_cov,0.05)
     cl = join_clusters(cons, cl, Rcl, edge, flye_consensus,
                        only_with_common_snip=False,only_nested=True)
+
     counts = cl["Cluster"].value_counts(dropna = False)
     cl = cl[~cl["Cluster"].isin(counts[counts < 6].index)]  #TODO change for cov*01.
-    cl=update_cluster_set(cl, cluster, snp_pos, data, cons, edge,
+    cl=update_cluster_set(cl, snp_pos, data, cons, edge,
                           reference_seq,mean_edge_cov,0.05)
     return cl
 
@@ -384,6 +387,5 @@ def update_cluster_set(cl, snp_pos, data, cons, edge,
     for clstr in clusters:
         if cons[clstr]['Cov']<mean_edge_cov*fraction:
             cl = cl[cl["Cluster"] !=clstr]
-
 
     return cl
