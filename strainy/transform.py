@@ -16,6 +16,8 @@ from strainy.clustering import build_adj_matrix as matrix
 from strainy.clustering import cluster_postprocess as postprocess
 from strainy.simplification import simplify_links as smpl
 from strainy.gfa_operations import gfa_ops
+from strainy.gfa_operations import gfa_ops
+from strainy.unitig_statistics import utg_stats
 from strainy.flye_consensus import FlyeConsensus
 from strainy.clustering import build_data
 from strainy.params import *
@@ -30,121 +32,6 @@ logger = logging.getLogger()
 
 from dataclasses import dataclass
 
-
-
-def format_rounding(number):
-    n = abs(number)
-    if n == 0:
-        return '0.000'
-    if n < 1:
-        # Find the first non-zero digit.
-        # We want 3 digits, starting at that location.
-        s = f'{n:.99f}'
-        index = re.search('[1-9]', s).start()
-        return s[:index + 3]
-
-    # We want 2 digits after decimal point.
-    return str(round(n, 2))
-
-    
-
-def write_phased_unitig_csv():
-    columns = [
-        'Strain_unitig',
-        'Reference_unitig',
-        'Length',
-        'Coverage',
-        'Abundance_Ratio',
-        '#SNP',
-        'SNP_density',
-        'Start_positioin',
-        'End_position'
-        ]
-    
-    with open(StRainyArgs().phased_unitig_info_table_path, 'w') as f:
-        write = csv.writer(f, delimiter='\t')
-
-        write.writerow(columns)
-        write.writerows(list(StRainyArgs().phased_unitig_info_table.values()))
-
-
-def write_reference_unitig_csv():
-    columns=[
-        'Reference_unitig',
-        'Length',
-        'Coverage',
-        'SNP_density',
-        'Is_processed',
-        'Is_phased'
-        ]
-    
-    with open(StRainyArgs().reference_unitig_info_table_path, 'w') as f:
-        write = csv.writer(f, delimiter='\t')
-        
-        write.writerow(columns)
-        write.writerows(list(StRainyArgs().reference_unitig_info_table.values()))
-
-
-def store_phased_unitig_info(strain_unitig, reference_unitig, n_SNPs, start, end):
-    reference_coverage = round(float(pysam.samtools.coverage("-r",
-                                                             reference_unitig,
-                                                             StRainyArgs().bam,
-                                                             "--no-header").
-                                                             split()[6]))
-    # # Log the information to std output
-    # logger.info(f'== == Inserted Strain unitig: {strain_unitig.name} == == ')
-    # logger.info(f'\t\t Reference unitig: {reference_unitig}')
-    # logger.info(f'\t\t Length: {strain_unitig.length} bp')
-    # logger.info(f'\t\t Coverage: {strain_unitig.dp}')
-    # logger.info(f'\t\t Abundance Ratio: {round(100 * strain_unitig.dp // reference_coverage)}%')
-    # logger.info(f'\t\t #SNP: {n_SNPs}')
-    # logger.info(f'\t\t SNP density: {format_rounding(n_SNPs / strain_unitig.length)}')
-    # logger.info(f'\t\t Start position: {start}')
-    # logger.info(f'\t\t End position: {end}\n\n')
-
-    try:
-        abundance_ratio =  round(100 * strain_unitig.dp // reference_coverage)
-    except ZeroDivisionError:
-        abundance_ratio = 0
-
-    StRainyArgs().phased_unitig_info_table[strain_unitig.name] = [
-        strain_unitig.name,
-        reference_unitig,
-        strain_unitig.length,
-        strain_unitig.dp,
-        abundance_ratio,
-        n_SNPs,
-        format_rounding(n_SNPs / strain_unitig.length),
-        start,
-        end
-        ]
-    
-
-def store_reference_unitig_info(ref_coverage):
-    graph = gfapy.Gfa.from_file(StRainyArgs().gfa)
-    phased_unitig_df = pd.read_csv(StRainyArgs().phased_unitig_info_table_path, sep='\t')
-    counter = Counter(list(phased_unitig_df['Reference_unitig']))
-    for reference_unitig in graph.segments:
-
-        # Number of phased unitigs created from this reference unitig
-        n_phased_unitigs = counter[reference_unitig.name]
-        # Number of SNPs
-        n_SNPs = len(
-            build_data.read_snp(
-                StRainyArgs().snp,
-                reference_unitig.name,
-                StRainyArgs().bam,
-                StRainyArgs().AF
-                )
-            )
-        StRainyArgs().reference_unitig_info_table[reference_unitig.name] = [
-            reference_unitig.name,
-            reference_unitig.length,
-            ref_coverage[reference_unitig.name],
-            format_rounding(n_SNPs / reference_unitig.length),
-            reference_unitig.name in StRainyArgs().edges_to_phase,
-            n_phased_unitigs > 1
-        ]
 
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True, insertmain=True):
@@ -175,7 +62,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
         new_line.sequence = g.try_get_segment("%s" % edge).sequence
 
     logger.debug("Unitig created  %s_%s" % (edge, clN))
-    store_phased_unitig_info(new_line,
+    utg_stats.store_phased_unitig_info(new_line,
                     edge,
                     len(cons[clN]) - 7,
                     left,
@@ -933,24 +820,6 @@ def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_
                              link.to_segment.name, link.to_orient, 888)
 
 
-def clean_graph(g):
-    """
-    Remove 0len unitigs, virtual  and self links
-    :param g:
-    :return:
-    """
-    for line in g.dovetails:
-        if line.from_segment == line.to_segment: #TODO do not self links
-            g.rm(line)
-        #if g.segment(line.from_segment).virtual == True or g.segment(line.to_segment).virtual == True:
-        #    g.rm(line)
-    for seq in g.segments:  #TODO do not create o len unitigs
-        if len(seq.sequence) == 0:
-            seq.sequence = "A"
-            #seq.dp = 0
-    for path in g.paths:
-        g.rm(path)
-
 
 def transform_main(args):
     init_global_args_storage(args)
@@ -1005,11 +874,11 @@ def transform_main(args):
 
     # Save phased and reference unitigs' info as a csv
     logger.info('Creating csv file with phased unitigs...')
-    write_phased_unitig_csv()
+    utg_stats.write_phased_unitig_csv()
     #logger.info('Done!')
     logger.info('Creating csv file with reference unitigs...')
-    store_reference_unitig_info(ref_coverage)
-    write_reference_unitig_csv()
+    utg_stats.store_reference_unitig_info(ref_coverage)
+    utg_stats.write_reference_unitig_csv()
     #logger.info('Done!')
 
     logger.info("### Link unitigs")
@@ -1028,7 +897,7 @@ def transform_main(args):
         if link.to_segment in remove_clusters or link.from_segment in remove_clusters:
             initial_graph.rm(link)
 
-    clean_graph(initial_graph)
+    initial_graph=gfa_ops.clean_graph(initial_graph)
     out_clusters = os.path.join(StRainyArgs().output_intermediate, "10_fine_clusters.gfa")
     gfapy.Gfa.to_file(initial_graph, out_clusters)
 
@@ -1039,7 +908,7 @@ def transform_main(args):
 
     segs_unmerged=phased_graph.segment_names
     gfapy.GraphOperations.merge_linear_paths(phased_graph)
-    clean_graph(phased_graph)
+    phased_graph=gfa_ops.clean_graph(phased_graph)
     segs_merged = phased_graph.segment_names
 
     out_merged = os.path.join(StRainyArgs().output_intermediate, "20_extended_haplotypes.gfa")
@@ -1051,7 +920,7 @@ def transform_main(args):
     logger.info("### Simplify graph")
     smpl.simplify_links(initial_graph)
     gfapy.GraphOperations.merge_linear_paths(initial_graph)
-    clean_graph(initial_graph)
+    initial_graph=gfa_ops.clean_graph(initial_graph)
 
     out_simplified = os.path.join(StRainyArgs().output_intermediate, "30_links_simplification.gfa")
     gfapy.Gfa.to_file(initial_graph, out_simplified)

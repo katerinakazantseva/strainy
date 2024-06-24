@@ -1,7 +1,7 @@
 import gfapy
 import networkx as nx
 import logging
-
+import re
 from strainy.logging import set_thread_logging
 
 
@@ -64,6 +64,26 @@ def from_pandas_adjacency_notinplace(df, create_using=None):
 
     G = nx.relabel.relabel_nodes(G, dict(enumerate(df.columns)), copy=True)
     return G
+
+
+def clean_graph(g):
+    """
+    Remove 0len unitigs, virtual  and self links
+    :param g:
+    :return:
+    """
+    for line in g.dovetails:
+        if line.from_segment == line.to_segment: #TODO do not self links
+            g.rm(line)
+        #if g.segment(line.from_segment).virtual == True or g.segment(line.to_segment).virtual == True:
+        #    g.rm(line)
+    for seq in g.segments:  #TODO do not create o len unitigs
+        if len(seq.sequence) == 0:
+            seq.sequence = "A"
+            #seq.dp = 0
+    for path in g.paths:
+        g.rm(path)
+    return g
 
 
 
