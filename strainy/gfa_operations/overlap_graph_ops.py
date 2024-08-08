@@ -9,6 +9,14 @@ from strainy.params import *
 
 logger = logging.getLogger()
 
+"""
+This contains functions for operation with overlap graph:
+1. build_paths_graph: creates overlap graph  #TODO rename to overlap
+2. find_full_paths: finds full paths in overlap graph
+3.remove_nested(G, cons): removes nested clusters (
+4.add_path_edges : calc cluster boundaries and creates unitigs using asm.add_child_edge
+
+"""
 
 
 def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
@@ -22,22 +30,41 @@ def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distance
         G.remove_node(0)
     except:
         pass
+    #todo move it to parental function
+    G, full_paths_roots, full_paths_leafs = \
+        remove_leaf_root_subnodes(G,full_paths_roots,full_paths_leafs)
+    G = remove_nested(G, cons)
+    G = remove_transitive(G)
+    return G
+
+
+def remove_transitive(G):
     path_remove = []
+    for node in G.nodes():
+        neighbors = nx.all_neighbors(G, node)
+        for neighbor in list(neighbors):
+            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff = 3):
+                if len(n_path) == 3:
+                    path_remove.append(n_path)
+    for n_path in path_remove:
+        try:
+            G.remove_edge(n_path[0], n_path[1])
+        except:
+            continue
+    return G
+
+
+def remove_leaf_root_subnodes(G,full_paths_roots,full_paths_leafs):
     node_remove = []
-    for node in full_paths_leafs:
-        neighbors = list(full_paths_leafs)
+    for node in full_paths_leafs+full_paths_roots:
+        if node in full_paths_leafs:
+            neighbors = list(full_paths_leafs)
+        else:
+            neighbors = list(full_paths_roots)
         for neighbor in list(neighbors):
             for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff = 2):
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
-
-    for node in full_paths_roots:
-        neighbors = list(full_paths_roots)
-        for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node, cutoff = 2):
-                if len(n_path) == 2:
-                    node_remove.append(neighbor)
-    G = remove_nested(G, cons)
     for node in node_remove:
         try:
             G.remove_node(node)
@@ -46,20 +73,19 @@ def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distance
             full_paths_leafs.remove(node)
         except:
             continue
+    return (G,full_paths_roots,full_paths_leafs)
 
-    for node in G.nodes():
-        neighbors = nx.all_neighbors(G, node)
+
+def remove_bubbles(graph, source_nodes):
+    for node in source_nodes:
+        neighbors = list(source_nodes)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff = 3):
-                if len(n_path) == 3:
-                    path_remove.append(n_path)
+            for n_path in nx.algorithms.all_simple_paths(graph, node, neighbor, cutoff = 2):
+                if len(n_path) == 2:
+                    node_remove.append(neighbor)
 
-    for n_path in path_remove:
-        try:
-            G.remove_edge(n_path[0], n_path[1])
-        except:
-            continue
-    return (G)
+
+
 
 def find_full_paths(G, paths_roots, paths_leafs):
     paths = []
@@ -74,7 +100,7 @@ def find_full_paths(G, paths_roots, paths_leafs):
         for path in list(paths_nx):
             paths.append(path)
 
-    return (paths)
+    return paths
 
 
 
@@ -97,7 +123,7 @@ def remove_nested(G, cons):
                         continue
         except:
             continue
-    return (G)
+    return G
 
 def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, full_clusters, cons, flye_consensus):
     """
@@ -280,3 +306,5 @@ def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
     graph_vis = gv.AGraph(graph_str)
     graph_vis.layout(prog = "dot") # TODO: this line may cause an error
     graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output_intermediate, edge))
+
+

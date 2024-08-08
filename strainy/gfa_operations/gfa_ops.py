@@ -39,7 +39,7 @@ def add_link(graph, fr, fr_or, to, to_or, w):
 
 def add_edge(graph,edge, clN, cov):
     #TODO remove edge,clN from parameters, use name instead
-    #TODO add sequ
+    #TODO add seq
     """
     Adds an empty(no sequence) segment with the specified name and coverage to the graph
     Parameters:

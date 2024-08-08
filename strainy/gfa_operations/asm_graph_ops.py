@@ -4,6 +4,17 @@ from strainy.unitig_statistics import utg_stats
 from strainy.clustering import build_data
 from strainy.params import *
 
+"""
+This contains functions for operation with assembly graph:
+1. add_child_edge: adds a child unitig with the same sequence as the father unitig or with the given sequence 
+(aff full path and othr clusters"
+2. add_path_links: Adds link ("full path)
+3.change_cov: recalculate coverage
+4.change_sec" recalculate sequence
+
+"""
+
+
 
 logger = logging.getLogger()
 
@@ -11,8 +22,9 @@ logger = logging.getLogger()
 
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True, insertmain=True):
     """
-    The function creates unitigs in the gfa graph
+    Adds a child unitig with the same sequence as the parental unitig or with the given sequence
     """
+    ##TODO if cons provided change_seq=True (provide seq not consensus)
     ##TODO make separare function to add gfa edge and move to gfa_ops
     consensus = flye_consensus.flye_consensus(clN, edge, cl)
     consensus_start = consensus["start"]
@@ -46,6 +58,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
 
 
 def add_path_links(graph, edge, paths,G):
+    #TODO remove G
     """
      Add gfa links between newly created unitigs forming "full path"
     """
