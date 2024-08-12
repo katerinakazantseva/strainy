@@ -4,7 +4,7 @@ import pandas as pd
 from strainy.clustering.community_detection import find_communities
 from strainy.clustering import build_adj_matrix as matrix
 from strainy.clustering import build_data
-from strainy.gfa_operations import gfa_ops
+from strainy.graph_operations import gfa_ops
 from strainy.params import *
 
 logger = logging.getLogger()

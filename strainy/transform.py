@@ -15,9 +15,9 @@ import csv
 from strainy.clustering import build_adj_matrix as matrix
 from strainy.clustering import cluster_postprocess as postprocess
 from strainy.simplification import simplify_links as smpl
-from strainy.gfa_operations import gfa_ops
-from strainy.gfa_operations import asm_graph_ops
-from strainy.gfa_operations import overlap_graph_ops
+from strainy.graph_operations import gfa_ops
+from strainy.graph_operations import asm_graph_ops
+from strainy.graph_operations import overlap_graph_ops
 from strainy.unitig_statistics import utg_stats
 from strainy.flye_consensus import FlyeConsensus
 from strainy.clustering import build_data
@@ -27,11 +27,11 @@ from strainy.reports.strainy_stats import strain_stats_report
 from strainy.reports.call_variants import produce_strainy_vcf
 from strainy.preprocessing import gfa_to_fasta
 from strainy.phase import color_bam
-
+from dataclasses import dataclass
 logger = logging.getLogger()
 
 
-from dataclasses import dataclass
+
 
 
 

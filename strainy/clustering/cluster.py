@@ -12,7 +12,7 @@ from strainy.clustering.cluster_postprocess import postprocess
 from strainy.clustering import build_data as build_data
 from strainy.clustering import build_adj_matrix as matrix
 from strainy.params import *
-import strainy.gfa_operations.gfa_ops as gfa_ops
+import strainy.graph_operations.gfa_ops as gfa_ops
 
 
 logger = logging.getLogger()

@@ -1,5 +1,5 @@
 import logging
-from strainy.gfa_operations import gfa_ops
+from strainy.graph_operations import gfa_ops
 from strainy.unitig_statistics import utg_stats
 from strainy.clustering import build_data
 from strainy.params import *

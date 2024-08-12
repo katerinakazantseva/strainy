@@ -2,8 +2,8 @@ import networkx as nx
 import pygraphviz as gv
 from collections import Counter, deque, defaultdict
 import logging
-from strainy.gfa_operations import gfa_ops
-from strainy.gfa_operations import asm_graph_ops
+from strainy.graph_operations import gfa_ops
+from strainy.graph_operations import asm_graph_ops
 from strainy.params import *
 
 
@@ -18,7 +18,6 @@ This contains functions for operation with overlap graph:
 
 """
 
-
 def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
     """
     Create an "overlap" graph for clusters within a unitig, based on flye distance
@@ -26,16 +25,17 @@ def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distance
     M = cluster_distances
     G = gfa_ops.from_pandas_adjacency_notinplace(M, create_using = nx.DiGraph)
     G.remove_edges_from(list(nx.selfloop_edges(G)))
+    G = remove_nested(G, cons)
     try:
         G.remove_node(0)
     except:
         pass
-    #todo move it to parental function
     G, full_paths_roots, full_paths_leafs = \
         remove_leaf_root_subnodes(G,full_paths_roots,full_paths_leafs)
-    G = remove_nested(G, cons)
     G = remove_transitive(G)
     return G
+
+
 
 
 def remove_transitive(G):
@@ -47,33 +47,41 @@ def remove_transitive(G):
                 if len(n_path) == 3:
                     path_remove.append(n_path)
     for n_path in path_remove:
-        try:
-            G.remove_edge(n_path[0], n_path[1])
-        except:
-            continue
+         try:
+             G.remove_edge(n_path[0], n_path[1])
+         except:
+             continue
     return G
+
+
 
 
 def remove_leaf_root_subnodes(G,full_paths_roots,full_paths_leafs):
     node_remove = []
-    for node in full_paths_leafs+full_paths_roots:
-        if node in full_paths_leafs:
-            neighbors = list(full_paths_leafs)
-        else:
-            neighbors = list(full_paths_roots)
+    for node in full_paths_leafs:
+        neighbors = list(full_paths_leafs)
         for neighbor in list(neighbors):
-            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff = 2):
+            for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=2):
+                print(n_path)
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
+    for node in full_paths_roots:
+         neighbors = list(full_paths_roots)
+         for neighbor in list(neighbors):
+             for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node, cutoff = 2):
+                 print(n_path)
+                 if len(n_path) == 2:
+                     node_remove.append(neighbor)
     for node in node_remove:
-        try:
+         try:
             G.remove_node(node)
             logger.debug("REMOVE " + str(node))
             full_paths_roots.remove(node)
             full_paths_leafs.remove(node)
-        except:
-            continue
+         except:
+             continue
     return (G,full_paths_roots,full_paths_leafs)
+
 
 
 def remove_bubbles(graph, source_nodes):
@@ -99,7 +107,6 @@ def find_full_paths(G, paths_roots, paths_leafs):
             pass
         for path in list(paths_nx):
             paths.append(path)
-
     return paths
 
 
