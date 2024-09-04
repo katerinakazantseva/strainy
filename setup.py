@@ -28,4 +28,6 @@ setup(name='strainy',
       license='CC BY-NC-SA 4.0',
       packages=['strainy', 'strainy/clustering', 'strainy/gfa_operations', 'strainy/reports', 'strainy/simplification'],
       entry_points={'console_scripts': ['strainy = strainy.main:main']},
+      install_requires=['networkx>=2.6,<3.4', 'numpy>=1.24,<1.27','pandas>=1.3,<3','pysam>=0.20,<0.23',
+    'scipy>=1.8,<1.13', 'biopython', 'gfapy', 'karateclub', 'matplotlib', 'pygraphviz', 'edlib','flye'],
       )
