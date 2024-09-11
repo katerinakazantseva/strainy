@@ -7,7 +7,7 @@ from strainy.logging import set_thread_logging
 """
 This contains functions for operation with graph of gfa format:
 1. add_link: Adds a link between specified segments in the graph
-2. add_edge: Adds an empty(no sequence) segment with the specified name and coverage to the graph
+2. add_edge: Adds an empty(no sequence) segment with the specified name and coverage to the graph #TODO add sequence
 3. gfa_to_nx: Сonverts the graph from the gfa format to nx (networkx) format
 4. from_pandas_adjacency_notinplace: Workaround for networkx.from_pandas_adjacency issue https://github.com/networkx/networkx/issues/7407
 5. clean_graph: Cleans graph from selflinks, and add "A" sequence to 0-length edges
@@ -25,6 +25,7 @@ def add_link(graph, fr, fr_or, to, to_or, w):
         fr, to (string): names of segments to be linked (from and to)
         fr_or,fr_or (string): orientation of segments to be linked (from and to)
         w: weight of the link
+    Returns: None: The function modifies the graph in place by adding a link between the specified segments.
     """
     #check if segments exist before connecting
     if graph.segment(fr) is None or graph.segment(to) is None:
@@ -35,6 +36,8 @@ def add_link(graph, fr, fr_or, to, to_or, w):
         logger.debug("link added: " + link)
     except(gfapy.NotUniqueError):   #link already exists
         pass
+
+
 
 
 def add_edge(graph,edge, clN, cov):
@@ -58,6 +61,7 @@ def add_edge(graph,edge, clN, cov):
 
 
 
+
 def gfa_to_nx(g):
     """
     Сonverts the graph from the gfa format to nx (networkx) format
@@ -72,6 +76,8 @@ def gfa_to_nx(g):
     for i in g.dovetails:
         G.add_edge(i.from_segment.name, i.to_segment.name)
     return G
+
+
 
 
 def from_pandas_adjacency_notinplace(df, create_using=None):
@@ -94,6 +100,8 @@ def from_pandas_adjacency_notinplace(df, create_using=None):
 
     G = nx.relabel.relabel_nodes(G, dict(enumerate(df.columns)), copy=True)
     return G
+
+
 
 
 def clean_graph(g):

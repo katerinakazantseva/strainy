@@ -6,11 +6,11 @@ from strainy.params import *
 
 """
 This contains functions for operation with assembly graph:
-1. add_child_edge: adds a child unitig with the same sequence as the father unitig or with the given sequence 
-(aff full path and othr clusters"
-2. add_path_links: Adds link ("full path)
-3.change_cov: recalculate coverage
-4.change_sec" recalculate sequence
+1. add_child_edge: adds a child unitig with the same sequence as the father unitig or with the given sequence #TODO
+2. add_path_links: Adds GFA links between newly created unitigs that form a "full path."
+3. change_cov: recalculate coverage of parent unitig #TODO change coverage
+4. change_sec: recalculate sequence of parent unitig
+5. strong_tail: determines whether a cluster has strong coverage at both the start and end of a segment
 """
 
 
@@ -23,6 +23,15 @@ logger = logging.getLogger()
 def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_seq=True, insertmain=True):
     """
     Adds a child unitig with the same sequence as the parental unitig or with the given sequence
+    This function uses `flye_consensus` to compute the consensus sequence for the unitig and constructs
+    the new unitig based on the provided `left` and `right` coordinates. The function then creates a new edge
+    in the graph using `gfa_ops.add_edge` and assigns the appropriate sequence (either the computed consensus
+    or the parental sequence) to the new unitig.
+    Returns: new_line (Edge): The newly created edge representing the child unitig in the graph.
+    Notes:
+    - If `change_seq` is set to `True`, the sequence of the child unitig is replaced by the consensus
+    sequence computed by `flye_consensus`. If `False`, the parent unitig's sequence is retained.
+    - This function is designed to work with the `gfa_ops.add_edge` function to handle edge insertion in the GFA graph.
     """
     ##TODO if cons provided change_seq=True (provide seq not consensus)
     ##TODO make separare function to add gfa edge and move to gfa_ops
@@ -57,9 +66,15 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
                                        )
 
 
+
+
 def add_path_links(graph, edge, paths):
     """
-     Add gfa links between newly created unitigs forming "full path"
+    Adds GFA links between newly created unitigs that form a "full path."
+    This function iterates through the provided paths (each representing a series of unitigs) and creates
+    links between consecutive unitigs. These links are added to the graph using the `gfa_ops.add_link`
+    function, which represents the connections between unitigs in a GFA.
+    Returns: None: This function modifies the graph in place by adding links between unitigs.
     """
     for path in paths:
         for i in range(0, len(path) - 1):
@@ -67,7 +82,17 @@ def add_path_links(graph, edge, paths):
 
 
 
+
 def change_cov(g, edge, cons, ln, clusters, othercl, remove_clusters):
+    """
+    Updates the coverage of a parent segment in the GFA graph based on the consensus of specified clusters
+    (that weren't created into new unitigs).
+    This function recalculates the coverage of a segment (`edge`) by considering the coverage of the specified
+    clusters (`othercl`). If the proportion of the segment covered by these clusters is below a threshold
+    (`parental_min_len`), the segment is marked for removal. The segment's coverage is then updated in the GFA
+    graph.
+    """
+    #TODO change coverage, not return it
     cov = 0
     len_cl = []
     for i in othercl:
@@ -82,7 +107,18 @@ def change_cov(g, edge, cons, ln, clusters, othercl, remove_clusters):
     return cov
 
 
+
+
 def change_sec(g, edge, othercl, cl,SNP_pos, data, cut = True):
+    """
+    Updates the sequence of a parent unitig in the GFA graph based on the consensus from specified clusters
+    (that weren't created into new unitigs).
+    This function modifies the sequence of a segment (`edge`) in the GFA graph by applying the consensus
+    sequence of other clusters (`othercl`). The consensus is computed using SNP positions and read data,
+    and the segment sequence is updated accordingly.
+    Returns:
+    None: The function modifies the graph in place, updating the sequence of the specified segment.
+    """
     temp = {}
     other_cl = cl
     for cluster in othercl:
@@ -101,7 +137,18 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut = True):
     i.sequence=''.join(seq)
 
 
+
+
 def strong_tail(cluster, cl, ln, data):
+    """
+    Determines whether a cluster has strong coverage at both the start and end of a segment.
+    This function checks the reads associated with a cluster to determine if there is strong coverage
+    near the start and end of a segment (unitig). The coverage is considered "strong" if the number of reads
+    beginning near the start or ending near the end exceeds a predefined threshold (`strong_cluster_min_reads`).
+    Returns:Tuple[bool, bool]: A tuple with two boolean values:
+            - The first value is `True` if the cluster has strong coverage at the start of the segment.
+            - The second value is `True` if the cluster has strong coverage at the end of the segment.
+    """
     count_start = None
     count_stop = None
     res = [False,False]

@@ -12,9 +12,12 @@ logger = logging.getLogger()
 """
 This contains functions for operation with overlap graph:
 1. build_paths_graph: creates overlap graph  #TODO rename to overlap
-2. find_full_paths: finds full paths in overlap graph
-3.remove_nested(G, cons): removes nested clusters (
-4.add_path_edges : calc cluster boundaries and creates unitigs using asm.add_child_edge
+2. find_full_paths: finds full paths in overlap graph #TODO: we need to increase cutoff for longer unitigs
+3. remove_transitive(G): removes transitive edges from the graph.
+4. remove_nested(G, cons): removes nested clusters
+5. remove_leaf_root_subnodes: removes leaf and root subnodes from the graph #TODO explain and simplify
+6. remove_bubbles: removes bubbles from the graph
+7.add_path_edges : calculates cluster boundaries and creates unitigs using asm.add_child_edge #TODO split and move
 """
 
 def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
@@ -37,7 +40,38 @@ def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distance
 
 
 
+def find_full_paths(G, paths_roots, paths_leafs):
+    """
+    This function identifies all simple paths between nodes in `paths_roots` (source clusters) and
+    `paths_leafs` (sink clusters) in the graph `G`. The paths between roots and leaves represent
+    valid full paths in the unitig.
+    Returns: list: A list of all simple paths found between the root and leaf nodes. Each path is represented
+              as a list of nodes (clusters) in the path.
+    """
+    paths = []
+    for root in paths_roots:
+        try:
+            #TODO: we need to increase cutoff for longer unitigs with more clusters.
+            #But this will result in the exponential number of paths. Instead, we should be
+            #looking at all nodes that are reachable from both source and sink, which is linear
+            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs, cutoff = 10)
+        except:
+            pass
+        for path in list(paths_nx):
+            paths.append(path)
+    return paths
+
+
+
+
 def remove_transitive(G):
+    """
+    Removes transitive edges from the graph.
+    This function identifies and removes transitive edges in the graph `G`. A transitive edge is an edge
+    where there exists a simple path of length 2 between two nodes, making a direct edge between them
+    redundant. If such transitive paths are found, the direct edge is removed to simplify the graph structure.
+    Returns: nx.Graph: The updated graph with transitive edges removed.
+    """
     path_remove = []
     for node in G.nodes():
         neighbors = nx.all_neighbors(G, node)
@@ -55,7 +89,48 @@ def remove_transitive(G):
 
 
 
+def remove_nested(G, cons):
+    """
+     Disconnect "nested" clusters from the parent cluster.
+    This function iterates through the nodes (clusters) in the graph `G` and removes edges between clusters
+    where one cluster is "nested" inside another. A cluster is considered nested if its start and end
+    coordinates fall within the boundaries of another (parent) cluster. Edges between the nested and parent
+    clusters are removed to avoid redundancy.
+    Returns:nx.Graph: The updated graph with nested clusters disconnected from their parent clusters.
+    """
+    nodes = list(G.nodes())
+    for node in nodes:
+        try:
+            neighbors = nx.all_neighbors(G, node)
+            for neighbor in list(neighbors):
+                if cons[node]["Start"] < cons[neighbor]["Start"] and cons[node]["End"] > cons[neighbor]["End"]:
+                    try:
+                        G.remove_edge(node, neighbor)
+                        G.remove_edge(neighbor,node)
+                        logger.debug("REMOVE NESTED" + str(neighbor))
+
+                    except:
+                        continue
+        except:
+            continue
+    return G
+
+
+
+
 def remove_leaf_root_subnodes(G,full_paths_roots,full_paths_leafs):
+    """
+    Removes leaf and root subnodes from the graph if they are directly connected to other leaf or root nodes.
+    This function identifies nodes in `full_paths_roots` and `full_paths_leafs` that are directly connected
+    to other root or leaf nodes in the graph. These connections are identified by finding simple paths of
+    length 2 between the nodes. Any node that is found to have such a connection is removed from the graph
+    as well as from the `full_paths_roots` and `full_paths_leafs` lists.
+    Returns:
+        Tuple[nx.Graph, list, list]: A tuple containing:
+            - The updated graph `G` with the leaf and root subnodes removed.
+            - The updated `full_paths_roots` list, with removed nodes excluded.
+            - The updated `full_paths_leafs` list, with removed nodes excluded.
+    """
     node_remove = []
     for node in full_paths_leafs:
         neighbors = list(full_paths_leafs)
@@ -83,7 +158,11 @@ def remove_leaf_root_subnodes(G,full_paths_roots,full_paths_leafs):
 
 
 
+
 def remove_bubbles(graph, source_nodes):
+    """
+    Removes leaf and root subnodes from the graph
+    """
     for node in source_nodes:
         neighbors = list(source_nodes)
         for neighbor in list(neighbors):
@@ -93,43 +172,6 @@ def remove_bubbles(graph, source_nodes):
 
 
 
-
-def find_full_paths(G, paths_roots, paths_leafs):
-    paths = []
-    for root in paths_roots:
-        try:
-            #TODO: we need to increas cutoff for longer unitigs with more clusters.
-            #But this will result in the exponential number of paths. Instead, we should be
-            #looking at all nodes that are reachable from both source and sink, which is linear
-            paths_nx = nx.algorithms.all_simple_paths(G, root, paths_leafs, cutoff = 10)
-        except:
-            pass
-        for path in list(paths_nx):
-            paths.append(path)
-    return paths
-
-
-
-def remove_nested(G, cons):
-    """
-     Disconnect "nested" clusters from the parent cluster
-    """
-    nodes = list(G.nodes())
-    for node in nodes:
-        try:
-            neighbors = nx.all_neighbors(G, node)
-            for neighbor in list(neighbors):
-                if cons[node]["Start"] < cons[neighbor]["Start"] and cons[node]["End"] > cons[neighbor]["End"]:
-                    try:
-                        G.remove_edge(node, neighbor)
-                        G.remove_edge(neighbor,node)
-                        logger.debug("REMOVE NESTED" + str(neighbor))
-
-                    except:
-                        continue
-        except:
-            continue
-    return G
 
 def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, full_clusters, cons, flye_consensus):
     """
@@ -263,6 +305,8 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
             G.remove_node(path_cluster)
 
     return path_cl
+
+
 
 
 def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
