@@ -11,8 +11,8 @@ This contains functions for operation with assembly graph:
 2. add_path_links: Adds link ("full path)
 3.change_cov: recalculate coverage
 4.change_sec" recalculate sequence
-
 """
+
 
 
 
@@ -57,8 +57,7 @@ def add_child_edge(edge, clN, g, cl, left, right, cons, flye_consensus, change_s
                                        )
 
 
-def add_path_links(graph, edge, paths,G):
-    #TODO remove G
+def add_path_links(graph, edge, paths):
     """
      Add gfa links between newly created unitigs forming "full path"
     """
@@ -100,4 +99,25 @@ def change_sec(g, edge, othercl, cl,SNP_pos, data, cut = True):
         except (ValueError):
             continue
     i.sequence=''.join(seq)
+
+
+def strong_tail(cluster, cl, ln, data):
+    count_start = None
+    count_stop = None
+    res = [False,False]
+    reads = list(cl.loc[cl["Cluster"] == cluster, "ReadName"])
+    for read in reads:
+        if data[read]["Start"] < start_end_gap:
+            if count_start == None:
+                count_start = 0
+            count_start = count_start+1
+        if data[read]["End"] > ln - start_end_gap:
+            if count_stop == None:
+                count_stop = 0
+            count_stop = count_stop + 1
+    if count_start!= None and count_start > strong_cluster_min_reads :
+        res[0] = True
+    if  count_stop!= None and count_stop > strong_cluster_min_reads:
+        res[1] = True
+    return (res)
 

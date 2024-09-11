@@ -35,28 +35,6 @@ logger = logging.getLogger()
 
 
 
-
-def strong_tail(cluster, cl, ln, data):
-    count_start = None
-    count_stop = None
-    res = [False,False]
-    reads = list(cl.loc[cl["Cluster"] == cluster, "ReadName"])
-    for read in reads:
-        if data[read]["Start"] < start_end_gap:
-            if count_start == None:
-                count_start = 0
-            count_start = count_start+1
-        if data[read]["End"] > ln - start_end_gap:
-            if count_stop == None:
-                count_stop = 0
-            count_stop = count_stop + 1
-    if count_start!= None and count_start > strong_cluster_min_reads :
-        res[0] = True
-    if  count_stop!= None and count_stop > strong_cluster_min_reads:
-        res[1] = True
-    return (res)
-
-
 def gcu_worker(edge, flye_consensus, args):
     init_global_args_storage(args)
 
@@ -86,6 +64,12 @@ def gcu_worker(edge, flye_consensus, args):
 
 
 def parallelize_gcu(pool, graph_edges, flye_consensus, graph, args):
+    """
+    Parallelizes the process of unitig creation using worker threads to improve performance,
+    especially when handling a large number of graph edges.
+    This function manages multithreading to create new unitigs in parallel, and then merges
+    the results to update the graph and handle further graph operations.
+    """
     if StRainyArgs().threads == 1:
         result_values = []
         for edge in graph_edges:
@@ -129,7 +113,7 @@ def parallelize_gcu(pool, graph_edges, flye_consensus, graph, args):
         elif op[0] == 'add_path_edges':
             overlap_graph_ops.add_path_edges(op[1], graph, op[2], op[5], op[6], op[7], op[8], op[9], op[10], op[11], flye_consensus)
         elif op[0] == 'add_path_links':
-            asm_graph_ops.add_path_links(graph, op[1], op[2], op[3])
+            asm_graph_ops.add_path_links(graph, op[1], op[2])
         
     return bam_cache, link_clusters, link_clusters_src, link_clusters_sink, set(remove_clusters), graph
 
@@ -137,8 +121,11 @@ def parallelize_gcu(pool, graph_edges, flye_consensus, graph, args):
 def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
                          link_clusters_src, link_clusters_sink, remove_clusters, graph_ops):
     """
-    First part of the transformation: creation of all new unitigs from clusters obtained during the phasing stage
+    First stage of the transformation: creation of all new unitigs from clusters obtained during the phasing stage
+    Returns:
+    None: The function performs operations in-place, modifying GFA graph
     """
+
     full_paths_roots = []
     full_paths_leafs = []
     full_paths = []
@@ -191,19 +178,19 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
                 clStart = cons[cluster]["Start"]
                 clStop = cons[cluster]["End"]
                 if clStart < start_end_gap and clStop > ln - start_end_gap:
-                    if strong_tail(cluster, cl, ln, data)[0] == True and strong_tail(cluster, cl, ln,data)[1] == True:
+                    if asm_graph_ops.strong_tail(cluster, cl, ln, data)[0] == True and asm_graph_ops.strong_tail(cluster, cl, ln,data)[1] == True:
                         consensus = flye_consensus.flye_consensus(cluster, edge, cl)
                         # add_child_edge(edge, cluster, graph, cl,consensus["start"], consensus["end"], cons, flye_consensus)
                         graph_ops.append(['add_child_edge', edge, cluster, cl, consensus["start"], consensus["end"], cons, True, True])
                         full_clusters.append(cluster)
 
-                    elif strong_tail(cluster, cl, ln, data)[0] != True:
+                    elif asm_graph_ops.strong_tail(cluster, cl, ln, data)[0] != True:
                         cons[cluster]["Start"] = cons[cluster]["Start"] + start_end_gap+1
                     else:
                         cons[cluster]["End"] = cons[cluster]["End"] - start_end_gap-1
-                if clStart < start_end_gap and strong_tail(cluster, cl, ln, data)[0] == True :
+                if clStart < start_end_gap and asm_graph_ops.strong_tail(cluster, cl, ln, data)[0] == True :
                     full_paths_roots.append(cluster)
-                if clStop > ln - start_end_gap and strong_tail(cluster, cl, ln, data)[1] == True:
+                if clStop > ln - start_end_gap and asm_graph_ops.strong_tail(cluster, cl, ln, data)[1] == True:
                     full_paths_leafs.append(cluster)
 
             cluster_distances = postprocess.build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
@@ -226,12 +213,9 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             except(ValueError):
                 pass
 
-            # add_path_edges(edge, graph, cl, data, SNP_pos, ln, full_paths, G,full_paths_roots,
-                        #    full_paths_leafs,full_clusters,cons, flye_consensus)
             graph_ops.append(['add_path_edges', edge, cl, data, SNP_pos, ln, full_paths, G,full_paths_roots,
                            full_paths_leafs,full_clusters,cons])
-            # add_path_links(graph, edge, full_paths, G)
-            graph_ops.append(['add_path_links', edge, full_paths, G])
+            graph_ops.append(['add_path_links', edge, full_paths])
 
             othercl = list(set(clusters) - set(full_clusters) - {j for i in full_paths for j in i})
             if len(othercl) > 0:
@@ -303,8 +287,13 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
 def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_clusters_src,
                        link_clusters_sink, remove_clusters):
     """
-    Second part of the transformation: linkage of all new unitigs created during the first tranforming stage
+    Second part of the transformation: Linking all new unitigs created during the first transformation stage.
+    This function links the newly created unitigs (from the first transformation stage) to other unitigs
+    based on the read connections between clusters.
+    It utilizes BAM data and the graph structure to identify potential connections and adds GFA links between
+    unitigs using the `gfa_ops.add_link` function.
     """
+
     logger.debug(f"Linking {edge}")
     link_added = False
 
@@ -357,8 +346,6 @@ def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_cl
                 else:
                     orient[next_seg] = ("-", "+")
 
-        #print("Neighbors", neighbours)
-
         #for each "neighbor" (a potential unitig-unitig connection derived from reads)
         for next_seg in set({k for k, v in Counter(neighbours.values()).items() if v >= min_reads_neighbour}):
             #print(f"\tPROCESSING outgoing segment {next_seg}")
@@ -378,8 +365,6 @@ def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_cl
             connected_clusters = cl_n.loc[cl_n["ReadName"].isin(connecting_reads), "Cluster"]
             connected_clusters_thld = list({x for x in list(Counter(list(connected_clusters)))
                                             if Counter(list(connected_clusters))[x]  >= min_reads_cluster})
-            #print("Connected clusters", connected_clusters)
-            #print("Clusters thld", connected_clusters_thld)
 
             #make cluster-cluster connections
             link_added = False
@@ -426,6 +411,14 @@ def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_cl
 
 
 def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_clusters):
+    """
+    Connects the parental segments to the newly created clusters in adjacent edges.
+    This function ensures that the original (parental) segments are connected to the newly created clusters
+    during the second transformation stage. It identifies segments that should remain in the graph
+    (i.e., not in `remove_clusters`) and links them to their neighboring clusters using GFA links.
+    The function handles the connections based on segment orientation and
+    the source/sink clusters associated with each edge.
+    """
     def is_right_tip(seg, sign):
         if graph.segment(seg) is None:
             return False
@@ -453,7 +446,6 @@ def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_
             to_connect = link_clusters_src[link.to_segment.name] if link.to_orient == "+" else \
                          link_clusters_sink[link.to_segment.name]
             for next_clust in to_connect:
-                #logger.debug(str(link).replace(link.to_segment.name, f"{link.to_segment.name}_{next_clust}"))
                 candidate = f"{link.to_segment.name}_{next_clust}"
                 if is_right_tip(candidate, neg_sign(link.to_orient)):
                     gfa_ops.add_link(graph, link.from_segment.name, link.from_orient,
@@ -463,7 +455,6 @@ def connect_parental_edges(graph, link_clusters_src, link_clusters_sink, remove_
             to_connect = link_clusters_sink[link.from_segment.name] if link.from_orient == "+" else \
                          link_clusters_src[link.from_segment.name]
             for next_clust in to_connect:
-                #logger.debug(str(link).replace(link.from_segment.name, f"{link.from_segment.name}_{next_clust}"))
                 candidate = f"{link.from_segment.name}_{next_clust}"
                 if is_right_tip(candidate, link.from_orient):
                     gfa_ops.add_link(graph, candidate, link.from_orient,
@@ -525,11 +516,10 @@ def transform_main(args):
     # Save phased and reference unitigs' info as a csv
     logger.info('Creating csv file with phased unitigs...')
     utg_stats.write_phased_unitig_csv()
-    #logger.info('Done!')
     logger.info('Creating csv file with reference unitigs...')
     utg_stats.store_reference_unitig_info(ref_coverage)
     utg_stats.write_reference_unitig_csv()
-    #logger.info('Done!')
+
 
     logger.info("### Link unitigs")
     nx_graph = gfa_ops.gfa_to_nx(initial_graph)
@@ -590,10 +580,9 @@ def transform_main(args):
     produce_strainy_vcf(StRainyArgs().fa, strain_utgs_fasta, StRainyArgs().threads,
                         strain_utgs_aln, open(vcf_strain_variants, "w"))
 
-    logger.info("Update clusters and colored BAM")
+    logger.info("Update clusters (csv) and colored BAM")
     merged_clusters={}
     AF = StRainyArgs().AF
-    #I = StRainyArgs().I
     for seg in [i for i in segs_unmerged if i not in segs_merged]:
         seg_merged = [k for k in segs_merged if re.search(seg, k) != None][0]
         merged_clusters[seg] = seg_merged

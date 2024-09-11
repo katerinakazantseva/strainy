@@ -15,7 +15,6 @@ This contains functions for operation with overlap graph:
 2. find_full_paths: finds full paths in overlap graph
 3.remove_nested(G, cons): removes nested clusters (
 4.add_path_edges : calc cluster boundaries and creates unitigs using asm.add_child_edge
-
 """
 
 def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
@@ -263,7 +262,7 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
                     full_paths[i] = upd_path
             G.remove_node(path_cluster)
 
-    return(path_cl)
+    return path_cl
 
 
 def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
