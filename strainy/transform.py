@@ -196,7 +196,7 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
             cluster_distances = postprocess.build_adj_matrix_clusters(edge, cons, cl, flye_consensus, False)
             cluster_distances = matrix.change_w(cluster_distances,0)
 
-            G = overlap_graph_ops.build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances.copy())
+            G = overlap_graph_ops.build_overlap_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances.copy())
 
             #full_cl[edge] = full_clusters
             if StRainyArgs().debug:
@@ -246,13 +246,13 @@ def graph_create_unitigs(edge, flye_consensus, bam_cache, link_clusters,
                             pass
 
 
-            new_cov = asm_graph_ops.change_cov(graph, edge, cons, ln, clusters, othercl, remove_clusters)
-            if  new_cov < parental_min_coverage and len(clusters) - len(othercl) != 0 and (len(set(full_clusters))>0 or len(full_paths)>0):
+            updated_edge=asm_graph_ops.change_cov(graph, edge, cons, ln, clusters, othercl, remove_clusters)
+            updated_cov=updated_edge.dp
+            if  updated_cov < parental_min_coverage and len(clusters) - len(othercl) != 0 and (len(set(full_clusters))>0 or len(full_paths)>0):
                 remove_clusters.add(edge)
             else:
                 for cluster in othercl:
                     consensus = flye_consensus.flye_consensus(cluster, edge, cl)
-                    # add_child_edge(edge, cluster, graph, cl, cons[cluster]["Start"], cons[cluster]["End"], cons, flye_consensus,insertmain=False)
                     graph_ops.append(['add_child_edge', edge, cluster, cl, cons[cluster]["Start"], cons[cluster]["End"], cons, True, False])
                 remove_clusters.add(edge)
 
@@ -314,7 +314,6 @@ def graph_link_unitigs(edge, graph, nx_graph,  bam_cache, link_clusters, link_cl
 
     #for each cluster in the initial unitig
     for cur_clust in link_unitigs:
-        #print(f"PROCESSING incoming cluster {cur_clust}")
         cluster_reads = list(cl.loc[cl["Cluster"] == cur_clust, "ReadName"])
         neighbours = {}
         orient = {}

@@ -11,16 +11,19 @@ logger = logging.getLogger()
 
 """
 This contains functions for operation with overlap graph:
-1. build_paths_graph: creates overlap graph  #TODO rename to overlap
+1. build_paths_graph: creates overlap graph
 2. find_full_paths: finds full paths in overlap graph #TODO: we need to increase cutoff for longer unitigs
 3. remove_transitive(G): removes transitive edges from the graph.
 4. remove_nested(G, cons): removes nested clusters
 5. remove_leaf_root_subnodes: removes leaf and root subnodes from the graph #TODO explain and simplify
 6. remove_bubbles: removes bubbles from the graph
-7.add_path_edges : calculates cluster boundaries and creates unitigs using asm.add_child_edge #TODO split and move
+7.add_path_edges : calculates cluster boundaries and creates unitigs using asm.add_child_edge
 """
 
-def build_paths_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
+
+
+
+def build_overlap_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
     """
     Create an "overlap" graph for clusters within a unitig, based on flye distance
     """
@@ -136,14 +139,12 @@ def remove_leaf_root_subnodes(G,full_paths_roots,full_paths_leafs):
         neighbors = list(full_paths_leafs)
         for neighbor in list(neighbors):
             for n_path in nx.algorithms.all_simple_paths(G, node, neighbor, cutoff=2):
-                print(n_path)
                 if len(n_path) == 2:
                     node_remove.append(neighbor)
     for node in full_paths_roots:
          neighbors = list(full_paths_roots)
          for neighbor in list(neighbors):
              for n_path in nx.algorithms.all_simple_paths(G,  neighbor,node, cutoff = 2):
-                 print(n_path)
                  if len(n_path) == 2:
                      node_remove.append(neighbor)
     for node in node_remove:
@@ -173,35 +174,24 @@ def remove_bubbles(graph, source_nodes):
 
 
 
-def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, full_clusters, cons, flye_consensus):
+def boundaries(path_cl, ln, full_paths, paths_roots, paths_leafs, cons):
     """
-    Add gfa nodes (unitigs) forming "full path", calculating cluster boundaries
+      Calculates the left and right boundaries for each cluster in the given paths.
+      This function determines the boundary positions (start and end) for clusters forming full paths within a unitig.
+      The boundary positions are midpoint between adjacent clusters and calculated based on the consensus data, root
+      and leaf nodes, and connections between clusters in the paths.
+      Args:
+          path_cl (list): A list of clusters that form part of the paths.
+          ln (int): The total length of the unitig or segment being processed.
+          full_paths (list): A list of paths, where each path is a list of clusters forming the path.
+          paths_roots (list): A list of clusters that are considered as root nodes (starting points) of paths.
+          paths_leafs (list): A list of clusters that are considered as leaf nodes (ending points) of paths.
+          cons (dict): A dictionary containing consensus data for each cluster, including "Start" and "End" positions.
+
+      Returns:
+          Tuple[dict, dict]: Two dictionaries representing the left (`cut_l`) and right (`cut_r`) boundaries for
+          each cluster. The keys are the cluster identifiers, and the values are the calculated boundary positions.
     """
-    path_cl = []
-    logger.debug("Add path")
-    for node in full_clusters:
-        try:
-            paths_roots.remove(node)
-            paths_leafs.remove(node)
-        except:
-            pass
-
-    for path in full_paths.copy():
-        for member in path:
-            if member in full_clusters:
-                try:
-                    full_paths.remove(path)
-                except (ValueError):
-                    pass
-            if member in paths_leafs and path.index(member)!= len(path)-1:
-                try:
-                    full_paths.remove(path)
-                except (ValueError):
-                    pass
-
-    for path in full_paths:
-        for member in path:
-            path_cl.append(member)
     cut_l_unsorted = {}
     cut_r_unsorted = {}
     for path_cluster in set(path_cl):
@@ -293,6 +283,42 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
                         cut_l[member] = cut_r[path[path.index(member)-1]]
                     except:
                         pass
+    return cut_l,cut_r
+
+
+
+
+def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, full_clusters, cons, flye_consensus):
+    """
+    Add gfa nodes (unitigs) forming "full path"
+    """
+    path_cl = []
+    logger.debug("Add path")
+    for node in full_clusters:
+        try:
+            paths_roots.remove(node)
+            paths_leafs.remove(node)
+        except:
+            pass
+
+    for path in full_paths.copy():
+        for member in path:
+            if member in full_clusters:
+                try:
+                    full_paths.remove(path)
+                except (ValueError):
+                    pass
+            if member in paths_leafs and path.index(member)!= len(path)-1:
+                try:
+                    full_paths.remove(path)
+                except (ValueError):
+                    pass
+
+    for path in full_paths:
+        for member in path:
+            path_cl.append(member)
+    cut_l, cut_r=boundaries(path_cl,ln, full_paths, paths_roots, paths_leafs, cons)
+
     for path_cluster in set(path_cl):
         if cut_l[path_cluster]!= cut_r[path_cluster]:
             asm_graph_ops.add_child_edge(edge, path_cluster, g,  cl, cut_l[path_cluster], cut_r[path_cluster], cons, flye_consensus)
@@ -303,7 +329,6 @@ def add_path_edges(edge, g, cl, ln, full_paths, G, paths_roots, paths_leafs, ful
                     upd_path.remove(path_cluster)
                     full_paths[i] = upd_path
             G.remove_node(path_cluster)
-
     return path_cl
 
 
@@ -356,5 +381,3 @@ def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
     graph_vis = gv.AGraph(graph_str)
     graph_vis.layout(prog = "dot") # TODO: this line may cause an error
     graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output_intermediate, edge))
-
-

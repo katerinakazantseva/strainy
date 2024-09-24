@@ -224,7 +224,7 @@ def join_clusters(cons, cl, Rcl, edge, consensus,only_with_common_snip=True,
                         try:
                             G.remove_edge(node, neighbor)
                             logger.debug("REMOVE NESTED" + str(neighbor)+" :"+str(node))
-                            if len(nx.all_neighbors(G, neighbor)) == 1:
+                            if len(list(nx.all_neighbors(G, neighbor))) == 1:
                                 try:
                                     nested[neighbor] = nested[neighbor].append(node)
                                 except KeyError:
