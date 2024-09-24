@@ -19,7 +19,7 @@ def init_global_args_storage(args):
     _glob_args.mode = args.mode
     _glob_args.snp = args.snp
     _glob_args.threads = args.threads
-    _glob_args.flye = os.path.join(args.strainy_root, "submodules", "Flye", "bin", "flye")
+    #_glob_args.flye = os.path.join(args.strainy_root, "submodules", "Flye", "bin", "flye")
     _glob_args.log_phase = os.path.join(args.output, "log_phase")
     _glob_args.log_transform = os.path.join(args.output, "log_transform")
     _glob_args.phased_unitig_info_table_path = os.path.join(args.output, "phased_unitig_info_table.csv")
