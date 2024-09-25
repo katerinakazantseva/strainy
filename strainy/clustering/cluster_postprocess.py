@@ -11,7 +11,12 @@ logger = logging.getLogger()
 
 
 def split_cluster(cl,cluster, data,cons,clust_snp, bam, edge, R, I,only_with_common_snip=True):
-    """Split cluster based on snp set (clust_snp)"""
+    """
+     Splits a given cluster into smaller sub-clusters based on SNP positions.
+     This function attempts to refine a given cluster (`cluster`) by building an adjacency matrix using SNP
+     positions (`clust_snp`). It then applies graph-based community detection to split the original cluster into
+     more homogenous sub-clusters.
+     """
     #logging.debug("Split cluster: " + str(cluster)+ " "+ str(only_with_common_snip))
     child_clusters = []
     reads = sorted(set(cl.loc[cl["Cluster"] == cluster,"ReadName"].values))
@@ -60,8 +65,18 @@ def split_cluster(cl,cluster, data,cons,clust_snp, bam, edge, R, I,only_with_com
     return [new_cl_id_na, clN]
 
 
+
+
 def build_adj_matrix_clusters(edge,cons,cl,flye_consensus,
                               only_with_common_snip=True, set_slusters=None):
+    """
+        Constructs an adjacency matrix representing distances between clusters within a specified edge.
+        This function builds an adjacency matrix for clusters based on consensus data and calculates the distance
+        between clusters using SNPs and alignment information.
+        Returns:
+            pd.DataFrame: A DataFrame representing the adjacency matrix, where rows and columns correspond to clusters,
+                          and cell values represent distances between them.
+        """
     if set_slusters is None:
         clusters = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))
     else:
@@ -98,8 +113,14 @@ def build_adj_matrix_clusters(edge,cons,cl,flye_consensus,
 
 
 
+
 def join_clusters(cons, cl, Rcl, edge, consensus,only_with_common_snip=True,
                   set_clusters=None, only_nested=False, transitive=False):
+    """
+    Joins clusters based on adjacency and connectivity to refine the clustering results.
+    Returns:
+        pd.DataFrame: The updated DataFrame `cl` with refined cluster assignments after merging.
+    """
     MAX_VIS_SIZE = 500
     CUT_OFF=3
 
@@ -165,7 +186,6 @@ def join_clusters(cons, cl, Rcl, edge, consensus,only_with_common_snip=True,
 
     G = gfa_ops.from_pandas_adjacency_notinplace(M)
 
-
     if transitive is True:
         #graph_str = str(nx.nx_agraph.to_agraph(G))
         not_visited=list(G.nodes).copy()
@@ -200,7 +220,6 @@ def join_clusters(cons, cl, Rcl, edge, consensus,only_with_common_snip=True,
             except ValueError:
                 pass
 
-
     else:
         for n_path in path_remove:
             try:
@@ -211,10 +230,6 @@ def join_clusters(cons, cl, Rcl, edge, consensus,only_with_common_snip=True,
 
         nested = {}
         nodes = list(G.nodes())
-
-
-
-
         for node in nodes:
             try:
                 neighbors = nx.all_neighbors(G, node)
@@ -255,8 +270,15 @@ def join_clusters(cons, cl, Rcl, edge, consensus,only_with_common_snip=True,
 
 
 
-
 def split_all(cl, cluster, data, cons,bam, edge, R, I, snp_pos,reference_seq,type):
+    """
+      Recursively splits a given cluster into smaller clusters based on heterozygosity and clustering factors.
+      This function examines a given cluster and attempts to split it into smaller clusters using SNP data. It
+      evaluates the cluster based on specified factors (`Strange` or `Strange2`) to determine if splitting is needed.
+      The process is applied recursively until all clusters are sufficiently refined.
+      Returns:
+          None: The function modifies the `cl` DataFrame and `cons` dictionary in place, refining clusters recursively.
+      """
     if type=="unclustered":
         factor="Strange"
         snp_set="clust_snp"
@@ -287,16 +309,27 @@ def split_all(cl, cluster, data, cons,bam, edge, R, I, snp_pos,reference_seq,typ
 
 
 
-def postprocess(bam, cl, snp_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge_cov):
 
+def postprocess(bam, cl, snp_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge_cov):
+    """
+        Refines and processes clusters through multiple stages of splitting, joining, and consensus building.
+        Returns:
+            pd.DataFrame: The updated DataFrame `cl` with refined cluster assignments after post-processing.
+        Notes:
+            - The function performs several stages of splitting (`split_cluster`) and joining (`join_clusters`)
+              to refine clusters iteratively.
+            - Handles unclustered groups by attempting to split them based on SNP data and merging them when appropriate.
+            - Updates consensus data using `build_data.cluster_consensuns` at various stages to ensure accurate clustering.
+            - Uses recursive splitting to handle regions with low heterozygosity, further refining the clusters.
+            - Involves multiple iterations of joining clusters with and without common SNP considerations,
+              using transitive reduction when specified.
+            - The final output is a refined set of clusters stored in the DataFrame `cl`.
+        """
     reference_seq = build_data.read_fasta_seq(StRainyArgs().fa, edge)
     cons = build_data.build_data_cons(cl, snp_pos, data, edge, reference_seq)
     if StRainyArgs().debug:
         cl.to_csv(f"{StRainyArgs().output_intermediate}/clusters/{edge}_1.csv")
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA","Cluster"].values))
-
-
-
     cl.loc[cl["Cluster"] == "NA", "Cluster"] = UNCLUSTERED_GROUP_N
     build_data.cluster_consensuns(cl, UNCLUSTERED_GROUP_N, snp_pos, data, cons, edge, reference_seq)
     clust_snp = cons[UNCLUSTERED_GROUP_N]["clust_snp2"]
@@ -340,9 +373,6 @@ def postprocess(bam, cl, snp_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge
         split_all(cl, cluster, data, cons,bam, edge,
                   R, I, snp_pos,reference_seq,"lowheterozygosity")
 
-
-
-
     cl.loc[cl["Cluster"] == "NA", "Cluster"] = UNCLUSTERED_GROUP_N
     build_data.cluster_consensuns(cl, UNCLUSTERED_GROUP_N, snp_pos, data, cons, edge, reference_seq)
     clust_snp = cons[UNCLUSTERED_GROUP_N]["clust_snp2"]
@@ -378,7 +408,11 @@ def postprocess(bam, cl, snp_pos, data, edge, R,Rcl, I, flye_consensus,mean_edge
 
 def update_cluster_set(cl, snp_pos, data, cons, edge,
                        reference_seq,mean_edge_cov,fraction=0.01):
-    """Update consensus and remove small clusters (less 1% of unitig coverage)"""
+    """
+    Updates the consensus data for clusters and removes clusters with coverage below a specified threshold.
+    This function updates the consensus data for each cluster in the provided DataFrame `cl`. It also removes
+    clusters that have a coverage lower than a specified fraction of the mean edge coverage (`mean_edge_cov`).
+    """
     clusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
     for clstr in clusters:
         if clstr not in cons:

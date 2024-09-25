@@ -59,6 +59,13 @@ def clusters_vis_stats(G, cl, clN, uncl, edge, I):
 
 
 def cluster(i, flye_consensus):
+    """
+        Performs clustering of reads for a specified edge using SNP data and read alignments.
+        This function processes read data for a given edge (unitig) by extracting SNP positions and using them
+        to cluster reads into groups based on their similarity. The resulting clusters are then saved to a CSV file.
+        Returns:
+            None: The function performs clustering, saves results to CSV files, and does not return any value.
+        """
     edge = StRainyArgs().edges_to_phase[i]
     Rcl=StRainyArgs().Rcl
     R=Rcl/2
@@ -99,14 +106,11 @@ def cluster(i, flye_consensus):
         m.to_csv("%s/adj_M/adj_M_%s_%s_%s.csv" % (StRainyArgs().output_intermediate, edge, I, StRainyArgs().AF))
     logger.info("### Removing overweighed egdes...")
     m = matrix.remove_edges(m, R)
-
-    #m1 = m
     m.columns = range(0,len(cl['ReadName']))
     m.index=range(0,len(cl['ReadName']))
     # BUILD graph and find clusters
     logger.info("### Creating graph...")
     G = gfa_ops.from_pandas_adjacency_notinplace(matrix.change_w(m.transpose(), R))
-
     logger.info("### Searching clusters...")
     cluster_membership = find_communities(G)
     clN = 0
