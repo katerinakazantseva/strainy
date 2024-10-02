@@ -8,6 +8,7 @@ and invokes Strainy without installation.
 import os
 import sys
 
+
 #Setting executable paths and additional import dirs
 strainy_root = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, strainy_root)
@@ -23,6 +24,8 @@ def main():
     #Strainy entry point
     import strainy.main
     sys.exit(strainy.main.main())
+
+
 
 
 if __name__ == "__main__":

@@ -1,14 +1,13 @@
 import multiprocessing
-import pysam
-import pickle
 import os
+import pickle
 import sys
 import subprocess
-import multiprocessing
 import logging
 import shutil
 import traceback
 import time
+import pysam
 
 from strainy.clustering.cluster import cluster
 from strainy.color_bam import color
@@ -24,13 +23,14 @@ def _thread_fun(i, shared_flye_consensus, args):
     init_global_args_storage(args)
 
     set_thread_logging(StRainyArgs().log_phase, "phase", multiprocessing.current_process().pid)
-    logger.info("\n\n\t == == Processing unitig " + str(StRainyArgs().edges_to_phase[i]) + " == == ")
+    logger.info("\n\n\t == == Processing unitig "
+                + str(StRainyArgs().edges_to_phase[i]) + " == == ")
 
     try:
         cluster(i, shared_flye_consensus)
-    except Exception as e:
-        logger.error("Worker thread exception! " + str(e) + "\n" + traceback.format_exc())
-        raise e
+    except Exception as excpt:
+        logger.error("Worker thread exception! " + str(excpt) + "\n" + traceback.format_exc())
+        raise excpt
 
     logger.debug("Thread worker function finished!")
 
@@ -40,7 +40,8 @@ def phase(edges, args):
 
     empty_consensus_dict = {}
     default_manager = multiprocessing.Manager()
-    shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1, empty_consensus_dict, default_manager)
+    shared_flye_consensus = FlyeConsensus(StRainyArgs().bam, StRainyArgs().fa, 1,
+                                          empty_consensus_dict, default_manager)
     if StRainyArgs().threads == 1:
         for i in range(len(edges)):
             cluster(i, shared_flye_consensus)
@@ -62,38 +63,52 @@ def phase(edges, args):
     return shared_flye_consensus.get_consensus_dict()
 
 
-def color_bam(edges):
+def color_bam(edges, transfrom_stage=False):
     logger.info("Creating phased bam")
-    for e in edges:
-        color(e)
+    if transfrom_stage == False:
+        for edge in edges:
+            color(edge)
+        out_bam_dir = os.path.join(StRainyArgs().output_intermediate, "bam")
+        final_aln = os.path.join(StRainyArgs().output, "alignment_phased.bam")
 
-    out_bam_dir = os.path.join(StRainyArgs().output_intermediate, "bam")
-    final_aln = os.path.join(StRainyArgs().output, "alignment_phased.bam")
+    else:
+        for edge in edges:
+            color(edge, cl_file="%s/clusters/clusters_%s_%s_%s_MERGED.csv" %
+                            (StRainyArgs().output_intermediate, edge, I, StRainyArgs().AF),
+              file="%s/bam/merged/coloredBAM_unitig_%s_merged.bam" % (StRainyArgs().output_intermediate, edge))
+        out_bam_dir = os.path.join(StRainyArgs().output_intermediate, "bam/merged")
+        final_aln = os.path.join(StRainyArgs().output, "alignment_phased_merged.bam")
+
 
     files_to_be_merged = []
-    for fname in subprocess.check_output(f'find {out_bam_dir} -name "*unitig*.bam"', shell = True, universal_newlines = True).split("\n"):
+    for fname in subprocess.check_output(f'find {out_bam_dir} -name "*unitig*.bam"',
+                                         shell = True, universal_newlines = True).split("\n"):
         if len(fname):
             files_to_be_merged.append(fname)
 
-    # Number of file to be merged could be > 4092, in which case samtools merge throws too many open files error
+    # Number of file to be merged could be > 4092,
+    # in which case samtools merge throws too many open files error
     for i, bam_file in enumerate(files_to_be_merged):
         # fetch the header and put it at the top of the file, for the first bam_file only
         if i == 0:
-            subprocess.check_output(f'samtools view -H {bam_file} > {out_bam_dir}/coloredSAM.sam', shell = True)
+            subprocess.check_output(f'samtools view -H {bam_file} > '
+                                    f'{out_bam_dir}/coloredSAM.sam',shell = True)
 
         # convert bam to sam, append to the file
-        subprocess.check_output(f'samtools view {bam_file} >> {out_bam_dir}/coloredSAM.sam', shell = True)
+        subprocess.check_output(f'samtools view {bam_file} >> {out_bam_dir}/coloredSAM.sam',
+                                shell = True)
 
     # convert the file to bam and sort
-    subprocess.check_output(f'samtools view -b {out_bam_dir}/coloredSAM.sam >> {out_bam_dir}/unsortedBAM.bam', shell = True)
+    subprocess.check_output(f'samtools view -b {out_bam_dir}/coloredSAM.sam >> '
+                            f'{out_bam_dir}/unsortedBAM.bam',shell = True)
     pysam.samtools.sort(f'{out_bam_dir}/unsortedBAM.bam', "-o", final_aln)
     pysam.samtools.index(final_aln)
 
     # remove unnecessary files
     os.remove(f'{out_bam_dir}/unsortedBAM.bam')
     os.remove(f'{out_bam_dir}/coloredSAM.sam')
-    for f in files_to_be_merged:
-        os.remove(f)
+    for file in files_to_be_merged:
+        os.remove(file)
 
 
 def phase_main(args):
@@ -105,8 +120,7 @@ def phase_main(args):
             "%s/bam/clusters" % StRainyArgs().output_intermediate,
             "%s/flye_inputs" % StRainyArgs().output_intermediate,
             "%s/flye_outputs" % StRainyArgs().output_intermediate
-    )
-    
+)
     debug_dirs = ("%s/graphs/" % StRainyArgs().output_intermediate,
                   "%s/adj_M/" % StRainyArgs().output_intermediate
     )

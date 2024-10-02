@@ -1,0 +1,47 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python application
+
+on:
+  push:
+    branches: [ "refactoring" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+    - name: Conda installation
+      run: |
+        mkdir -p ~/miniconda3
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+        bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+        rm -rf ~/miniconda3/miniconda.sh
+        ~/miniconda3/bin/conda init bash
+        ~/miniconda3/bin/conda init zsh
+    - name: Strainy Install 
+      run: |
+        #cd strainy
+        ls
+        git submodule update --init
+        make -C submodules/Flye
+        conda env create -f environment.yml -n strainy
+    - name: Test strainy
+      run: |
+        conda run -n strainy ./strainy.py --gfa test_set/toy.gfa --fastq test_set/toy.fastq.gz --output out_strainy --mode hifi --threads 16
+    - name: Check gfa
+      run: |
+        pip install -U pytest
+        pip install gfapy
+        pytest test_set/toy.py
+        

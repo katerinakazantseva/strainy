@@ -5,16 +5,31 @@ import io
 import re
 from collections import Counter, namedtuple
 from Bio import SeqIO
-
 from strainy.params import *
-
 import logging
 logger = logging.getLogger()
 
 
-def read_snp(vcf_file, edge, bam, AF, cluster=None):
-    SNP_pos = []
 
+
+def read_snp(vcf_file, edge, bam, AF, cluster=None):
+    """
+       Extracts SNP positions from a VCF file or generates them from BAM data if no VCF file is provided.
+       This function either reads SNP positions directly from a VCF file or generates SNP data from the BAM file
+       using `bcftools` when no VCF file is provided. It filters SNPs based on allele frequency and read counts
+       and writes filtered SNP information to a VCF file.
+       Returns:
+           list: A list of SNP positions that meet the filtering criteria.
+       Notes:
+           - If `vcf_file` is `None`, the function generates SNP data using `bcftools mpileup` and `bcftools query`
+             commands, saving the results in a temporary file.
+           - The SNPs are filtered based on read counts and allele frequency (`AF`), and the filtered SNP positions
+             are added to the `snp_pos` list.
+           - For each SNP, if both the forward and reverse allele frequencies are greater than or equal to 60% of
+             the allele frequency (`AF`) threshold and have more than two supporting reads, the SNP is considered.
+           - If a `vcf_file` is provided, SNP positions are read directly from this file using `bcftools`.
+       """
+    snp_pos = []
     if vcf_file == None:
         if cluster == None:
             snpos = ('bcftools mpileup -r {} {} --no-reference -I --no-version --annotate FORMAT/AD --annotate FORMAT/ADR --annotate FORMAT/ADF   2>/dev/null | bcftools query -f  "%CHROM %POS [ %AD %DP %ADR %ADF  %REF %ALT]\n"  >{}/vcf/vcf_{}.txt').format(edge, bam, StRainyArgs().output_intermediate, edge)
@@ -51,7 +66,7 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
                                 except ZeroDivisionError:
                                     continue
                             if var_freqF>=(AF)*0.6 and var_freqR >= (AF) * 0.6 and altF>2 and altR>2:
-                                SNP_pos.append(line.split()[1])
+                                snp_pos.append(line.split()[1])
                                 try:
                                     vcf_file_f.write(str(line.split()[0])+"\t"+str(line.split()[1])+"\t.\t"+str(line.split()[6])+"\t"+str(line.split()[7])+"\t.\tPASS\t.\n")
                                 except: pass
@@ -67,14 +82,17 @@ def read_snp(vcf_file, edge, bam, AF, cluster=None):
         bcftools_cmd = f"bcftools view -f PASS -H {vcf_file} {edge} --types snps"
         bcf_proc = subprocess.Popen(bcftools_cmd, shell=True, stdout=subprocess.PIPE)
         for line in io.TextIOWrapper(bcf_proc.stdout, encoding="utf-8"):
-            SNP_pos.append(line.split()[1])
-
-    return SNP_pos
+            snp_pos.append(line.split()[1])
+    return snp_pos
 
 
 ReadSegment = namedtuple("ReadSegment", ["query_start", "query_end", "reference_start", "reference_end", "query_name", "reference_name",
                                          "strand", "reference_length", "query_length", "mapq"])
 cigar_parser = re.compile("[0-9]+[MIDNSHP=X]")
+
+
+
+
 def _parse_cigar(read_id, ref_id, ref_start, strand, cigar, mapq, ref_length):
     """
     Parses cigar and generate ReadSegment structure with alignment coordinates
@@ -84,7 +102,6 @@ def _parse_cigar(read_id, ref_id, ref_start, strand, cigar, mapq, ref_length):
     read_aligned = 0
     read_length = 0
     ref_aligned = 0
-
     ref_start = int(ref_start)
     mapq = int(mapq)
 
@@ -118,16 +135,38 @@ def _parse_cigar(read_id, ref_id, ref_start, strand, cigar, mapq, ref_length):
                        ref_id, strand, ref_length, read_length, mapq)
 
 
+
+
 def _parse_sa(read_id, sa_str, ref_lengths):
     ref_id, ref_start, strand, cigar, mapq, _nm = sa_str.split(",")
     return _parse_cigar(read_id, ref_id, ref_start, strand, cigar, mapq, ref_lengths[ref_id])
+
+
 
 
 def _neg_strand(strand):
     return "-" if strand == "+" else "+"
 
 
-def read_bam(bam, edge, SNP_pos, min_mapping_quality,min_base_quality, min_al_len, max_aln_error):
+
+
+def read_bam(bam, edge, snp_pos, min_mapping_quality,min_base_quality, min_al_len, max_aln_error):
+    """
+     Extracts read alignment information from a BAM file for a specific edge, focusing on high-quality reads
+     and their supplementary alignments.
+     This function processes reads from a BAM file to gather information about their alignments on a given `edge`.
+     It filters reads based on mapping quality, alignment length, and divergence, and collects details about
+     clipping and supplementary alignments. Additionally, it captures base information at specified SNP positions.
+
+     Returns:
+         dict: A dictionary containing read alignment data for the specified `edge`. Each key is a read name,
+               and its value is another dictionary with keys:
+               - "Start": Start position of the read alignment.
+               - "End": End position of the read alignment.
+               - "Rclip": List of right-side clipping information for supplementary alignments.
+               - "Lclip": List of left-side clipping information for supplementary alignments.
+               - SNP positions as keys with corresponding base values as the read sequence at that position.
+     """
     bamfile = pysam.AlignmentFile(bam, "rb")
     duplicates=[]
     all_reads=[]
@@ -198,15 +237,7 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality,min_base_quality, min_al_le
                         else:
                             data[read.query_name]["Rclip"].append((a1.reference_name, _neg_strand(a1.strand)))
 
-                #if len(suppl_aln) > 1:
-                    #print(edge, read.query_name)
-                    #for a in suppl_aln:
-                    #    print(a.reference_name, a.reference_start, a.reference_end, a.query_start, a.query_end)
-                    #for (a1, a2) in good_connections:
-                    #    print(a1.reference_name, a1.strand, a2.reference_name, a2.strand)
-                    #print("")
-
-    for pos in SNP_pos:
+    for pos in snp_pos:
         for pileupcolumn in bamfile.pileup(edge, int(pos) - 1, int(pos), stepper='samtools', min_base_quality=min_base_quality,
                                            ignore_overlaps=False, min_mapping_quality=min_mapping_quality,
                                            ignore_orphans=False, truncate=True):
@@ -218,14 +249,11 @@ def read_bam(bam, edge, SNP_pos, min_mapping_quality,min_base_quality, min_al_le
 
                     except (KeyError):
                         continue
-    #for readname in duplicates:
-        #try:
-            #data.pop(readname)
-        #except:
-            #pass
     bamfile.close()
 
     return data
+
+
 
 
 def read_fasta_seq(filename, seq_name):
@@ -240,24 +268,36 @@ def read_fasta_seq(filename, seq_name):
     return reference_seq
 
 
-def build_data_cons(cl, SNP_pos, data, edge, reference_seq):
+
+
+def build_data_cons(cl, snp_pos, data, edge, reference_seq):
     clusters = sorted(set(cl.loc[cl['Cluster'] != 'NA']['Cluster'].values))
     cons = {}
     for cluster in clusters:
-        cons = cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq)
+        cons = cluster_consensuns(cl, cluster, snp_pos, data, cons, edge, reference_seq)
     return cons
 
 
-def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
+
+
+def cluster_consensuns(cl, cluster, snp_pos, data, cons, edge, reference_seq):
+    """
+    Generates a consensus sequence for a given cluster based on SNP positions and read data.
+    This function processes a cluster of reads, extracts SNP positions, and determines the most frequent bases
+    (alleles) to form a consensus sequence. It also identifies potential variants and calculates statistics such as
+    coverage, start, and stop positions of the cluster. The results are stored in the `cons` dictionary.
+    Returns:
+        dict: The updated `cons` dictionary containing consensus information for the specified cluster.
+    """
     strange = 0
     strange2 = 0
     val = {}
-    clSNP = []
+    clust_snp = []
     mpileup_snps = []
     mis_count=0
     Rcl=StRainyArgs().Rcl
     AF=StRainyArgs().AF
-    for pos in SNP_pos:
+    for pos in snp_pos:
         npos = []
         for read in cl.loc[cl['Cluster'] == cluster]['ReadName'].values:
             try:
@@ -284,15 +324,15 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
                 #print(cluster, pos, Counter(npos).most_common())
                 #strange = 1
                 mis_count=mis_count+1
-                clSNP.append(pos)
+                clust_snp.append(pos)
 
         except IndexError:
             continue
     
 
-    clSNP2 = mpileup_snps
-    val["clSNP"] = clSNP
-    val["clSNP2"] = clSNP2
+    clust_snp2 = mpileup_snps
+    val["clust_snp"] = clust_snp
+    val["clust_snp2"] = clust_snp2
 
     clStart = 1000000000000  # change fo ln
     clStop = 0
@@ -316,12 +356,12 @@ def cluster_consensuns(cl, cluster, SNP_pos, data, cons, edge, reference_seq):
     except(IndexError):
         pass
     try:
-        if len(clSNP2) > 0 and max([int(clSNP2[i + 1]) - int(clSNP2[i])
-                                    for i in range(0, len(clSNP2) - 1)]) > 1.5 * I:
+        if len(clust_snp2) > 0 and max([int(clust_snp2[i + 1]) - int(clust_snp2[i])
+                                    for i in range(0, len(clust_snp2) - 1)]) > 1.5 * I:
             strange2 = 1
 
-        if (int(clSNP2[0]) - int(clStart)) > 1.5 * I or \
-                int(clStop) - int(clSNP2[len(clSNP2) - 1]) > 1.5 * I:
+        if (int(clust_snp2[0]) - int(clStart)) > 1.5 * I or \
+                int(clStop) - int(clust_snp2[len(clust_snp2) - 1]) > 1.5 * I:
             strange2 = 1
 
     except (ValueError, IndexError):
