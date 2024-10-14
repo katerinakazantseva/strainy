@@ -1,6 +1,7 @@
 import gfapy
 import networkx as nx
 import logging
+import pysam
 import re
 from strainy.logging import set_thread_logging
 
@@ -77,6 +78,21 @@ def gfa_to_nx(g):
         G.add_edge(i.from_segment.name, i.to_segment.name)
     return G
 
+
+
+
+def fa_to_gfa(fasta_file):
+    """
+    Сonverts the fasta to gfa format
+    Parameters:
+        fasta_file, gfa file
+    """
+    g = gfapy.Gfa()
+    with pysam.FastxFile(fasta_file) as fh:
+        for entry in fh:
+            g.add_line("S\t%s\t*" % entry.name)
+            g.segment(entry.name).sequence = entry.sequence
+    return g
 
 
 

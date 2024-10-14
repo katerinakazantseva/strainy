@@ -5,7 +5,7 @@ import gfapy
 import subprocess
 
 from strainy.params import StRainyArgs
-
+from strainy.graph_operations import gfa_ops
 logger = logging.getLogger()
 
 def create_bam_file(fasta_file, fastq_file, output_file, num_threads, index=True):
@@ -54,6 +54,7 @@ def add_gfa_line(input_graph, *args):
     except gfapy.NotUniqueError:
         logger.warning(f"Tried insterting duplicate line, ignoring:\n{line}")
         pass
+
 
 def split_long_unitigs(input_graph, output_file):
     """
@@ -191,7 +192,13 @@ def preprocess_cmd_args(args):
 
     preprocessing_dir = os.path.join(args.output, "preprocessing_data")
     os.makedirs(preprocessing_dir, exist_ok=True)
-    input_graph = gfapy.Gfa.from_file(args.gfa)
+
+    if args.gfa is None:
+        input_graph =gfa_ops.fa_to_gfa(args.fasta)
+    else:
+        input_graph = gfapy.Gfa.from_file(args.gfa)
+
+
     if args.unitig_split_length != 0:
         split_long_unitigs(input_graph,
                            os.path.join(preprocessing_dir, "long_unitigs_split.gfa"))
@@ -202,6 +209,7 @@ def preprocess_cmd_args(args):
         gfa_to_fasta(args.gfa,
                      os.path.join(preprocessing_dir,"gfa_converted.fasta"))
         args.fasta = os.path.join(preprocessing_dir,"gfa_converted.fasta")
+
 
     if args.bam is None or args.unitig_split_length != 0:
         create_bam_file(args.fasta,

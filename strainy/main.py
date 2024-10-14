@@ -14,7 +14,7 @@ from strainy.params import StRainyArgs, init_global_args_storage
 from strainy.logging import set_thread_logging
 from strainy.preprocessing import preprocess_cmd_args
 from strainy.__version__ import __version__
-
+from strainy.graph_operations import gfa_ops
 
 logger = logging.getLogger()
 
@@ -43,7 +43,7 @@ def main():
 
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument("-o", "--output", help="output directory",required=True)
-    requiredNamed.add_argument("-g", "--gfa", help="input gfa to uncollapse",required=True)
+    requiredNamed.add_argument("-g", "--gfa", help="input gfa to uncollapse",required=False)
     requiredNamed.add_argument("-m", "--mode", help="type of reads", choices=["hifi", "nano"], required=True)
     requiredNamed.add_argument("-q", "--fastq",
                                help="fastq file with reads to phase / assemble",
@@ -87,7 +87,17 @@ def main():
     args = parser.parse_args()
     #args.strainy_root = strainy_root
     #setting up global arguments storage
-    input_graph = gfapy.Gfa.from_file(args.gfa)
+
+    if args.gfa is None and args.fasta is None:
+        logger.error("Reference GFA or FASTA must be provided")
+        raise Exception("Arguments exception")
+    elif args.gfa is None:
+        input_graph =gfa_ops.fa_to_gfa(args.fasta)
+    else:
+        input_graph = gfapy.Gfa.from_file(args.gfa)
+
+
+
     args.graph_edges = input_graph.segment_names
     args.edges_to_phase = []
     init_global_args_storage(args)
