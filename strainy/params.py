@@ -15,7 +15,7 @@ def init_global_args_storage(args):
     _glob_args.output = args.output
     _glob_args.output_intermediate = os.path.join(args.output, "intermediate")
     _glob_args.bam = args.bam
-    _glob_args.gfa = args.gfa
+    _glob_args.gfa = args.gfa_ref
     _glob_args.mode = args.mode
     _glob_args.snp = args.snp
     _glob_args.threads = args.threads
@@ -27,7 +27,7 @@ def init_global_args_storage(args):
     _glob_args.phased_unitig_info_table = {}
     _glob_args.reference_unitig_info_table = {}
     _glob_args.edges = args.graph_edges
-    _glob_args.fa = args.fasta
+    _glob_args.fa = args.fasta_ref
     _glob_args.fq = args.fastq
     _glob_args.splen = args.unitig_split_length
     _glob_args.debug = args.debug

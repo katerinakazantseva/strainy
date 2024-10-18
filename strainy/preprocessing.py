@@ -193,26 +193,26 @@ def preprocess_cmd_args(args):
     preprocessing_dir = os.path.join(args.output, "preprocessing_data")
     os.makedirs(preprocessing_dir, exist_ok=True)
 
-    if args.gfa is None:
-        input_graph =gfa_ops.fa_to_gfa(args.fasta)
+    if args.gfa_ref is None:
+        input_graph =gfa_ops.fa_to_gfa(args.fasta_ref)
     else:
-        input_graph = gfapy.Gfa.from_file(args.gfa)
+        input_graph = gfapy.Gfa.from_file(args.gfa_ref)
 
 
     if args.unitig_split_length != 0:
         split_long_unitigs(input_graph,
                            os.path.join(preprocessing_dir, "long_unitigs_split.gfa"))
-        args.gfa = os.path.join(preprocessing_dir, "long_unitigs_split.gfa")
+        args.gfa_ref = os.path.join(preprocessing_dir, "long_unitigs_split.gfa")
         args.graph_edges = input_graph.segment_names
 
-    if args.fasta is None or args.unitig_split_length != 0:
-        gfa_to_fasta(args.gfa,
+    if args.fasta_ref is None or args.unitig_split_length != 0:
+        gfa_to_fasta(args.gfa_ref,
                      os.path.join(preprocessing_dir,"gfa_converted.fasta"))
-        args.fasta = os.path.join(preprocessing_dir,"gfa_converted.fasta")
+        args.fasta_ref = os.path.join(preprocessing_dir,"gfa_converted.fasta")
 
 
     if args.bam is None or args.unitig_split_length != 0:
-        create_bam_file(args.fasta,
+        create_bam_file(args.fasta_ref,
                         args.fastq,
                         os.path.join(preprocessing_dir, "long_unitigs_split.bam"),
                         args.threads)

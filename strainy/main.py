@@ -43,7 +43,7 @@ def main():
 
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument("-o", "--output", help="output directory",required=True)
-    requiredNamed.add_argument("-g", "--gfa", help="input gfa to uncollapse",required=False)
+    requiredNamed.add_argument("-g", "--gfa_ref", help="input gfa to uncollapse",required=False)
     requiredNamed.add_argument("-m", "--mode", help="type of reads", choices=["hifi", "nano"], required=True)
     requiredNamed.add_argument("-q", "--fastq",
                                help="fastq file with reads to phase / assemble",
@@ -53,7 +53,7 @@ def main():
                         choices=["phase", "transform", "e2e"], default="e2e")
     parser.add_argument("--snp", help="path to vcf file with SNP calls to use", default=None)
     parser.add_argument("-t", "--threads", help="number of threads to use", type=int, default=4)
-    parser.add_argument("-f", "--fasta", required=False, help=argparse.SUPPRESS)
+    parser.add_argument("-f", "--fasta_ref", required=False, help=argparse.SUPPRESS)
     parser.add_argument("-b", "--bam", help="path to indexed alignment in bam format",required=False)
     parser.add_argument("--link-simplify", required=False, action="store_true", default=False, dest="link_simplify",
                         help="Enable agressive graph simplification")
@@ -88,13 +88,13 @@ def main():
     #args.strainy_root = strainy_root
     #setting up global arguments storage
 
-    if args.gfa is None and args.fasta is None:
+    if args.gfa_ref is None and args.fasta_ref is None:
         logger.error("Reference GFA or FASTA must be provided")
         raise Exception("Arguments exception")
-    elif args.gfa is None:
-        input_graph =gfa_ops.fa_to_gfa(args.fasta)
+    elif args.gfa_ref is None:
+        input_graph =gfa_ops.fa_to_gfa(args.fasta_ref)
     else:
-        input_graph = gfapy.Gfa.from_file(args.gfa)
+        input_graph = gfapy.Gfa.from_file(args.gfa_ref)
 
 
 
