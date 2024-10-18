@@ -53,7 +53,7 @@ After repository cloning/installation, you should be able to run:
 
 ```
 conda activate strainy
-./strainy.py --gfa test_set/toy.gfa --fastq test_set/toy.fastq.gz --output out_strainy --mode hifi --threads 8
+./strainy.py --gfa_ref test_set/toy.gfa --fastq test_set/toy.fastq.gz --output out_strainy --mode hifi --threads 8
 ```
 
 The `--gfa` specifices input strain-collapsed graph (e.g. from de novo metagenomic assembly). `--fastq`
@@ -82,7 +82,7 @@ Strainy supports PacBio HiFi, Nanopore R9 (Guppy5+) and R10 sequencing.
 The two main inputs to Strainy are:
 * `GFA file` A collapsed de novo metagenomic assembly that can be produced with [**metaFlye**](https://github.com/fenderglass/Flye). 
 For metaFlye parameters, please see [Preparing de novo metagenomic assemblies](#preparing-de-novo-metagenomic-assemblies).
-Alternatively, a reference in fasta format could be converted into a gfa and provided as input.
+Alternatively, a reference in fasta format could be provided as input (--fasta_ref).
 
 * `Reads (fasta/fastq)` containing reads that need to be assmebled / phased. In the case of improving collapsed de novo assembly,
 same reads should be used for the assembler input.
@@ -110,7 +110,8 @@ variations between strains on the assembly graph. `--no-alt-contigs` disables th
 | Argument  | Description |
 | ------------- | ------------- |
 |-o, --output	|Output directory|
-|-g, --gfa	|Input assembly graph (.gfa) (may be produced with metaFlye or minigraph)|
+|-g, --gfa_ref	|Input assembly graph (.gfa) (may be produced with metaFlye or minigraph)|
+|-f, --fasta_ref	|Input reference fasta (for linear genome)|
 |-q, --fastq	|FASTQ file containing reads ( PacBio HiFi or  Nanopore sequencing)|
 |-m, --mode	|Type of the reads {hifi,nano}|
 
@@ -172,7 +173,7 @@ flye --nano-hq strainy_ecoli_example/ecoli_5strain_sim_badread.fastq.gz -o metaf
 Then, you can run Strainy using:
 
 ```
-./strainy.py --gfa strainy_ecoli_example/ecoli_5strain_metaflye_hap.gfa --fastq strainy_ecoli_example/ecoli_5strain_sim_badread.fastq.gz --mode nano -t 30 --output strainy_out
+./strainy.py --gfa_ref strainy_ecoli_example/ecoli_5strain_metaflye_hap.gfa --fastq strainy_ecoli_example/ecoli_5strain_sim_badread.fastq.gz --mode nano -t 30 --output strainy_out
 ```
 
 This run may take ~2h in 30 threads. If you don't want to wait, you can download results from here:
