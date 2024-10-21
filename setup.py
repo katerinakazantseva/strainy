@@ -26,6 +26,6 @@ setup(name='strainy',
       author='Ekaterina Kazantseva & Ataberk Donmez',
       author_email = 'ekaterina.v.kazantseva@gmail.com',
       license='CC BY-NC-SA 4.0',
-      packages=['strainy', 'strainy/clustering', 'strainy/gfa_operations', 'strainy/reports', 'strainy/simplification'],
+      packages=['strainy', 'strainy/clustering', 'strainy/graph_operations', 'strainy/reports', 'strainy/simplification'],
       entry_points={'console_scripts': ['strainy = strainy.main:main']},
       )
