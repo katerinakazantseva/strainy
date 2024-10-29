@@ -27,7 +27,17 @@ Third, Strainy enables assembly-based analysis, which is useful in the absence o
 
 ## Installation
 
-The recommended way of installing is through [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html):
+The recommended way of installing is through [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) or [mamba](https://mamba.readthedocs.io/en/latest/) .
+Strainy is distributed via bioconda channel and can be installed using one of the following:
+```
+conda install bioconda::strainy
+```
+or
+```
+mamba install strainy
+```
+
+The other way is to install from the repository:
 
 ```
 git clone https://github.com/katerinakazantseva/strainy
