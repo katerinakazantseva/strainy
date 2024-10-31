@@ -2,7 +2,7 @@
 
 ## Strainy
 
-### Version 1.0
+### Version 1.2
 
 Strainy is a tool for phasing and assembly of bacterial strains from long-read sequencing data (either Oxford Nanopore or PacBio).
 Given a reference (or collapsed de novo assembly) and set of aligned reads as input, Strainy produces 
