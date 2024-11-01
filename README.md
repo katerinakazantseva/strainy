@@ -306,8 +306,8 @@ Code contributors:
 ## Citation
 
 Ekaterina Kazantseva, Ataberk Donmez, Maria Frolova, Mihai Pop, Mikhail Kolmogorov.
-"Strainy: assembly-based metagenomic strain phasing using long reads"
-bioRxiv 2023, [https://doi.org/10.1101/2023.01.31.526521](https://www.biorxiv.org/content/10.1101/2023.01.31.526521v2)
+"Strainy: phasing and assembly of strain haplotypes from long-read metagenome sequencing"
+Nature Methods 2024, https://doi.org/10.1038/s41592-024-02424-1
 
 ## License
 
