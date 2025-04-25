@@ -71,7 +71,13 @@ def all_main(args):
 
     data = build_data.read_bam2_parallel(StRainyArgs().bam, edges, snp_pos, min_mapping_quality, min_base_quality, min_al_len,
                                 de_max[StRainyArgs().mode],n_processes=4)
+    cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Coordinates'])
 
+    for key, value in data.items():
+        coord = {k: [v["Start"], v["End"]] for k, v in value.items()}
+        row = pd.DataFrame({'ReadName': [key], 'Cluster': ['NA'], 'Coordinates': [coord]})
+        cl = pd.concat([cl, row])
+    cl = cl.reset_index(drop=True)
     logger.info("### Creating connection graph...")
     g="nx" #"nk"
     if g=="nx":
@@ -81,7 +87,17 @@ def all_main(args):
         m.columns = range(0, len(list(data.keys())))
         m.index = range(0, len(list(data.keys())))
         G = gfa_ops.from_pandas_adjacency_notinplace(matrix.change_w(m.transpose(), 0))
-
+        """
+        #TODO add NA treathment
+        reads = sorted(set(cl.loc[cl["Cluster"] == "NA", "ReadName"].values))
+        data_filtered = {key: data[key] for key in reads}
+        m = matrix.build_adj_matrix2(edges, data_filtered, snp_pos, I, StRainyArgs().bam, 0, False)
+        m = matrix.remove_edges(m, 0)
+        m.columns = range(0, len(list(data_filtered.keys())))
+        m.index = range(0, len(list(data_filtered.keys())))
+        G = gfa_ops.from_pandas_adjacency_notinplace(matrix.change_w(m.transpose(), 0))
+        indexes = cl[cl['ReadName'].isin(reads)].index.values.tolist()
+        """
         #parrallel test
         """
         G = matrix.build_graph_from_data(
@@ -93,12 +109,7 @@ def all_main(args):
         """
         logger.info("### Searching clusters...")
         cluster_membership = find_communities(G)
-        cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Coordinates'])
-        for key, value in data.items():
-            coord = {k: [v["Start"], v["End"]] for k, v in value.items()}
-            row = pd.DataFrame({'ReadName': [key], 'Cluster': ['NA'], 'Coordinates': [coord]})
-            cl = pd.concat([cl, row])
-        cl = cl.reset_index(drop=True)
+
         clN = 0
         uncl = 0
         cl_exist = []
@@ -118,12 +129,6 @@ def all_main(args):
                                     weight_threshold=0, n_processes=None, chunk_size=10000)
         logger.info("### Searching clusters...")
         cluster_membership1 = nk.community.detectCommunities(G1, algo=nk.community.PLP(G1))
-        cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Coordinates'])
-        for key, value in data.items():
-            coord = {k: [v["Start"], v["End"]] for k, v in value.items()}
-            row = pd.DataFrame({'ReadName': [key], 'Cluster': ['NA'], 'Coordinates': [coord]})
-            cl = pd.concat([cl, row])
-        cl = cl.reset_index(drop=True)
         clN = 0
         uncl = 0
         cl_exist = []
@@ -137,42 +142,13 @@ def all_main(args):
                 uncl = uncl + 1
         print("UNCLUSTERED:" + str(uncl))
 
-    reads = sorted(set(cl.loc[cl["Cluster"] == "NA","ReadName"].values))
-    data_filtered={key: data[key] for key in reads}
-    m = matrix.build_adj_matrix2(edges, data_filtered, snp_pos, I, StRainyArgs().bam, 0, False)
-    m = matrix.remove_edges(m, 0)
-    m.columns = range(0, len(list(data_filtered.keys())))
-    m.index = range(0, len(list(data_filtered.keys())))
 
-    indexes=cl[cl['ReadName'].isin(reads)].index.values.tolist()
-
-
-
-    #print(m)
-    G = gfa_ops.from_pandas_adjacency_notinplace(matrix.change_w(m.transpose(), 0))
-
-    cluster_membership = find_communities(G)
-    #print(cluster_membership)
-    clN = 0
-    uncl = 0
-    for value in set(cluster_membership.values()):
-        group = [k for k, v in cluster_membership.items() if v == value]
-        if len(group) > 3:
-            while value in cl_exist:
-                value = value + 1
-            cl_exist.append(value)
-            clN = clN + 1
-            #print(value)
-            #print(cl[cl['ReadName'].isin(reads)].index)
-
-            cl.loc[[indexes[i] for i in group], 'Cluster'] = value
-        else:
-            uncl = uncl + 1
-    print("UNCLUSTERED:" + str(uncl))
-
-    color_bam2(edges)
     cl.to_csv(
         "%s/clusters/clusters_before_splitting_%s_%s.csv" % (StRainyArgs().output_intermediate, I, StRainyArgs().AF))
+    color_bam2(edges)
+
+
+
 
     empty_consensus_dict = {}
     default_manager = multiprocessing.Manager()
@@ -188,10 +164,10 @@ def all_main(args):
     ov_nodes = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
     ov_edges = pairs(edges, cl, shared_flye_consensus, data, snp_pos, reversed_edges, only_with_common_snip=True)
     """
-    ov_edges = pairs_parallel(
-        edges, cl, shared_flye_consensus, data, snp_pos, reversed_edges,
-        output_intermediate=StRainyArgs().output_intermediate,
-        only_with_common_snip=True)
+    #ov_edges = pairs_parallel(
+        #edges, cl, shared_flye_consensus, data, snp_pos, reversed_edges,
+        #output_intermediate=StRainyArgs().output_intermediate,
+        #only_with_common_snip=True)
     """
     over2 = StrainyOverlap2(ov_nodes, ov_edges)
     over2.remove_transitive()
@@ -224,6 +200,7 @@ def all_main(args):
     gfapy.Gfa.to_file(graph, "%s/final.gfa" % (StRainyArgs().output))
     color_bam2(edges)
     logger.info("Done")
+
 
 
 

@@ -91,7 +91,7 @@ def distance_clusters2(edges,first_cl,second_cl, data,cl, flye_consensus,snp_pos
 def orient(edges,first_cl,second_cl,cl,reversed_edges):
     normal=tuple([first_cl,second_cl])
     reverse=tuple([second_cl,first_cl])
-    order=normal
+    #order=normal
     #TODO check only single edge
     for edge in edges:
         bound_first = build_data.cluster_bounds(cl, first_cl, edge)
