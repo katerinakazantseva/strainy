@@ -14,6 +14,8 @@ This contains functions for operation with assembly graph:
 """
 
 
+'''
+
 logger = logging.getLogger()
 
 
@@ -162,3 +164,4 @@ def strong_tail(cluster, cl, ln, data):
     if  count_stop!= None and count_stop > strong_cluster_min_reads:
         res[1] = True
     return res
+'''

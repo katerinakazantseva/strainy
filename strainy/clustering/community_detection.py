@@ -1,6 +1,7 @@
 from karateclub import LabelPropagation
 from networkx.algorithms import community
 import networkx as nx
+#from cdlib import algorithms #todo temove
 
 
 def find_communities(G):
@@ -17,4 +18,16 @@ def find_communities(G):
     model = LabelPropagation()
     model.fit(G)
     cluster_membership = model.get_memberships()
+
+
+    #cluster_membership = algorithms.surprise_communities(G) не работает
+    #cluster_membership = algorithms.leiden(G).to_node_community_map()  #surprise
+    #cluster_membership=algorithms.walktrap(G).to_node_community_map() #walk
+    #cluster_membership=dict(cluster_membership)
+    #for key in cluster_membership.keys():
+        #cluster_membership[key] = cluster_membership[key][0]
+    #print(cluster_membership)
+
+
+
     return cluster_membership

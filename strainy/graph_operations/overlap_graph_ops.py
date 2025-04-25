@@ -22,7 +22,7 @@ This contains functions for operation with overlap graph:
 
 
 
-
+'''
 def build_overlap_graph(cons, full_paths_roots, full_paths_leafs, cluster_distances):
     """
     Create an "overlap" graph for clusters within a unitig, based on flye distance
@@ -65,7 +65,7 @@ def find_full_paths(G, paths_roots, paths_leafs):
     return paths
 
 
-
+'''
 
 def remove_transitive(G):
     """
@@ -91,7 +91,7 @@ def remove_transitive(G):
 
 
 
-
+'''
 def remove_nested(G, cons):
     """
      Disconnect "nested" clusters from the parent cluster.
@@ -172,6 +172,17 @@ def remove_bubbles(graph, source_nodes):
                     node_remove.append(neighbor)
 
 
+def merge_simple_paths(graph, cl):
+    groups = list(nx.strongly_connected_components(graph))
+    for group in groups:
+        if len(group) > 1:
+            сlusters = sorted(set(cl.loc[cl["Cluster"] != "NA", "Cluster"].values))
+            new_cl_id = int(list(group)[0])+1
+            while new_cl_id in сlusters:
+                new_cl_id = new_cl_id+1
+                for i in range(0, len(group)):
+                    cl.loc[cl["Cluster"] == int(list(group)[i]), "Cluster"] = new_cl_id
+    return {graph,cl}
 
 
 def boundaries(path_cl, ln, full_paths, paths_roots, paths_leafs, cons):
@@ -381,3 +392,5 @@ def paths_graph_add_vis(edge, cons, cl, full_paths_roots,
     graph_vis = gv.AGraph(graph_str)
     graph_vis.layout(prog = "dot") # TODO: this line may cause an error
     graph_vis.draw("%s/graphs/connection_graph_%s.png" % (StRainyArgs().output_intermediate, edge))
+
+'''

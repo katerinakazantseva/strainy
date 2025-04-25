@@ -22,11 +22,11 @@ os.environ["PATH"] = bin_absolute + os.pathsep + os.environ["PATH"]
 
 def main():
     #Strainy entry point
-    import strainy.main
-    sys.exit(strainy.main.main())
-
-
+    import strainy.main2
+    sys.exit(strainy.main2.main())
 
 
 if __name__ == "__main__":
     main()
+
+

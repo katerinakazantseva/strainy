@@ -3,7 +3,9 @@ import networkx as nx
 import logging
 import pysam
 import re
-from strainy.logging import set_thread_logging
+import subprocess
+import os
+#from strainy.logging import set_thread_logging
 
 """
 This contains functions for operation with graph of gfa format:
@@ -62,7 +64,7 @@ def add_edge(graph, name, cov, seq):
 
 
 
-
+'''
 def gfa_to_nx(g):
     """
     Сonverts the graph from the gfa format to nx (networkx) format
@@ -94,7 +96,7 @@ def fa_to_gfa(fasta_file):
             g.segment(entry.name).sequence = entry.sequence
     return g
 
-
+'''
 
 def from_pandas_adjacency_notinplace(df, create_using=None):
     """
@@ -118,7 +120,7 @@ def from_pandas_adjacency_notinplace(df, create_using=None):
     return G
 
 
-
+'''
 
 def clean_graph(g):
     """
@@ -138,4 +140,38 @@ def clean_graph(g):
         g.rm(path)
     return g
 
+
+#file="/Users/ekaterina.kazantseva/strainy2/strainy/test_set/toy.gfa"
+#input_graph = gfapy.Gfa.from_file(file)
+#edges=["edge_188","edge_349","edge_191"]
+def sort_edges(input_graph, edges):
+    if len(edges)==1:
+        return set(edges)
+    G=gfa_to_nx(input_graph)
+    e = list(G.nodes)
+    r=[i for i in e if i not in edges]
+    G.remove_nodes_from(r)
+    for root in edges:
+        for leaf in edges:
+            paths = nx.all_simple_paths(G, root, leaf)
+            for path in paths:
+                if len(path)==len(edges):
+                    return path
+                    
+'''
+
+def gfa_to_fasta(gfa_file, output_file):
+    """
+    Creates a fasta file from the input gfa file. This is needed if the user
+    omitted the optional -f argument or if the input graph is modified as a
+    result of --split-long-unitigs argument.
+    """
+    fasta_cmd = f"""awk '/^S/{{print ">"$2"\\n"$3}}' {gfa_file} > {output_file}"""
+    try:
+        subprocess.check_output(fasta_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
+
+
+    except subprocess.CalledProcessError as e:
+        raise Exception(f'Error while creating fasta file from the gfa file: {gfa_file} ' \
+                        f'Optionally, you can create a fasta file yourself and provide it with "-f file.fasta"')
 

@@ -15,6 +15,7 @@ from Bio.SeqRecord import SeqRecord
 from argparse import Namespace
 
 from strainy.params import *
+from strainy.params import StRainyArgs, init_global_args_storage
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.DEBUG)
@@ -124,7 +125,33 @@ class FlyeConsensus:
         out.close()
 
         return cluster_start, cluster_end, read_limits
-    
+    '''
+    def _extract_reads_full(self, read_names, start_pos, output_file):
+        """
+        based on the code by Tim Stuart https://timoast.github.io/blog/2015-10-12-extractreads/
+        Extract the reads given query names to a new bam file
+        """
+        cluster_start = -1
+        cluster_end = -1
+        read_limits = []
+
+        read_list = []  # stores the reads to be written after the cluster start/end is calculated
+
+        if self._read_index is None:
+            self._read_index = pysam.IndexedReads(pysam.AlignmentFile(self._bam_path, "rb"))
+            self._read_index.build()
+
+        out = pysam.Samfile(output_file, "wb", template=pysam.AlignmentFile(self._bam_path, "rb"))
+        for x in read_list:
+            temp_dict = x.to_dict()
+            temp_dict["ref_pos"] = str(int(temp_dict["ref_pos"]) - cluster_start)
+            y = x.from_dict(temp_dict, x.header)  # create a new read from the modified dictionary
+            out.write(y)
+
+        out.close()
+
+        return cluster_start, cluster_end, read_limits
+    '''
 
     def _clip_consensus_seq(self, sequence, read_limits, bed_contents, curr_start, coverage_limit):
         start_pos = sorted([start for (start, _) in read_limits])
@@ -138,7 +165,6 @@ class FlyeConsensus:
             new_end_pos = end_pos[0]
 
         return new_start_pos, new_end_pos, sequence[new_start_pos - curr_start:new_end_pos - curr_start]
-
 
     def flye_consensus(self, cluster, edge, cl, debug=False):
         """
@@ -157,14 +183,24 @@ class FlyeConsensus:
 
         # fetch the read names in this cluster and extract those reads to a new bam file to be used by the
         # Flye polisher
-        reads_from_curr_cluster = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
-        start_pos_of_reads = cl.loc[cl["Cluster"] == cluster]["Start"].to_numpy()
+        reads_from_curr_cluster1 = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
+        #start_pos_of_reads = cl.loc[cl["Cluster"] == cluster]["Start"].to_numpy()
+        coordinates = cl.loc[cl["Cluster"] == cluster]["Coordinates"].to_numpy()
+        start_pos_of_reads=[]
+        reads_not_in_edge=[]
+        for i,c in enumerate(coordinates):
+            try:
+                start_pos_of_reads.append(c[edge][0])
+            except KeyError:
+                reads_not_in_edge.append(reads_from_curr_cluster1[i])
+
+
+        reads_from_curr_cluster=[i for i in reads_from_curr_cluster1 if i not in reads_not_in_edge]  #rename reads_from_curr_cluster
         salt = random.randint(1000, 10000)
         fprefix = "%s/flye_inputs/" % StRainyArgs().output_intermediate
         bam_subset = f"{fprefix}{edge}_cluster_{cluster}_reads_{salt}.bam"
         bam_subset_sorted = f"{fprefix}{edge}_cluster_{cluster}_reads_{salt}_sorted.bam"
-        cluster_start, cluster_end, read_limits = self._extract_reads(reads_from_curr_cluster, start_pos_of_reads,
-                                                                      bam_subset, edge)
+        cluster_start, cluster_end, read_limits = self._extract_reads(reads_from_curr_cluster, start_pos_of_reads,bam_subset, edge)
 
         logger.debug((f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}, CLUSTER_END:{cluster_end}, EDGE:{edge},"
                f"# OF READS:{len(reads_from_curr_cluster)}"))
@@ -247,8 +283,8 @@ class FlyeConsensus:
             except (OSError, FileNotFoundError):
                 pass
 
-        start, end, consensus_clipped = self._clip_consensus_seq(consensus.seq, 
-                                                                 read_limits, 
+        start, end, consensus_clipped = self._clip_consensus_seq(consensus.seq,
+                                                                 read_limits,
                                                                  bed_content,
                                                                  cluster_start,
                                                                  2)
@@ -264,8 +300,185 @@ class FlyeConsensus:
                 'bed_content': bed_content
 
             }
+            #print(self._consensus_dict[consensus_dict_key])
             return self._consensus_dict[consensus_dict_key]
 
+    ''''
+    def flye_consensus_full(self, cluster, cl, fastq_file, debug=False):
+        """
+        Computes the Flye based consensus of a cluster of reads for a specific edge.
+        cluster: id (int)
+        cl: dataframe with columns read_name and cluster(id)
+        edge: edge name (str)
+        """
+        # check if the output for this cluster-edge pair exists in the cache
+        consensus_dict_key = f"{cluster}-full"
+        with self._lock:
+            if consensus_dict_key in self._consensus_dict:
+                self._key_hit.value += 1
+                return self._consensus_dict[consensus_dict_key]
+            self._key_miss.value += 1
+
+        # fetch the read names in this cluster and extract those reads to a new bam file to be used by the
+        # Flye polisher
+        reads_from_curr_cluster1 = cl.loc[cl["Cluster"] == cluster]["ReadName"].to_numpy()  # store read names
+        #start_pos_of_reads = cl.loc[cl["Cluster"] == cluster]["Start"].to_numpy()
+        coordinates = cl.loc[cl["Cluster"] == cluster]["Coordinates"].to_numpy()
+        #print(coordinates)
+        start_pos_of_reads={}
+        end_pos_of_reads = {}
+        reads_not_in_edge=[]
+        for i,c in enumerate(coordinates):
+            #print (i)
+            #print(c)
+            for k,v in c.items():
+                try:
+                    list=start_pos_of_reads[k]
+                    list.append(c[k][0])
+                    start_pos_of_reads[k]=list
+                except KeyError:
+                    start_pos_of_reads[k]=[c[k][0]]
+                try:
+                    list=end_pos_of_reads[k]
+                    list.append(c[k][1])
+                    end_pos_of_reads[k]=list
+                except KeyError:
+                    end_pos_of_reads[k]=[c[k][1]]
+
+        #print(start_pos_of_reads)
+
+
+
+            #except KeyError:
+                #reads_not_in_edge.append(reads_from_curr_cluster1[i])
+        #TODO change coordinates
+        coords = {}
+        for i in start_pos_of_reads.keys():
+            list=[min(start_pos_of_reads[i]),max(end_pos_of_reads[i])]
+            coords[i]=list
+
+        #print(coords)
+
+        reads_from_curr_cluster=[i for i in reads_from_curr_cluster1]  #rename reads_from_curr_cluster
+        salt = random.randint(1000, 10000)
+        fprefix = "%s/flye_inputs/" % StRainyArgs().output_intermediate
+        #bam_subset = f"{fprefix}full_cluster_{cluster}_reads_{salt}.bam"
+        #bam_subset_sorted = f"{fprefix}full_cluster_{cluster}_reads_{salt}_sorted.bam"
+
+        #для каждого edge
+        #cluster_start, cluster_end, read_limits = self._extract_reads(reads_from_curr_cluster, start_pos_of_reads,
+                                                                      #bam_subset, edge)
+
+        #self._extract_reads_full(reads_from_curr_cluster, start_pos_of_reads,
+                             #bam_subset)
+
+        #logger.debug((f"CLUSTER:{cluster}, CLUSTER_START:{cluster_start}, CLUSTER_END:{cluster_end}, EDGE:{edge},"
+               #f"# OF READS:{len(reads_from_curr_cluster)}"))
+
+        # access the edge in the graph and cut its sequence according to the cluster start and end positions
+        # this sequence is written to a fasta file to be used by the Flye polisher
+        #ref_seq_cut = self._unitig_seqs[edge][cluster_start:cluster_end]
+        record_list=[]
+        for edge in coords.keys():
+            cluster_start=coords[edge][0]
+            cluster_end = coords[edge][1]
+            ref_seq_cut = self._unitig_seqs[edge][cluster_start:cluster_end]
+            record = SeqRecord(
+                Seq(ref_seq_cut),
+                id=f"{edge}",
+                name=f"{edge} sequence cut for cluster {cluster}",
+                description=""
+            )
+            record_list.append(record)
+
+        #print(record_list)
+        fname = f"{fprefix}full-cluster{cluster}-{salt}"
+        SeqIO.write(record_list, f"{fname}.fa", "fasta")
+
+        #fname = f"{fprefix}{edge}-cluster{cluster}-{salt}"
+
+        #  Polisher arguments for to call _run_polisher_only(polish_args)
+        flye_out_dir = f"{StRainyArgs().output_intermediate}/flye_outputs/flye_consensus_full_{cluster}_{salt}"
+        #extract reads
+        #est_set / toy.fastq.gz
+        read_list = []
+        #print(reads_from_curr_cluster)
+        import gzip
+        with gzip.open(fastq_file, "rt") as handle:
+            for seq_record in SeqIO.parse(handle, "fastq"):
+                #print(seq_record)
+                if seq_record.name in reads_from_curr_cluster:
+                    read_list.append(seq_record)
+
+        #print(read_list)
+        rname=f"{fprefix}full_cluster_{cluster}_reads_{salt}.fasta"
+        SeqIO.write(read_list, f"{rname}", "fasta")
+
+        polish_args = Namespace(polish_target=f"{fname}.fa",
+                                reads=[rname],
+                                out_dir=flye_out_dir,
+                                num_iters=1,
+                                threads=1,
+                                platform=self._platform,
+                                read_type=self._read_type)
+
+        #polish_cmd = f"{StRainyArgs().flye} --polish-target {fname}.fa --threads {self._num_processes}" \
+                      #f"{fprefix}full_cluster_{cluster}_reads_{salt}.fastq" \
+                      #f"-o {StRainyArgs().output_intermediate}/flye_outputs/flye_consensus_{edge}_{cluster}_{salt}"
+        try:
+            logger.debug("Running Flye polisher")
+            # subprocess.check_output(polish_cmd, shell=True, capture_output=False, stderr=open(os.devnull, "w"))
+            # TODO: this should move to the top when flye pull request is merged
+            if not os.path.isdir(polish_args.out_dir):
+                os.mkdir(polish_args.out_dir)
+            _run_polisher_only(polish_args, output_progress=False)
+            logger.debug("Running Flye polisher - finished!")
+        except Exception as e:
+            logger.error("Error running the Flye polisher. Make sure the fasta file contains only the primary alignments")
+            logger.error(e)
+            with self._lock:
+                self._consensus_dict[consensus_dict_key] = {
+                    'consensus': Seq(''),
+                    #'start': cluster_start,
+                    #'end': cluster_end
+                }
+                return self._consensus_dict[consensus_dict_key]
+
+        try:
+            # read back the output of the Flye polisher
+            #consensus = SeqIO.read(os.path.join(flye_out_dir, "polished_1.fasta"), "fasta")
+            seq_full=str()
+            for seq_record in SeqIO.parse(os.path.join(flye_out_dir, "polished_1.fasta"), "fasta"):
+                seq_full=seq_full+str(seq_record.seq)
+            consensus=SeqRecord(
+                seq=seq_full)
+            #print(consensus)
+        except  KeyError:#(ImportError, ValueError) as e:
+            # If there is an error, the sequence string is set to empty by default
+            logger.warning("WARNING: error reading back the flye output, defaulting to empty sequence for consensus")
+            if type(e).__name__ == 'ImportError':
+                logger.warning('found ImportError')
+            consensus = SeqRecord(
+                seq=''
+            )
+
+        bed_content = self._parse_bed_coverage(os.path.join(flye_out_dir, "base_coverage.bed.gz"))
+
+        with self._lock:
+            self._consensus_dict[consensus_dict_key] = {
+                'consensus': consensus.seq
+                #'start': start,
+                #'end': end,
+                #'read_limits': read_limits,
+                #'bam_path': bam_subset,
+                #'reference_path': f"{fname}.fa",
+                #'reference_seq': self._unitig_seqs[edge],
+                #'bed_content': bed_content
+
+            }
+            #print(self._consensus_dict[consensus_dict_key])
+            return self._consensus_dict[consensus_dict_key]
+    '''
 
     def _edlib_align(self, seq_a, seq_b):
         band_size = 32
@@ -479,7 +692,6 @@ class FlyeConsensus:
             # cache the reference alignment for re-use
             with self._lock:
                 self._alignment_cache[cache_key] = [first_cl_to_ref, reference_aligned]
-
         edlib_score = self._custom_scoring_function(aligned_first, edlib_aln, aligned_second, first_cl_to_ref, reference_aligned, intersection_start,
                                                     first_cl_dict, second_cl_dict, commonSNPs, first_cl_dict['start'])
         
