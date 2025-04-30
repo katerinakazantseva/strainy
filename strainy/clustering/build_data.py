@@ -11,7 +11,21 @@ from multiprocessing import Pool, cpu_count
 from functools import partial
 from tqdm import tqdm
 import logging
+import pandas as pd
 logger = logging.getLogger()
+
+
+def clusters(data):
+    """
+    Creates file for mapping ReadNames-Cluster N
+    """
+    cl = pd.DataFrame(columns=['ReadName', 'Cluster', 'Coordinates'])
+    for key, value in data.items():
+        coord = {k: [v["Start"], v["End"]] for k, v in value.items()}
+        row = pd.DataFrame({'ReadName': [key], 'Cluster': ['NA'], 'Coordinates': [coord]})
+        cl = pd.concat([cl, row])
+    cl = cl.reset_index(drop=True)
+    return cl
 
 def read_snp2(vcf_file, bam, AF, cluster=None):
     """

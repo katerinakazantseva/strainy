@@ -116,38 +116,7 @@ def orient(edges,first_cl,second_cl,cl,reversed_edges):
     return order
 
 
-"""
-#non parallel
-def build_adj_matrix2(edges, data, snp_pos, I, file, R,only_with_common_snip=True):
-    m = pd.DataFrame(-1.0, index=list(data.keys()), columns=list(data.keys()))
-    if only_with_common_snip==False:
-        #dw = DistanceWrapper2(cl, data, snp_pos, R, only_with_common_snip)
-        dw = DistanceWrapper2(edges, data, snp_pos, R, only_with_common_snip)
-        result = cdist(pd.Series(list(data.keys()),name="ReadName").to_frame(), pd.Series(list(data.keys()),name="ReadName").to_frame(), dw.distance_wrapper2)
 
-        # Set the first row and the column to -1
-        try:
-            result[0,:] = -1
-            result[:,0] = -1
-        except IndexError:
-            pass
-
-        result_df = pd.DataFrame(result,
-                                 index=list(data.keys()),
-                                 columns=list(data.keys()))
-    else:
-        dw = DistanceWrapper2(edges, data, snp_pos, R, True) #tofo change for arg only_with_common_snip
-        result = cdist(pd.Series(list(data.keys()),name="ReadName").to_frame(), pd.Series(list(data.keys()),name="ReadName").to_frame(), dw.distance_wrapper2)
-        result[0,:] = -1
-        result_df = pd.DataFrame(result,
-                        index=list(data.keys()),
-                        columns=list(data.keys()))
-
-    return result_df
-"""    
-    
-
-#parallel
 def compute_chunk(chunk, edges, data, snp_pos, R, only_with_common_snip):
     dw = DistanceWrapper2(edges, data, snp_pos, R, only_with_common_snip)
     result = []
@@ -203,10 +172,8 @@ def compute_edge_chunk(pairs, data, snp_pos, edges, R,
     for a, b in pairs:
         try:
             weight = distance2(a, b, data, snp_pos, R, edges, only_with_common_snip)
-            #print(weight)
-            if weight is not None and weight <= weight_threshold and weight!=-1.0:
-                #print("add")
-                results.append((a, b, 1))
+            if weight is not None and weight <= weight_threshold and weight!=-1.0 and a!=b:
+                results.append((a, b,  1))
         except Exception as e:
             continue
     return results
@@ -332,10 +299,10 @@ def chunked_generator(generator, chunk_size):
     if chunk:
         yield chunk
 
+
+
 def build_graph_from_data_networKit(data, snp_pos, edges, R, only_with_common_snip=True,
-                                    weight_threshold=0.0, n_processes=4, chunk_size=10000):
-    if n_processes is None:
-        n_processes = min(cpu_count(), 16)
+                                    weight_threshold=0.0, n_processes=1, chunk_size=10000):
 
     read_names = list(data.keys())
     name_to_idx = {name: idx for idx, name in enumerate(read_names)}
@@ -357,66 +324,3 @@ def build_graph_from_data_networKit(data, snp_pos, edges, R, only_with_common_sn
                     G.addEdge(name_to_idx[a], name_to_idx[b], weight)
                 pbar.update(len(result))
     return G
-
-
-"""
-def build_graph_from_data(
-    edges, data, snp_pos, I, file, R,
-    only_with_common_snip=True,
-    use_memmap=True,
-    memmap_filename=None,
-    n_processes=4,
-    weight_threshold=0.0:
-    read_names = list(data.keys())
-    m_size = len(read_names)
-    name_to_idx = {name: idx for idx, name in enumerate(read_names)}
-
-    if use_memmap:
-        tmp_dir = tempfile.mkdtemp()
-        matrix_file = memmap_filename or os.path.join(tmp_dir, "adj_matrix.dat")
-        matrix_np = np.memmap(matrix_file, dtype='float64', mode='w+', shape=(m_size, m_size))
-        matrix_np.fill(-1.0)
-    else:
-        matrix_np = np.full((m_size, m_size), -1.0, dtype=np.float64)
-
-    pairs = [(read_names[i], read_names[j]) for i in range(m_size) for j in range(i + 1, m_size)]
-    chunk_size = len(pairs) // (n_processes * 4) + 1
-    chunks = [pairs[i:i + chunk_size] for i in range(0, len(pairs), chunk_size)]
-
-    with Pool(processes=n_processes) as pool:
-        func = partial(compute_chunk, edges=edges, data=data, snp_pos=snp_pos, R=R,
-                       only_with_common_snip=only_with_common_snip)
-        for chunk_result in tqdm(pool.imap_unordered(func, chunks), total=len(chunks), desc="Building matrix"):
-            for a, b, d in chunk_result:
-                i, j = name_to_idx[a], name_to_idx[b]
-                matrix_np[i, j] = d
-                matrix_np[j, i] = d
-
-    matrix_np[0, :] = -1
-    matrix_np[:, 0] = -1
-
-
-    G = nx.Graph()
-    total_possible_edges = (m_size * (m_size - 1)) // 2
-
-    for idx in range(m_size):
-        G.add_node(idx)
-
-    with tqdm(total=total_possible_edges, desc="Adding edges") as pbar:
-        for i in range(m_size):
-            for j in range(i + 1, m_size):
-                weight = matrix_np[i, j]
-                if weight > weight_threshold:
-                    G.add_edge(i, j, weight=weight)
-                    #G.add_edge(name_to_idx[read_names[i]], name_to_idx[read_names[j]], weight=weight)
-                    #G.add_edge(read_names[i], read_names[j], weight=weight)
-                pbar.update(1)
-
-    if use_memmap:
-        del matrix_np
-
-    return G
-"""
-
-
-
