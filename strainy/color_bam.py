@@ -16,14 +16,14 @@ def write_bam(edge, cl, infile,outfile):
     """Creates new bam file based on ifnfile and add YC tag to the alignment based on csv file"""
     iterbam = infile.fetch(edge,until_eof=True)
     cmap = plt.get_cmap("viridis")
-    cl.loc[cl["Cluster"] == "NA", "Cluster"] = 0
+    cl.loc[cl["Cluster"] == "NA", "Cluster"] = 10000
     clusters = set(cl["Cluster"])
     cmap = cmap(np.linspace(0, 1, len(clusters)))
     colors={}
     i=0
-    colors[0] = "#505050"
+    colors[10000] = "#505050"
     try:
-        clusters.remove("0")
+        clusters.remove("10000")
     except KeyError:
         pass
     for cluster in clusters:

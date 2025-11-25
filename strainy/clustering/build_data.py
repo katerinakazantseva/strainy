@@ -12,6 +12,20 @@ from functools import partial
 from tqdm import tqdm
 import logging
 import pandas as pd
+import subprocess
+import pysam
+import os
+import io
+import re
+from collections import Counter, namedtuple
+from Bio import SeqIO
+from strainy.params import *
+import logging
+from multiprocessing import Pool, cpu_count
+from functools import partial
+from tqdm import tqdm
+import logging
+import pandas as pd
 logger = logging.getLogger()
 
 
@@ -249,6 +263,8 @@ def read_bam2_parallel(
     logging.info("Finished reading BAM and extracting data.")
     return merged_data
 
+
+
 def read_bam2(bam, edges, snp_pos, min_mapping_quality,min_base_quality, min_al_len, max_aln_error):
     """
      Extracts read alignment information from a BAM file for a specific edge, focusing on high-quality reads
@@ -275,7 +291,6 @@ def read_bam2(bam, edges, snp_pos, min_mapping_quality,min_base_quality, min_al_
     CIGAR_SOFT = 4
     CIGAR_HARD = 5
     for edge in edges:
-        print(edge)
         try:
             for read in bamfile.fetch(edge):
                 clipping = False

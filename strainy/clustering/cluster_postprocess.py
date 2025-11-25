@@ -6,8 +6,6 @@ from strainy.clustering import build_adj_matrix as matrix
 from strainy.clustering import build_data
 from strainy.graph_operations import gfa_ops
 from strainy.params import *
-from functools import partial
-from multiprocessing import Pool
 from tqdm import tqdm
 logger = logging.getLogger()
 
@@ -20,7 +18,6 @@ def pairs(edges,cl,flye_consensus,data, snp_pos,reversed_edges,
         clusters.remove(0)
     except ValueError:
         pass
-
     m = pd.DataFrame(-1.0, index = clusters, columns = clusters)
     pairs=[]
     for i in range(0, m.shape[1]):

@@ -23,7 +23,7 @@ class StrainyOverlap2:
         G=nx.nx_agraph.to_agraph(self.graph)
         G.layout(prog = "dot")
         G.draw(f"{StRainyArgs().output_intermediate}/graphs/linear_phase2.png")
-    def merge_unbrunching(self):
+    def merge_unbranching(self):
         graph=self.graph
         cntrd_nodes = []
         for node in graph.nodes:
